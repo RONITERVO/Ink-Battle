@@ -538,247 +538,262 @@
             text-shadow: 1px 1px 0px rgba(255, 255, 255, 0.7);
         }
 
-        .speech-bubble {
+        .director-writing {
             position: relative;
-            background: hsl(var(--card) / 0.96);
-            border: 1.5px solid hsl(var(--pencil));
-            border-radius: 8px 10px 7px 9px;
-            box-shadow: 3px 4px 0 hsl(var(--pencil) / 0.16);
-            padding: 0.72vmin 0.9vmin;
             pointer-events: auto;
-            backdrop-filter: blur(4px);
+            color: hsl(var(--pencil));
+            text-shadow: 0.5px 0.5px 0 hsl(var(--background) / 0.7);
         }
 
-        .speech-bubble::after {
-            content: '';
-            position: absolute;
-            bottom: -11px;
-            border-width: 11px 10px 0;
-            border-style: solid;
-            border-color: hsl(var(--card) / 0.96) transparent transparent transparent;
+        .player-writing {
+            min-height: 5.2vmin;
+            padding: 0.2vmin 0.35vmin 0;
         }
 
-        .speech-bubble::before {
-            content: '';
-            position: absolute;
-            bottom: -14px;
-            border-width: 13px 12px 0;
-            border-style: solid;
-            border-color: hsl(var(--pencil)) transparent transparent transparent;
-        }
-
-        .player-bubble::after {
-            left: 1.3rem;
-        }
-
-        .player-bubble::before {
-            left: calc(1.3rem - 2px);
-        }
-
-        .ai-bubble::after {
-            right: 1.3rem;
-        }
-
-        .ai-bubble::before {
-            right: calc(1.3rem - 2px);
+        .ai-writing {
+            min-height: 12.5vmin;
+            padding: 0.2vmin 0.35vmin 0;
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            text-align: right;
         }
 
         #director-form {
+            display: block;
+        }
+
+        #player-last-line {
+            min-height: 2.35vmin;
+            color: hsl(var(--pencil) / 0.76);
+            font-family: 'Caveat', 'Comic Sans MS', 'Segoe Print', cursive;
+            font-size: 2.05vmin;
+            font-weight: bold;
+            line-height: 1.08;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 1;
+            -webkit-box-orient: vertical;
+        }
+
+        .player-last-text {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .director-input-row {
             display: flex;
-            gap: 0.55rem;
-            align-items: center;
-            min-height: 2.35rem;
+            align-items: flex-end;
+            gap: 0.25rem;
+            border-bottom: 1.5px dashed hsl(var(--pencil-light) / 0.72);
         }
 
         #director-input {
             flex: 1;
             min-width: 0;
             border: none;
-            border-bottom: 1px dashed hsl(var(--pencil-light));
             background: transparent;
             outline: none;
-            color: hsl(var(--foreground));
-            font-family: 'Patrick Hand', 'Comic Sans MS', 'Segoe Print', cursive;
-            font-size: 2.25vmin;
-            line-height: 1.1;
+            color: hsl(var(--pencil));
+            font-family: 'Caveat', 'Comic Sans MS', 'Segoe Print', cursive;
+            font-size: 2.45vmin;
+            font-weight: bold;
+            line-height: 1;
+            padding: 0 0 0.15vmin;
         }
 
         #director-input:focus {
-            border-bottom-color: hsl(var(--accent));
+            color: hsl(var(--foreground));
         }
 
         #director-input::placeholder {
-            color: hsl(var(--muted-foreground));
-            font-style: italic;
+            color: hsl(var(--pencil-light) / 0.78);
+            font-style: normal;
         }
 
         #director-form button {
             flex: 0 0 auto;
-            min-width: 3.2rem;
+            width: 2.1rem;
             min-height: 2rem;
-            border: 1.5px solid hsl(var(--pencil));
-            border-radius: 6px;
-            background: hsl(var(--secondary) / 0.85);
-            color: hsl(var(--foreground));
+            border: none;
+            background: transparent;
+            color: hsl(var(--pencil));
             font-family: 'Caveat', 'Comic Sans MS', 'Segoe Print', cursive;
-            font-size: 2.25vmin;
+            font-size: 2.8vmin;
             font-weight: bold;
             cursor: pointer;
-            transition: transform 0.12s, background-color 0.12s;
+            line-height: 1;
+            padding: 0;
+            transform: rotate(-5deg);
+            transition: transform 0.12s, color 0.12s;
         }
 
         #director-form button:hover {
-            background: hsl(var(--secondary));
-            transform: scale(1.04) rotate(-1deg);
-        }
-
-        .ai-bubble {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5vmin;
+            color: hsl(var(--accent));
+            transform: scale(1.12) rotate(0deg);
         }
 
         #gemma-card {
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            gap: 0.45rem;
-            min-height: 1.9rem;
-            padding: 0.28rem 0.35rem;
-            border: 1px dashed hsl(var(--pencil-light));
-            border-radius: 4px;
-            background: hsl(var(--background) / 0.58);
+            justify-content: flex-end;
+            gap: 0.35rem;
+            min-height: 1.35vmin;
+            margin-top: 0.15vmin;
         }
 
         #gemma-status {
             min-width: 0;
-            color: hsl(var(--muted-foreground));
-            font-family: 'Courier New', Courier, monospace;
-            font-size: 1.35vmin;
-            font-weight: bold;
-            line-height: 1.08;
+            color: hsl(var(--muted-foreground) / 0.82);
+            font-family: 'Patrick Hand', 'Comic Sans MS', 'Segoe Print', cursive;
+            font-size: 1.25vmin;
+            line-height: 1;
             overflow: hidden;
             text-overflow: ellipsis;
         }
 
         #gemma-card button {
             flex: 0 0 auto;
-            min-width: 2.35rem;
-            min-height: 1.55rem;
-            border: 1.5px solid hsl(var(--pencil-light));
-            border-radius: 4px;
-            background: hsl(var(--secondary) / 0.75);
-            color: hsl(var(--foreground));
+            border: none;
+            background: transparent;
+            color: hsl(var(--accent));
             font-family: 'Caveat', 'Comic Sans MS', 'Segoe Print', cursive;
             font-size: 1.65vmin;
             font-weight: bold;
             cursor: pointer;
+            padding: 0;
+            text-decoration: underline;
+            text-decoration-thickness: 1px;
         }
 
         #gemma-card button:disabled {
-            opacity: 0.45;
+            opacity: 0.55;
             cursor: not-allowed;
+            text-decoration: none;
         }
 
         #director-memory {
             display: flex;
             flex-wrap: wrap;
             gap: 0.25rem;
-            min-height: 1.2rem;
+            justify-content: flex-end;
+            min-height: 1.45vmin;
+            margin-bottom: 0.2vmin;
         }
 
         .memory-chip {
-            padding: 0.16rem 0.32rem;
-            border: 1px dashed hsl(var(--pencil-light));
-            border-radius: 4px;
-            background: hsl(var(--background) / 0.62);
-            color: hsl(var(--muted-foreground));
+            color: hsl(var(--muted-foreground) / 0.85);
             font-family: 'Caveat', 'Comic Sans MS', 'Segoe Print', cursive;
             font-size: 1.55vmin;
             font-weight: bold;
             line-height: 1;
+            text-decoration: underline;
+            text-decoration-color: hsl(var(--pencil-light) / 0.45);
+            text-decoration-thickness: 1px;
         }
 
         #director-log {
-            height: 7.8vmin;
+            min-height: 5.6vmin;
             display: flex;
             flex-direction: column;
-            justify-content: flex-end;
-            gap: 0.25rem;
+            align-items: flex-end;
+            justify-content: flex-start;
             overflow: hidden;
         }
 
         .director-msg {
-            color: hsl(var(--foreground));
-            font-size: 2vmin;
-            line-height: 1.16;
+            max-width: 100%;
+            color: hsl(var(--pencil));
+            font-family: 'Caveat', 'Comic Sans MS', 'Segoe Print', cursive;
+            font-size: 2.35vmin;
+            font-weight: bold;
+            line-height: 1.08;
             word-break: break-word;
             user-select: text;
-            animation: scribbleIn 0.3s ease-out both;
             display: -webkit-box;
             -webkit-line-clamp: 2;
             -webkit-box-orient: vertical;
             overflow: hidden;
         }
 
-        .director-msg.tool {
-            color: hsl(var(--destructive));
-            font-family: 'Caveat', 'Comic Sans MS', 'Segoe Print', cursive;
-            font-weight: bold;
+        #director-tool-log {
+            min-height: 4.6vmin;
+            max-height: 4.6vmin;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            justify-content: flex-start;
+            gap: 0.1vmin;
+            overflow: hidden;
+            margin-top: 0.15vmin;
         }
 
-        #ai-action-indicator {
-            position: absolute;
-            right: 0.4rem;
-            top: -2.55rem;
-            max-width: calc(100% - 0.8rem);
-            padding: 0.32rem 0.72rem;
-            border: 1.5px solid hsl(var(--card));
-            border-radius: 999px;
-            background: hsl(var(--foreground) / 0.94);
-            color: hsl(var(--card));
-            box-shadow: 0 4px 9px rgba(0, 0, 0, 0.25);
+        .director-tool-msg {
+            max-width: 100%;
+            color: hsl(var(--muted-foreground) / 0.86);
             font-family: 'Patrick Hand', 'Comic Sans MS', 'Segoe Print', cursive;
-            font-size: 1.65vmin;
-            font-weight: bold;
-            letter-spacing: 0;
-            white-space: nowrap;
+            font-size: 1.42vmin;
+            line-height: 1.02;
             overflow: hidden;
             text-overflow: ellipsis;
-            opacity: 0;
-            transform: translateY(8px) scale(0.92);
-            pointer-events: none;
+            white-space: nowrap;
+            user-select: text;
         }
 
-        #ai-action-indicator.is-entering {
-            animation: actionPopIn 0.24s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        .is-writing {
+            clip-path: inset(0 100% 0 0);
+            animation: pencilWrite 0.48s steps(18, end) forwards;
         }
 
-        #ai-action-indicator.is-leaving {
-            animation: actionFadeAway 0.42s ease forwards;
+        .ai-writing .is-writing {
+            clip-path: inset(0 0 0 100%);
+            animation-name: pencilWriteRight;
         }
 
-        @keyframes actionPopIn {
+        .is-erasing {
+            animation: pencilErase 0.2s ease forwards;
+        }
+
+        @keyframes pencilWrite {
             0% {
-                opacity: 0;
-                transform: translateY(8px) scale(0.92);
+                opacity: 0.2;
+                clip-path: inset(0 100% 0 0);
+                filter: blur(0.4px);
             }
 
             100% {
                 opacity: 1;
-                transform: translateY(0) scale(1);
+                clip-path: inset(0 0 0 0);
+                filter: blur(0);
             }
         }
 
-        @keyframes actionFadeAway {
+        @keyframes pencilWriteRight {
+            0% {
+                opacity: 0.2;
+                clip-path: inset(0 0 0 100%);
+                filter: blur(0.4px);
+            }
+
+            100% {
+                opacity: 1;
+                clip-path: inset(0 0 0 0);
+                filter: blur(0);
+            }
+        }
+
+        @keyframes pencilErase {
             0% {
                 opacity: 1;
-                transform: translateY(0) scale(1);
+                filter: blur(0);
+                transform: translateY(0);
             }
 
             100% {
                 opacity: 0;
-                transform: translateY(-7px) scale(0.96);
+                filter: blur(1px);
+                transform: translateY(-0.2vmin);
             }
         }
 
@@ -943,8 +958,9 @@
                 gap: 0.5vmin;
             }
 
-            .speech-bubble {
-                padding: 0.55vmin 0.7vmin;
+            .director-writing {
+                padding-left: 0.15vmin;
+                padding-right: 0.15vmin;
             }
 
             #gemma-status,
@@ -953,7 +969,12 @@
             }
 
             #director-log {
-                height: 6.6vmin;
+                min-height: 5vmin;
+            }
+
+            #director-tool-log {
+                min-height: 3.8vmin;
+                max-height: 3.8vmin;
             }
         }
 
@@ -1096,26 +1117,29 @@
                             <div class="hp-fill" id="player-hp-fill"></div>
                             <div class="hp-text" id="player-hp-text">500 / 500</div>
                         </div>
-                        <form id="director-form" class="speech-bubble player-bubble" onsubmit="submitDirectorChat(event)">
-                            <input id="director-input" maxlength="160" autocomplete="off"
-                                placeholder="Pact, truce, rush me...">
-                            <button type="submit">Say</button>
+                        <form id="director-form" class="director-writing player-writing" onsubmit="submitDirectorChat(event)">
+                            <div id="player-last-line" class="hidden"></div>
+                            <div class="director-input-row">
+                                <input id="director-input" maxlength="160" autocomplete="off" aria-label="Director message"
+                                    placeholder="...">
+                                <button class="director-send" type="submit" aria-label="Send" title="Send">&#10003;</button>
+                            </div>
                         </form>
                     </div>
 
                     <div class="commander-col ai-col hidden" id="ai-hud">
-                        <div id="ai-action-indicator" class="hidden"></div>
                         <div class="hp-wrapper sketchy-border-thin">
                             <div class="hp-fill" id="enemy-hp-fill"></div>
                             <div class="hp-text" id="enemy-hp-text">500 / 500</div>
                         </div>
-                        <div class="speech-bubble ai-bubble">
-                            <div id="gemma-card">
-                                <span id="gemma-status">Gemma: checking support</span>
-                                <button id="btn-gemma-install" onclick="installLocalGemma()">Get</button>
-                            </div>
+                        <div class="director-writing ai-writing">
                             <div id="director-memory"></div>
                             <div id="director-log"></div>
+                            <div id="director-tool-log"></div>
+                            <div id="gemma-card" class="hidden">
+                                <span id="gemma-status"></span>
+                                <button id="btn-gemma-install" onclick="installLocalGemma()">Get</button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1598,51 +1622,58 @@
             },
             updateStatus(next) {
                 this.status = Object.assign({}, this.status, next || {});
-                let label = 'ENG: ';
-                let action = 'BOOT';
+                let label = '';
+                let action = 'Get';
                 let disabled = false;
+                let visible = false;
                 let state = this.status.state || 'unknown';
                 let ram = this.status.totalRamGb ? ` (${this.status.totalRamGb}GB)` : '';
 
                 if (state === 'ready') {
-                    label += `ONLINE - ${this.status.modelName || 'Gemma 4'}`;
-                    action = 'RDY';
+                    label = '';
                     disabled = true;
                 } else if (state === 'loading') {
-                    label += `LOADING - ${this.status.modelName || 'model'}`;
-                    action = '...';
+                    label = 'Gemma loading';
+                    action = '';
                     disabled = true;
+                    visible = true;
                 } else if (state === 'downloading') {
                     let pct = Math.max(0, Math.min(100, Math.floor(this.status.progress || 0)));
-                    label += `DL: ${pct}%`;
-                    action = `${pct}%`;
+                    label = `Gemma download ${pct}%`;
+                    action = '';
                     disabled = true;
+                    visible = true;
                 } else if (state === 'installed') {
-                    label += `STORED - ${this.status.modelName || 'Gemma 4'}`;
-                    action = 'LOAD';
+                    label = 'Gemma is stored';
+                    action = 'load';
+                    visible = true;
                 } else if (state === 'unavailable') {
-                    label += 'STANDBY (Browser)';
-                    action = 'OFF';
+                    label = '';
                     disabled = true;
                 } else if (state === 'error') {
-                    label += 'ERR: ' + (this.status.message || 'retry needed');
-                    action = 'RTRY';
+                    label = this.status.message || 'Gemma retry needed';
+                    action = 'retry';
+                    visible = true;
                 } else {
-                    label += `DL: ${this.status.modelName || 'Gemma 4'}${ram}`;
-                    action = 'GET';
+                    label = `offline Gemma${ram}`;
+                    action = 'get';
+                    visible = this.available;
                 }
 
+                let card = document.getElementById('gemma-card');
                 let statusEl = document.getElementById('gemma-status');
                 let button = document.getElementById('btn-gemma-install');
+                if (card) card.classList.toggle('hidden', !visible);
                 if (statusEl) statusEl.innerText = label;
                 if (button) {
                     button.innerText = action;
                     button.disabled = disabled;
+                    button.classList.toggle('hidden', !action);
                 }
             },
             install() {
                 if (!this.available) {
-                    DirectorPanel.add('ai', 'The packaged Android build is needed for local Gemma. Browser mode keeps the local tactical director.');
+                    DirectorPanel.addSystem('Packaged Android build needed for local Gemma.');
                     return;
                 }
                 let model = this.status.modelName || 'Gemma 4 E2B';
@@ -1652,9 +1683,9 @@
                 try {
                     let response = JSON.parse(window.LocalGemmaAndroid.requestInstall('auto'));
                     this.updateStatus(response);
-                    DirectorPanel.add('ai', `Model download started. I will keep playing with the local fallback until Gemma is ready.`);
+                    DirectorPanel.addSystem('Gemma download started. Local fallback stays active.');
                 } catch (e) {
-                    DirectorPanel.add('ai', 'Android could not start the local Gemma download.');
+                    DirectorPanel.addSystem('Android could not start the Gemma download.');
                 }
             },
             requestTurn(reason, extraMessage = '') {
@@ -1739,7 +1770,7 @@
                 delete this.pending[requestId];
                 this.status.busy = false;
                 this.updateStatus(Object.assign({}, this.status, { state: this.status.state === 'ready' ? 'ready' : 'error', message }));
-                DirectorPanel.add('ai', `Local Gemma could not answer: ${message}`);
+                DirectorPanel.addSystem(`Local Gemma could not answer: ${message}`);
             }
         };
 
@@ -1785,10 +1816,10 @@
         // --- DIRECTOR CHAT SURFACE (COMMANDER HUD) ---
         const DirectorPanel = {
             els: {},
-            actionTimeout: null,
-            actionHideTimeout: null,
+            aiWriteTimeout: null,
+            playerWriteTimeout: null,
             init() {
-                ['commander-hud', 'ai-hud', 'director-log', 'director-input', 'director-memory', 'ai-action-indicator', 'btn-pause'].forEach(id => {
+                ['commander-hud', 'ai-hud', 'director-log', 'director-tool-log', 'director-input', 'director-memory', 'player-last-line', 'btn-pause'].forEach(id => {
                     this.els[id] = document.getElementById(id);
                 });
                 this.renderMemory();
@@ -1797,6 +1828,11 @@
                 if (!this.els['ai-hud']) return;
                 this.els['ai-hud'].classList.remove('hidden');
                 if (this.els['director-log']) this.els['director-log'].innerHTML = '';
+                if (this.els['director-tool-log']) this.els['director-tool-log'].innerHTML = '';
+                if (this.els['player-last-line']) {
+                    this.els['player-last-line'].innerHTML = '';
+                    this.els['player-last-line'].classList.add('hidden');
+                }
                 this.renderMemory();
                 NativeGemma.refresh();
 
@@ -1805,44 +1841,60 @@
                 }, 800);
             },
             add(role, text, tool = false) {
-                let log = this.els['director-log'];
-                if (!log || !text) return;
-                if (role === 'player') return;
+                if (!text) return;
+                if (role === 'player') {
+                    this.writeLatest(this.els['player-last-line'], String(text).slice(0, 120), 'player-last-text', 'player');
+                    return;
+                }
+                if (tool) {
+                    this.addSystem(text);
+                    return;
+                }
+                this.writeLatest(this.els['director-log'], String(text).slice(0, 220), 'director-msg', 'ai');
+            },
+            writeLatest(host, text, className, lane) {
+                if (!host || !text) return;
+                host.classList.remove('hidden');
+                let timeoutKey = lane === 'player' ? 'playerWriteTimeout' : 'aiWriteTimeout';
+                clearTimeout(this[timeoutKey]);
+
+                let render = () => {
+                    host.innerHTML = '';
+                    let row = document.createElement('div');
+                    row.className = `${className} is-writing`;
+                    row.innerText = text;
+                    host.appendChild(row);
+                };
+
+                let current = host.firstElementChild;
+                if (current) {
+                    current.classList.remove('is-writing');
+                    current.classList.add('is-erasing');
+                    this[timeoutKey] = setTimeout(render, 190);
+                } else {
+                    render();
+                }
+            },
+            addSystem(text) {
+                let host = this.els['director-tool-log'];
+                if (!host || !text) return;
                 let row = document.createElement('div');
-                row.className = `director-msg ${tool ? 'tool' : ''}`.trim();
-                row.innerText = text;
-                log.appendChild(row);
-                while (log.children.length > 3) log.removeChild(log.firstChild);
-                log.scrollTop = log.scrollHeight;
+                row.className = 'director-tool-msg is-writing';
+                row.innerText = String(text).replace(/\s+/g, ' ').trim().slice(0, 86);
+                host.appendChild(row);
+                while (host.children.length > 4) host.removeChild(host.firstChild);
             },
             showAction(toolName, reason) {
-                let indicator = this.els['ai-action-indicator'];
-                if (!indicator) return;
-
                 let name = String(toolName || '').toLowerCase();
-                let label = 'MOVE';
-                if (name.includes('spawn') || name.includes('unit')) label = 'UNIT';
-                else if (name.includes('upgrade') || name.includes('econ') || name.includes('dmg') || name.includes('hp')) label = 'UPGRADE';
-                else if (name.includes('turret') || name.includes('slot')) label = 'FORT';
-                else if (name.includes('evolve') || name.includes('age')) label = 'AGE';
-                else if (name.includes('special')) label = 'SPECIAL';
+                let label = 'move';
+                if (name.includes('spawn') || name.includes('unit')) label = 'unit';
+                else if (name.includes('upgrade') || name.includes('econ') || name.includes('dmg') || name.includes('hp')) label = 'upgrade';
+                else if (name.includes('turret') || name.includes('slot')) label = 'fort';
+                else if (name.includes('evolve') || name.includes('age')) label = 'age';
+                else if (name.includes('special')) label = 'special';
 
-                let detail = String(reason || 'new plan').replace(/\s+/g, ' ').trim().slice(0, 56);
-                indicator.innerText = `${label}: ${detail}`;
-                indicator.classList.remove('hidden', 'is-entering', 'is-leaving');
-                void indicator.offsetWidth;
-                indicator.classList.add('is-entering');
-
-                clearTimeout(this.actionTimeout);
-                clearTimeout(this.actionHideTimeout);
-                this.actionTimeout = setTimeout(() => {
-                    indicator.classList.remove('is-entering');
-                    indicator.classList.add('is-leaving');
-                    this.actionHideTimeout = setTimeout(() => {
-                        indicator.classList.add('hidden');
-                        indicator.classList.remove('is-leaving');
-                    }, 440);
-                }, 2100);
+                let detail = String(reason || 'new plan').replace(/\s+/g, ' ').trim().slice(0, 64);
+                this.addSystem(`${label}: ${detail}`);
             },
             renderMemory() {
                 let host = this.els['director-memory'];
@@ -1858,6 +1910,7 @@
             handlePlayerText(raw) {
                 let message = String(raw || '').trim();
                 if (!message) return;
+                this.add('player', message);
 
                 let text = message.toLowerCase();
                 let replies = [];
