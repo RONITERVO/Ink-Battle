@@ -6,9 +6,10 @@ The app now uses a no-backend architecture for the AI opponent:
 - On Android, the WebView exposes `LocalGemmaAndroid` through `LocalGemmaBridge.kt`.
 - After user consent, Android `DownloadManager` downloads a `.litertlm` Gemma 4 model into the app's external files directory.
 - LiteRT-LM loads the model locally and returns compact JSON director turns.
+- The LiteRT-LM engine is process-scoped and survives Activity/WebView recreation; only short-lived request conversations are closed after each turn.
 - The JavaScript game validates every returned action before applying it.
 - Gemma turns use compact application-managed memory: each request creates a fresh LiteRT-LM conversation, then receives a bounded memory packet with a match summary, last 3 player/model turns, recent action outcomes, and repetition guards.
-- Gemma director turns also receive a compressed gameplay screenshot when available, sent as LiteRT-LM `ImageBytes` beside the text prompt.
+- Gemma director turns also receive a compressed gameplay screenshot when available. The native bridge configures LiteRT-LM `visionBackend` and sends screenshots through a short-lived cache JPEG using `Content.ImageFile`.
 - After each Gemma director turn, the same on-device Gemma model compacts memory and generates short suggested player commands for the input placeholder.
 - Deterministic memory hygiene strips repeated model phrases from summaries and records only high-signal fallback events, but never replaces visible Gemma speech.
 
@@ -33,9 +34,11 @@ Configured downloads:
   - Model recommendation.
   - DownloadManager install.
   - LiteRT-LM engine setup.
+  - Process-scoped engine reuse across Activity/WebView recreation.
   - GPU first, CPU fallback.
   - JSON-only director prompt tuned for Gemma 4 compact memory.
   - Multimodal director prompt with explicit red-base/enemy-side screenshot perspective.
+  - LiteRT-LM `visionBackend` setup and short-lived `ImageFile` screenshots for Android image input stability.
   - Post-turn `compactDirectorMemory` bridge for bounded mobile memory summaries and player input suggestions.
   - Chunked `AgeOfWarGemma` logcat diagnostics for exact request payloads, prompts, raw responses, parse failures, and action results.
 - `app/src/main/java/com/sketchwar/ageofwar/MainActivity.java`

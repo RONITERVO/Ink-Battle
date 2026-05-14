@@ -16,7 +16,6 @@ import com.google.ai.edge.litertlm.ConversationConfig
 import com.google.ai.edge.litertlm.Engine
 import com.google.ai.edge.litertlm.EngineConfig
 import com.google.ai.edge.litertlm.ExperimentalApi
-import com.google.ai.edge.litertlm.ExperimentalFlags
 import com.google.ai.edge.litertlm.LogSeverity
 import java.io.File
 import java.util.Locale
@@ -32,6 +31,17 @@ class LocalGemmaBridge(
         const val LOG_CHUNK_SIZE = 3_000
         const val MAX_PROMPT_PAYLOAD_CHARS = 12_000
         const val MAX_SCREENSHOT_BYTES = 700_000
+        const val ENABLE_IMAGE_INPUT = true
+
+        private val ENGINE_LOCK = Any()
+        @Volatile private var sharedEngine: Engine? = null
+        @Volatile private var sharedModelPath: String? = null
+        @Volatile private var sharedModelKey: String? = null
+        @Volatile private var sharedLoading: Boolean = false
+        @Volatile private var sharedLoadingPath: String? = null
+        @Volatile private var sharedBusy: Boolean = false
+        @Volatile private var sharedMemoryBusy: Boolean = false
+        @Volatile private var sharedLastError: String? = null
     }
 
     private data class ModelSpec(
@@ -63,17 +73,12 @@ class LocalGemmaBridge(
     )
 
     private val executor = Executors.newSingleThreadExecutor()
-    private val prefs = activity.getSharedPreferences("local_gemma_v1", Context.MODE_PRIVATE)
+    private val cacheDirPath = activity.applicationContext.cacheDir.absolutePath
+    private val prefs = activity.applicationContext.getSharedPreferences("local_gemma_v1", Context.MODE_PRIVATE)
     private val downloadManager = activity.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
     private val modelDir: File by lazy {
         File(activity.getExternalFilesDir(null) ?: activity.filesDir, "models").apply { mkdirs() }
     }
-
-    @Volatile private var engine: Engine? = null
-    @Volatile private var busy: Boolean = false
-    @Volatile private var memoryBusy: Boolean = false
-    @Volatile private var loading: Boolean = false
-    @Volatile private var lastError: String? = null
 
     @JavascriptInterface
     fun getStatus(): String = buildStatus().toString()
@@ -122,25 +127,52 @@ class LocalGemmaBridge(
             logLine("load.missing model=${current?.key ?: "auto"} path=${path ?: ""}")
             return buildStatus("missing", chooseModel("auto")).toString()
         }
-        if (engine != null) return buildStatus("ready", current).toString()
-        if (loading) return buildStatus("loading", current).toString()
 
-        loading = true
-        lastError = null
+        synchronized(ENGINE_LOCK) {
+            if (sharedEngine != null && sharedModelPath == path) {
+                logLine("load.reuse model=${current.key} path=$path")
+                return buildStatus("ready", current).toString()
+            }
+            if (sharedLoading) return buildStatus("loading", current).toString()
+            if (sharedEngine != null && sharedModelPath != path && (sharedBusy || sharedMemoryBusy)) {
+                sharedLastError = "Gemma is busy"
+                return buildStatus(null, current).toString()
+            }
+            sharedLoading = true
+            sharedLoadingPath = path
+            sharedLastError = null
+        }
+
         logLine("load.start model=${current.key} path=$path")
         postStatus("loading")
         executor.execute {
+            var loaded: Engine? = null
+            var previous: Engine? = null
             try {
                 Engine.setNativeMinLogSeverity(LogSeverity.ERROR)
-                val loaded = createEngine(path)
-                engine = loaded
-                loading = false
-                logLine("load.ready model=${current.key}")
+                loaded = createEngine(path)
+                synchronized(ENGINE_LOCK) {
+                    previous = if (sharedEngine != null && sharedModelPath != path) sharedEngine else null
+                    sharedEngine = loaded
+                    sharedModelPath = path
+                    sharedModelKey = current.key
+                    sharedLoading = false
+                    sharedLoadingPath = null
+                    sharedLastError = null
+                }
+                closeEngineQuietly(previous)
+                loaded = null
+                logLine("load.ready model=${current.key} reused=false")
                 postStatus("ready")
             } catch (t: Throwable) {
-                closeEngine()
-                loading = false
-                lastError = t.message ?: t.javaClass.simpleName
+                closeEngineQuietly(loaded)
+                synchronized(ENGINE_LOCK) {
+                    if (sharedLoadingPath == path) {
+                        sharedLoading = false
+                        sharedLoadingPath = null
+                    }
+                    sharedLastError = t.message ?: t.javaClass.simpleName
+                }
                 logError("load.error model=${current.key}", t)
                 postStatus("error")
             }
@@ -155,20 +187,34 @@ class LocalGemmaBridge(
 
     @JavascriptInterface
     fun generateDirectorTurnWithImage(requestId: String, payloadJson: String, screenshotDataUrl: String?) {
-        if (busy || memoryBusy) {
+        val path = prefs.getString("modelPath", null)
+        var busyNow = false
+        var loaded: Engine? = null
+        synchronized(ENGINE_LOCK) {
+            if (sharedBusy || sharedMemoryBusy) {
+                busyNow = true
+            } else {
+                val candidate = sharedEngine
+                if (candidate != null && sharedModelPath == path) {
+                    sharedBusy = true
+                    loaded = candidate
+                }
+            }
+        }
+
+        if (busyNow) {
             logLine("request.rejected busy requestId=$requestId")
             postError(requestId, "Gemma is still thinking")
             return
         }
-        val loaded = engine
-        if (loaded == null) {
+        val activeEngine = loaded
+        if (activeEngine == null) {
             logLine("request.rejected loading requestId=$requestId payloadChars=${payloadJson.length}")
             loadModel()
             postError(requestId, "Gemma is loading")
             return
         }
 
-        busy = true
         val startedAt = System.currentTimeMillis()
         logLine("request.start requestId=$requestId payloadChars=${payloadJson.length}")
         logLong("request.payload requestId=$requestId", payloadJson)
@@ -176,66 +222,88 @@ class LocalGemmaBridge(
         postStatus("ready")
         executor.execute {
             var turnConversation: Conversation? = null
+            var screenshotFile: File? = null
+            var finalStatus = "ready"
             try {
                 val prompt = buildPrompt(payloadJson)
                 logLong("request.prompt requestId=$requestId", prompt)
-                turnConversation = loaded.createConversation(conversationConfig())
+                turnConversation = activeEngine.createConversation(conversationConfig())
                 val contents = if (screenshotBytes != null) {
+                    screenshotFile = writeScreenshotFile(requestId, screenshotBytes)
                     Contents.of(
-                        com.google.ai.edge.litertlm.Content.Text(prompt),
-                        com.google.ai.edge.litertlm.Content.ImageBytes(screenshotBytes)
+                        com.google.ai.edge.litertlm.Content.ImageFile(screenshotFile!!.absolutePath),
+                        com.google.ai.edge.litertlm.Content.Text(prompt)
                     )
                 } else {
                     Contents.of(prompt)
                 }
                 val responseMsg = turnConversation.sendMessage(contents)
                 val response = responseMsg.contents.contents.filterIsInstance<com.google.ai.edge.litertlm.Content.Text>().joinToString("") { it.text }
-                busy = false
                 val elapsedMs = System.currentTimeMillis() - startedAt
                 logLine("response.ready requestId=$requestId responseChars=${response.length} elapsedMs=$elapsedMs")
                 logLong("response.raw requestId=$requestId", response)
                 postResponse(requestId, response)
-                postStatus("ready")
             } catch (t: Throwable) {
-                busy = false
-                lastError = t.message ?: t.javaClass.simpleName
+                synchronized(ENGINE_LOCK) {
+                    sharedLastError = t.message ?: t.javaClass.simpleName
+                }
                 logError("request.error requestId=$requestId", t)
-                postError(requestId, lastError ?: "Generation failed")
-                postStatus("error")
+                postError(requestId, t.message ?: t.javaClass.simpleName)
+                finalStatus = "error"
             } finally {
                 try { turnConversation?.close() } catch (closeFailure: Throwable) {
                     logError("conversation.close_error requestId=$requestId", closeFailure)
                 }
+                try { screenshotFile?.delete() } catch (_: Throwable) {}
+                synchronized(ENGINE_LOCK) {
+                    sharedBusy = false
+                }
+                postStatus(finalStatus)
             }
         }
     }
 
     @JavascriptInterface
     fun compactDirectorMemory(jobId: String, payloadJson: String) {
-        if (busy || memoryBusy) {
+        val path = prefs.getString("modelPath", null)
+        var busyNow = false
+        var loaded: Engine? = null
+        synchronized(ENGINE_LOCK) {
+            if (sharedBusy || sharedMemoryBusy) {
+                busyNow = true
+            } else {
+                val candidate = sharedEngine
+                if (candidate != null && sharedModelPath == path) {
+                    sharedMemoryBusy = true
+                    loaded = candidate
+                }
+            }
+        }
+
+        if (busyNow) {
             logLine("memory.compact.rejected busy jobId=$jobId")
             postMemoryError(jobId, "Gemma is busy")
             return
         }
-        val loaded = engine
-        if (loaded == null) {
+        val activeEngine = loaded
+        if (activeEngine == null) {
             logLine("memory.compact.rejected loading jobId=$jobId payloadChars=${payloadJson.length}")
             loadModel()
             postMemoryError(jobId, "Gemma is loading")
             return
         }
 
-        memoryBusy = true
         val startedAt = System.currentTimeMillis()
         logLine("memory.compact.start jobId=$jobId payloadChars=${payloadJson.length}")
         logLong("memory.compact.payload jobId=$jobId", payloadJson)
         postStatus("ready")
         executor.execute {
             var memoryConversation: Conversation? = null
+            var finalStatus = "ready"
             try {
                 val prompt = buildMemoryPrompt(payloadJson)
                 logLong("memory.compact.prompt jobId=$jobId", prompt)
-                memoryConversation = loaded.createConversation(memoryConversationConfig())
+                memoryConversation = activeEngine.createConversation(memoryConversationConfig())
                 val responseMsg = memoryConversation.sendMessage(prompt)
                 val response = responseMsg.contents.contents.filterIsInstance<com.google.ai.edge.litertlm.Content.Text>().joinToString("") { it.text }
                 val elapsedMs = System.currentTimeMillis() - startedAt
@@ -243,15 +311,20 @@ class LocalGemmaBridge(
                 logLong("memory.compact.raw jobId=$jobId", response)
                 postMemory(jobId, response)
             } catch (t: Throwable) {
-                lastError = t.message ?: t.javaClass.simpleName
+                synchronized(ENGINE_LOCK) {
+                    sharedLastError = t.message ?: t.javaClass.simpleName
+                }
                 logError("memory.compact.error jobId=$jobId", t)
-                postMemoryError(jobId, lastError ?: "Memory compaction failed")
+                postMemoryError(jobId, t.message ?: "Memory compaction failed")
+                finalStatus = "error"
             } finally {
-                memoryBusy = false
+                synchronized(ENGINE_LOCK) {
+                    sharedMemoryBusy = false
+                }
                 try { memoryConversation?.close() } catch (closeFailure: Throwable) {
                     logError("memory.conversation.close_error jobId=$jobId", closeFailure)
                 }
-                postStatus("ready")
+                postStatus(finalStatus)
             }
         }
     }
@@ -266,13 +339,13 @@ class LocalGemmaBridge(
 
     @OptIn(ExperimentalApi::class)
     private fun createEngine(path: String): Engine {
-        ExperimentalFlags.enableSpeculativeDecoding = true
         return try {
             Engine(
                 EngineConfig(
                     modelPath = path,
                     backend = Backend.GPU(),
-                    cacheDir = activity.cacheDir.absolutePath
+                    visionBackend = Backend.CPU(),
+                    cacheDir = cacheDirPath
                 )
             ).also { it.initialize() }
         } catch (gpuFailure: Throwable) {
@@ -280,7 +353,8 @@ class LocalGemmaBridge(
                 EngineConfig(
                     modelPath = path,
                     backend = Backend.CPU(),
-                    cacheDir = activity.cacheDir.absolutePath
+                    visionBackend = Backend.CPU(),
+                    cacheDir = cacheDirPath
                 )
             ).also { it.initialize() }
         }
@@ -310,11 +384,25 @@ class LocalGemmaBridge(
 
     private fun buildStatus(forcedState: String? = null, forcedSpec: ModelSpec? = null): JSONObject {
         val spec = forcedSpec ?: currentModel() ?: chooseModel("auto")
+        val modelPath = prefs.getString("modelPath", null)
         val downloadId = prefs.getLong("downloadId", -1L)
         var state = forcedState ?: "available"
         var progress = 0
+        var ready = false
+        var loading = false
+        var busy = false
+        var memoryBusy = false
+        var message = ""
 
-        if (engine != null && forcedState == null) state = "ready"
+        synchronized(ENGINE_LOCK) {
+            ready = sharedEngine != null && sharedModelPath == modelPath
+            loading = sharedLoading && sharedLoadingPath == modelPath
+            busy = sharedBusy || sharedMemoryBusy
+            memoryBusy = sharedMemoryBusy
+            message = sharedLastError ?: ""
+        }
+
+        if (ready && forcedState == null) state = "ready"
         else if (loading && forcedState == null) state = "loading"
         else if (downloadId > 0 && forcedState == null) {
             val query = DownloadManager.Query().setFilterById(downloadId)
@@ -349,7 +437,7 @@ class LocalGemmaBridge(
             .put("progress", progress)
             .put("busy", busy || memoryBusy)
             .put("memoryBusy", memoryBusy)
-            .put("message", lastError ?: "")
+            .put("message", message)
     }
 
     private fun postStatus(forcedState: String? = null) {
@@ -375,7 +463,7 @@ class LocalGemmaBridge(
 
     private fun runJs(script: String) {
         activity.runOnUiThread {
-            if (!activity.isFinishing) webView.evaluateJavascript(script, null)
+            if (!activity.isFinishing && !activity.isDestroyed) webView.evaluateJavascript(script, null)
         }
     }
 
@@ -445,6 +533,10 @@ class LocalGemmaBridge(
             logLine("request.screenshot requestId=$requestId absent")
             return null
         }
+        if (!ENABLE_IMAGE_INPUT) {
+            logLine("request.screenshot requestId=$requestId disabled chars=${dataUrl.length}")
+            return null
+        }
         val comma = dataUrl.indexOf(',')
         if (comma <= 0 || !dataUrl.startsWith("data:image/")) {
             logLine("request.screenshot requestId=$requestId invalid_data_url chars=${dataUrl.length}")
@@ -465,9 +557,15 @@ class LocalGemmaBridge(
         }
     }
 
-    private fun closeEngine() {
+    private fun writeScreenshotFile(requestId: String, bytes: ByteArray): File {
+        val file = File.createTempFile("gemma_image_", ".jpg", File(cacheDirPath))
+        file.writeBytes(bytes)
+        logLine("request.screenshot_file requestId=$requestId path=${file.absolutePath} bytes=${bytes.size}")
+        return file
+    }
+
+    private fun closeEngineQuietly(engine: Engine?) {
         try { engine?.close() } catch (_: Throwable) {}
-        engine = null
     }
 
     private fun logLine(message: String) {
@@ -498,7 +596,6 @@ class LocalGemmaBridge(
     }
 
     override fun close() {
-        executor.execute { closeEngine() }
         executor.shutdown()
     }
 }

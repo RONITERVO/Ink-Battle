@@ -8,7 +8,7 @@ You are helping finish the Android release build for an existing local-first gam
 Project summary:
 - Root folder contains `Age_of_War_notebook_8.html`, a standalone canvas game.
 - Android wrapper is in `app/`.
-- `app/build.gradle` uses AGP 9.2.0, compileSdk/targetSdk 36, minSdk 23, versionName 1.0.6.
+- `app/build.gradle` uses AGP 9.2.0, compileSdk/targetSdk 36, minSdk 23, versionName 1.0.8.
 - AGP 9 has built-in Kotlin support, so Kotlin sources exist without applying `org.jetbrains.kotlin.android`.
 - The WebView Activity is `app/src/main/java/com/sketchwar/ageofwar/MainActivity.java`.
 - Native local model bridge is `app/src/main/java/com/sketchwar/ageofwar/LocalGemmaBridge.kt`.
@@ -29,7 +29,7 @@ Please focus only on release-blocking Android build/package issues:
 Desired result:
 - Debug build installs on a real 6GB+ Android phone.
 - Player can tap Get Gemma, download model, go offline, and still get local model director turns.
-- Gemma turns stay stable in long matches because each request uses a fresh LiteRT-LM conversation plus compact app-managed memory; after each Gemma turn, the compactor updates memory and input suggestions, with `AgeOfWarGemma` diagnostics for payload, prompt, raw response, memory compaction, parse result, and action result.
-- Gemma director turns attach a compressed gameplay screenshot when available; prompt context tells Gemma it controls the red base health bar/enemy side.
+- Gemma turns stay stable in long matches because the LiteRT-LM engine is process-scoped, while each request uses a fresh LiteRT-LM conversation plus compact app-managed memory; after each Gemma turn, the compactor updates memory and input suggestions, with `AgeOfWarGemma` diagnostics for payload, prompt, raw response, memory compaction, parse result, and action result.
+- Gemma director turns attach a compressed gameplay screenshot when available; prompt context tells Gemma it controls the red base health bar/enemy side. The native bridge configures `visionBackend` and sends screenshots via a short-lived `Content.ImageFile`.
 - Release build generates `app/build/outputs/bundle/release/app-release.aab`.
 ```

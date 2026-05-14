@@ -1,4 +1,4 @@
-# Age of War: Sketchbook Edition 1.0.6
+# Age of War: Sketchbook Edition 1.0.8
 
 This folder now contains the 1.0 web game, offline PWA metadata, and an Android
 WebView shell for Google Play packaging.
@@ -62,7 +62,8 @@ and assets into `app/src/main/assets` before Android packaging.
 - Idle Gemma memory compaction and chunked `AgeOfWarGemma` logcat diagnostics are included for payload/response diagnosis.
 - The Gemma compactor now runs after each Gemma director turn and also generates short suggested player commands for the input placeholder.
 - Deterministic memory hygiene removes repeated model lines from summaries without replacing visible Gemma speech.
-- Gemma director turns include a compressed gameplay screenshot when available, with explicit red-base/enemy-side perspective instructions.
+- Gemma director turns include a compressed gameplay screenshot. The native bridge now configures LiteRT-LM `visionBackend` and sends screenshots via the documented `ImageFile` path instead of raw `ImageBytes`.
+- The LiteRT-LM engine is now process-scoped, so Activity/WebView recreation reuses the loaded Gemma model instead of unloading and reloading it.
 - `Gemma 4 E2B` is the default 6GB+ phone model; `Gemma 4 E4B` is reserved for devices reporting at least 12GB RAM.
 
 ## Final Manual Checks
