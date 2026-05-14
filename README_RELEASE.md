@@ -42,7 +42,11 @@ Build commands once Gradle/Android SDK are installed:
 
 ```powershell
 gradle :app:assembleDebug
+PS D:\Age of War in Scetch style\Age Of War Notebook Scetch Space> ./gradlew :app:assembleDebug
+PS D:\Age of War in Scetch style\Age Of War Notebook Scetch Space> ./gradlew :app:installDebug
 gradle :app:bundleRelease
+
+PS D:\Age of War in Scetch style\Age Of War Notebook Scetch Space> ./gradlew :app:bundleRelease
 ```
 
 The Gradle task `syncGameAsset` copies the root HTML, manifest, service worker,
