@@ -387,10 +387,11 @@ class LocalGemmaBridge(
     private fun memorySystemPrompt(): String = """
         You compact memory for a Gemma 4 mobile game opponent.
         Preserve facts that change future behavior: player requests, pacts, tone preference, repeated phrases to avoid, match phase, important action outcomes, and unresolved threats.
+        Also generate 1 to 3 short suggestions for what the player could type next in the command input.
         Do not copy phrases from doNotRepeat into summary. Do not reinforce banned wording.
         Drop routine fallback unit buys, filler, duplicate wording, markdown, code fences, and exact old JSON unless it matters.
         Output raw compact JSON only:
-        {"summary":"<=700 chars","playerProfile":"<=240 chars","doNotRepeat":["short phrase"],"openLoops":["short fact"],"tone":"short style guidance"}
+        {"summary":"<=700 chars","playerProfile":"<=240 chars","doNotRepeat":["short phrase"],"openLoops":["short fact"],"tone":"short style guidance","suggestions":["<=48 char player command"]}
     """.trimIndent()
 
     private fun memoryConversationConfig(): ConversationConfig = ConversationConfig(
@@ -416,7 +417,7 @@ class LocalGemmaBridge(
         }
         return String.format(
             Locale.US,
-            "Compact this Age of War Gemma director memory for the next mobile prompt. Return raw JSON only, with no markdown fences. Do not copy doNotRepeat phrases into summary.\n%s",
+            "Compact this Age of War Gemma director memory for the next mobile prompt and generate concise player input suggestions. Return raw JSON only, with no markdown fences. Do not copy doNotRepeat phrases into summary.\n%s",
             trimmed
         )
     }

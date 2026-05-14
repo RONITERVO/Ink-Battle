@@ -8,8 +8,8 @@ The app now uses a no-backend architecture for the AI opponent:
 - LiteRT-LM loads the model locally and returns compact JSON director turns.
 - The JavaScript game validates every returned action before applying it.
 - Gemma turns use compact application-managed memory: each request creates a fresh LiteRT-LM conversation, then receives a bounded memory packet with a match summary, last 3 player/model turns, recent action outcomes, and repetition guards.
-- The same on-device Gemma model can compact memory opportunistically while idle; deterministic JavaScript compaction keeps memory bounded when native compaction is skipped.
-- Deterministic memory hygiene strips repeated model phrases from summaries, records only high-signal fallback events, and rewrites stale repeated `say` text before it reaches the player.
+- After each Gemma director turn, the same on-device Gemma model compacts memory and generates short suggested player commands for the input placeholder.
+- Deterministic memory hygiene strips repeated model phrases from summaries and records only high-signal fallback events, but never replaces visible Gemma speech.
 
 ## Model Choice
 
@@ -34,7 +34,7 @@ Configured downloads:
   - LiteRT-LM engine setup.
   - GPU first, CPU fallback.
   - JSON-only director prompt tuned for Gemma 4 compact memory.
-  - Idle `compactDirectorMemory` bridge for bounded mobile memory summaries.
+  - Post-turn `compactDirectorMemory` bridge for bounded mobile memory summaries and player input suggestions.
   - Chunked `AgeOfWarGemma` logcat diagnostics for exact request payloads, prompts, raw responses, parse failures, and action results.
 - `app/src/main/java/com/sketchwar/ageofwar/MainActivity.java`
   - Registers the bridge as `LocalGemmaAndroid`.
@@ -52,6 +52,7 @@ Configured downloads:
 4. App asks for confirmation before the multi-GB download.
 5. Fallback AI continues playing during download and model loading.
 6. Once ready, Gemma periodically produces high-level director turns.
+7. After each Gemma turn, the compactor updates bounded memory and the command input placeholder suggestion.
 
 ## Gemma Diagnostics
 
@@ -67,7 +68,6 @@ Each local model turn logs:
 - `request.prompt`: final prompt passed to LiteRT-LM after the app's prompt cap.
 - `response.raw`: unmodified Gemma text.
 - `memory.compact.*`: native Gemma memory compaction jobs.
-- `js.say.rewritten`: stale/repeated model text that was replaced by the local memory guard.
 - `js.response.parsed`, `js.response.parse_failed`, and `js.action.result`: JavaScript parse and validation outcomes.
 
 Long values are split into numbered chunks between `BEGIN` and `END` lines so they can be reconstructed from logcat.
