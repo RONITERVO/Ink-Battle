@@ -718,23 +718,22 @@
         }
 
         #director-tool-log {
-            min-height: 4.6vmin;
-            max-height: 4.6vmin;
+            min-height: 2.35vmin;
+            max-height: 2.35vmin;
             display: flex;
             flex-direction: column;
             align-items: flex-end;
             justify-content: flex-start;
-            gap: 0.1vmin;
             overflow: hidden;
-            margin-top: 0.15vmin;
+            margin-top: 0.25vmin;
         }
 
         .director-tool-msg {
             max-width: 100%;
             color: hsl(var(--muted-foreground) / 0.86);
             font-family: 'Patrick Hand', 'Comic Sans MS', 'Segoe Print', cursive;
-            font-size: 1.42vmin;
-            line-height: 1.02;
+            font-size: 1.65vmin;
+            line-height: 1.12;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
@@ -973,8 +972,8 @@
             }
 
             #director-tool-log {
-                min-height: 3.8vmin;
-                max-height: 3.8vmin;
+                min-height: 2.5vmin;
+                max-height: 2.5vmin;
             }
         }
 
@@ -1761,7 +1760,7 @@
                 this.refresh();
                 let parsed = parseGemmaJson(rawText);
                 if (!parsed) {
-                    DirectorPanel.add('ai', String(rawText || '').slice(0, 220));
+                    DirectorPanel.addModel(String(rawText || ''));
                     return;
                 }
                 applyGemmaDirectorTurn(parsed);
@@ -1804,7 +1803,7 @@
             else if (action.tool === 'build_turret') AIDirector.tryBuildTurret(reason);
             else if (action.tool === 'use_special') AIDirector.trySpecial(reason);
 
-            if (turn.say) DirectorPanel.add('ai', String(turn.say).slice(0, 220));
+            if (turn.say) DirectorPanel.addModel(turn.say);
         }
 
         window.onLocalGemmaStatus = (json) => {
@@ -1818,6 +1817,7 @@
             els: {},
             aiWriteTimeout: null,
             playerWriteTimeout: null,
+            systemWriteTimeout: null,
             init() {
                 ['commander-hud', 'ai-hud', 'director-log', 'director-tool-log', 'director-input', 'director-memory', 'player-last-line', 'btn-pause'].forEach(id => {
                     this.els[id] = document.getElementById(id);
@@ -1837,25 +1837,29 @@
                 NativeGemma.refresh();
 
                 setTimeout(() => {
-                    this.add('ai', `Director online. Pacts and notes are active.`);
+                    this.addSystem(`Director online. Pacts and notes are active.`);
                 }, 800);
             },
             add(role, text, tool = false) {
                 if (!text) return;
                 if (role === 'player') {
-                    this.writeLatest(this.els['player-last-line'], String(text).slice(0, 120), 'player-last-text', 'player');
+                    this.writeLatest(this.els['player-last-line'], this.normalizeLine(text, 120), 'player-last-text', 'player');
                     return;
                 }
-                if (tool) {
-                    this.addSystem(text);
-                    return;
-                }
-                this.writeLatest(this.els['director-log'], String(text).slice(0, 220), 'director-msg', 'ai');
+                this.addSystem(text);
+            },
+            addModel(text) {
+                let message = this.normalizeLine(text, 220);
+                if (!message) return;
+                this.writeLatest(this.els['director-log'], message, 'director-msg', 'ai');
+            },
+            normalizeLine(text, maxLen = 220) {
+                return String(text || '').replace(/\s+/g, ' ').trim().slice(0, maxLen);
             },
             writeLatest(host, text, className, lane) {
                 if (!host || !text) return;
                 host.classList.remove('hidden');
-                let timeoutKey = lane === 'player' ? 'playerWriteTimeout' : 'aiWriteTimeout';
+                let timeoutKey = lane === 'player' ? 'playerWriteTimeout' : (lane === 'system' ? 'systemWriteTimeout' : 'aiWriteTimeout');
                 clearTimeout(this[timeoutKey]);
 
                 let render = () => {
@@ -1878,11 +1882,7 @@
             addSystem(text) {
                 let host = this.els['director-tool-log'];
                 if (!host || !text) return;
-                let row = document.createElement('div');
-                row.className = 'director-tool-msg is-writing';
-                row.innerText = String(text).replace(/\s+/g, ' ').trim().slice(0, 86);
-                host.appendChild(row);
-                while (host.children.length > 4) host.removeChild(host.firstChild);
+                this.writeLatest(host, this.normalizeLine(text, 96), 'director-tool-msg', 'system');
             },
             showAction(toolName, reason) {
                 let name = String(toolName || '').toLowerCase();
