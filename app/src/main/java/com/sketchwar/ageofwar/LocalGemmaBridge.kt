@@ -17,7 +17,6 @@ import com.google.ai.edge.litertlm.EngineConfig
 import com.google.ai.edge.litertlm.ExperimentalApi
 import com.google.ai.edge.litertlm.ExperimentalFlags
 import com.google.ai.edge.litertlm.LogSeverity
-import com.google.ai.edge.litertlm.SamplerConfig
 import java.io.File
 import java.util.Locale
 import java.util.concurrent.Executors
@@ -70,6 +69,7 @@ class LocalGemmaBridge(
 
     @Volatile private var engine: Engine? = null
     @Volatile private var busy: Boolean = false
+    @Volatile private var memoryBusy: Boolean = false
     @Volatile private var loading: Boolean = false
     @Volatile private var lastError: String? = null
 
@@ -148,7 +148,7 @@ class LocalGemmaBridge(
 
     @JavascriptInterface
     fun generateDirectorTurn(requestId: String, payloadJson: String) {
-        if (busy) {
+        if (busy || memoryBusy) {
             logLine("request.rejected busy requestId=$requestId")
             postError(requestId, "Gemma is still thinking")
             return
@@ -190,6 +190,52 @@ class LocalGemmaBridge(
                 try { turnConversation?.close() } catch (closeFailure: Throwable) {
                     logError("conversation.close_error requestId=$requestId", closeFailure)
                 }
+            }
+        }
+    }
+
+    @JavascriptInterface
+    fun compactDirectorMemory(jobId: String, payloadJson: String) {
+        if (busy || memoryBusy) {
+            logLine("memory.compact.rejected busy jobId=$jobId")
+            postMemoryError(jobId, "Gemma is busy")
+            return
+        }
+        val loaded = engine
+        if (loaded == null) {
+            logLine("memory.compact.rejected loading jobId=$jobId payloadChars=${payloadJson.length}")
+            loadModel()
+            postMemoryError(jobId, "Gemma is loading")
+            return
+        }
+
+        memoryBusy = true
+        val startedAt = System.currentTimeMillis()
+        logLine("memory.compact.start jobId=$jobId payloadChars=${payloadJson.length}")
+        logLong("memory.compact.payload jobId=$jobId", payloadJson)
+        postStatus("ready")
+        executor.execute {
+            var memoryConversation: Conversation? = null
+            try {
+                val prompt = buildMemoryPrompt(payloadJson)
+                logLong("memory.compact.prompt jobId=$jobId", prompt)
+                memoryConversation = loaded.createConversation(memoryConversationConfig())
+                val responseMsg = memoryConversation.sendMessage(prompt)
+                val response = responseMsg.contents.contents.filterIsInstance<com.google.ai.edge.litertlm.Content.Text>().joinToString("") { it.text }
+                val elapsedMs = System.currentTimeMillis() - startedAt
+                logLine("memory.compact.ready jobId=$jobId responseChars=${response.length} elapsedMs=$elapsedMs")
+                logLong("memory.compact.raw jobId=$jobId", response)
+                postMemory(jobId, response)
+            } catch (t: Throwable) {
+                lastError = t.message ?: t.javaClass.simpleName
+                logError("memory.compact.error jobId=$jobId", t)
+                postMemoryError(jobId, lastError ?: "Memory compaction failed")
+            } finally {
+                memoryBusy = false
+                try { memoryConversation?.close() } catch (closeFailure: Throwable) {
+                    logError("memory.conversation.close_error jobId=$jobId", closeFailure)
+                }
+                postStatus("ready")
             }
         }
     }
@@ -285,7 +331,8 @@ class LocalGemmaBridge(
             .put("minRamGb", spec.minRamGb)
             .put("totalRamGb", totalRamGb())
             .put("progress", progress)
-            .put("busy", busy)
+            .put("busy", busy || memoryBusy)
+            .put("memoryBusy", memoryBusy)
             .put("message", lastError ?: "")
     }
 
@@ -302,6 +349,14 @@ class LocalGemmaBridge(
         runJs("window.onLocalGemmaError(${JSONObject.quote(requestId)}, ${JSONObject.quote(message)});")
     }
 
+    private fun postMemory(jobId: String, text: String) {
+        runJs("window.onLocalGemmaMemory(${JSONObject.quote(jobId)}, ${JSONObject.quote(text)});")
+    }
+
+    private fun postMemoryError(jobId: String, message: String) {
+        runJs("window.onLocalGemmaMemoryError(${JSONObject.quote(jobId)}, ${JSONObject.quote(message)});")
+    }
+
     private fun runJs(script: String) {
         activity.runOnUiThread {
             if (!activity.isFinishing) webView.evaluateJavascript(script, null)
@@ -311,18 +366,32 @@ class LocalGemmaBridge(
     private fun systemPrompt(): String = """
         You are the local Gemma 4 director for Age of War: Sketchbook Edition.
         You play the enemy side, but you are also an entertaining opponent who can honor pacts.
-        Each request is stateless: use only the current payload, snapshot, and memory. Never assume prior chat history.
+        Each request is stateless: use only the current payload, snapshot, persistent pacts, and gemmaMemory.
+        gemmaMemory contains a compact match summary, recent player/model turns, action outcomes, and repetition guards.
         Never ask for network access.
         Output one compact JSON object only. No markdown, no code fences, no explanations outside JSON.
         {"say":"short taunt or agreement","pressure":"rush|balanced|mercy|null","action":{"tool":"spawn_unit|buy_upgrade|build_turret|use_special|none","typeIndex":0,"upgrade":"econ","reason":"short reason"}}
         Valid unit/turret typeIndex values are 0, 1, and 2. Valid upgrades are dmg, hp, econ.
+        Do not repeat recent say text or opening phrases listed in gemmaMemory.repetitionGuard.
+        The snapshot age is current truth; if the same age has lasted a while, talk about the current battle state instead of greeting that age again.
         If a useful action is unclear, return action.tool "none".
         Prefer fair, varied, readable decisions over perfect play.
     """.trimIndent()
 
     private fun conversationConfig(): ConversationConfig = ConversationConfig(
-        systemInstruction = Contents.of(systemPrompt()),
-        samplerConfig = SamplerConfig(topK = 16, topP = 0.82, temperature = 0.35)
+        systemInstruction = Contents.of(systemPrompt())
+    )
+
+    private fun memorySystemPrompt(): String = """
+        You compact memory for a Gemma 4 mobile game opponent.
+        Preserve facts that change future behavior: player requests, pacts, tone preference, repeated phrases to avoid, match phase, important action outcomes, and unresolved threats.
+        Drop filler, duplicate wording, and exact old JSON unless it matters.
+        Output compact JSON only:
+        {"summary":"<=700 chars","playerProfile":"<=240 chars","doNotRepeat":["short phrase"],"openLoops":["short fact"],"tone":"short style guidance"}
+    """.trimIndent()
+
+    private fun memoryConversationConfig(): ConversationConfig = ConversationConfig(
+        systemInstruction = Contents.of(memorySystemPrompt())
     )
 
     private fun buildPrompt(payloadJson: String): String {
@@ -332,7 +401,19 @@ class LocalGemmaBridge(
         }
         return String.format(
             Locale.US,
-            "Choose one high-level enemy director turn for this live match. Return JSON only.\n%s",
+            "Choose one high-level enemy director turn for this live match. Return JSON only. Use gemmaMemory for continuity and avoid repeating recent lines/actions.\n%s",
+            trimmed
+        )
+    }
+
+    private fun buildMemoryPrompt(payloadJson: String): String {
+        val trimmed = payloadJson.take(MAX_PROMPT_PAYLOAD_CHARS)
+        if (payloadJson.length > MAX_PROMPT_PAYLOAD_CHARS) {
+            logLine("memory.compact.prompt_truncated payloadChars=${payloadJson.length} promptPayloadChars=$MAX_PROMPT_PAYLOAD_CHARS")
+        }
+        return String.format(
+            Locale.US,
+            "Compact this Age of War Gemma director memory for the next mobile prompt. Return JSON only.\n%s",
             trimmed
         )
     }

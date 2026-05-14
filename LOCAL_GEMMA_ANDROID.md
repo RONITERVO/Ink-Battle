@@ -7,7 +7,8 @@ The app now uses a no-backend architecture for the AI opponent:
 - After user consent, Android `DownloadManager` downloads a `.litertlm` Gemma 4 model into the app's external files directory.
 - LiteRT-LM loads the model locally and returns compact JSON director turns.
 - The JavaScript game validates every returned action before applying it.
-- Gemma turns are stateless: each request creates a fresh LiteRT-LM conversation so older prompts and responses cannot accumulate during long matches.
+- Gemma turns use compact application-managed memory: each request creates a fresh LiteRT-LM conversation, then receives a bounded memory packet with a match summary, last 3 player/model turns, recent action outcomes, and repetition guards.
+- The same on-device Gemma model can compact memory opportunistically while idle; deterministic JavaScript compaction keeps memory bounded when native compaction is skipped.
 
 ## Model Choice
 
@@ -31,7 +32,8 @@ Configured downloads:
   - DownloadManager install.
   - LiteRT-LM engine setup.
   - GPU first, CPU fallback.
-  - JSON-only director prompt tuned for stateless Gemma 4 turns.
+  - JSON-only director prompt tuned for Gemma 4 compact memory.
+  - Idle `compactDirectorMemory` bridge for bounded mobile memory summaries.
   - Chunked `AgeOfWarGemma` logcat diagnostics for exact request payloads, prompts, raw responses, parse failures, and action results.
 - `app/src/main/java/com/sketchwar/ageofwar/MainActivity.java`
   - Registers the bridge as `LocalGemmaAndroid`.
@@ -63,6 +65,7 @@ Each local model turn logs:
 - `request.payload`: exact JSON sent by the WebView bridge.
 - `request.prompt`: final prompt passed to LiteRT-LM after the app's prompt cap.
 - `response.raw`: unmodified Gemma text.
+- `memory.compact.*`: native Gemma memory compaction jobs.
 - `js.response.parsed`, `js.response.parse_failed`, and `js.action.result`: JavaScript parse and validation outcomes.
 
 Long values are split into numbered chunks between `BEGIN` and `END` lines so they can be reconstructed from logcat.

@@ -8,7 +8,7 @@ You are helping finish the Android release build for an existing local-first gam
 Project summary:
 - Root folder contains `Age_of_War_notebook_8.html`, a standalone canvas game.
 - Android wrapper is in `app/`.
-- `app/build.gradle` uses AGP 9.2.0, compileSdk/targetSdk 36, minSdk 23, versionName 1.0.2.
+- `app/build.gradle` uses AGP 9.2.0, compileSdk/targetSdk 36, minSdk 23, versionName 1.0.3.
 - AGP 9 has built-in Kotlin support, so Kotlin sources exist without applying `org.jetbrains.kotlin.android`.
 - The WebView Activity is `app/src/main/java/com/sketchwar/ageofwar/MainActivity.java`.
 - Native local model bridge is `app/src/main/java/com/sketchwar/ageofwar/LocalGemmaBridge.kt`.
@@ -29,6 +29,6 @@ Please focus only on release-blocking Android build/package issues:
 Desired result:
 - Debug build installs on a real 6GB+ Android phone.
 - Player can tap Get Gemma, download model, go offline, and still get local model director turns.
-- Gemma turns stay stable in long matches because each request uses a fresh LiteRT-LM conversation and logs `AgeOfWarGemma` diagnostics for payload, prompt, raw response, parse result, and action result.
+- Gemma turns stay stable in long matches because each request uses a fresh LiteRT-LM conversation plus compact app-managed memory, and logs `AgeOfWarGemma` diagnostics for payload, prompt, raw response, memory compaction, parse result, and action result.
 - Release build generates `app/build/outputs/bundle/release/app-release.aab`.
 ```
