@@ -2499,8 +2499,12 @@
                 let parsed = parseGemmaJson(rawText);
                 if (!parsed) {
                     this.log('response.parse_failed', { requestId, rawText: String(rawText || '') });
-                    DirectorPanel.addModel(String(rawText || ''));
+                    DirectorPanel.addModelRaw(String(rawText || '').trim() || '<<empty model response>>');
                     return;
+                }
+                if (parsed._recovered) {
+                    delete parsed._recovered;
+                    this.log('response.parse_recovered', { requestId, turn: parsed });
                 }
                 this.log('response.parsed', { requestId, turn: parsed });
                 applyGemmaDirectorTurn(parsed, requestId);
@@ -2525,10 +2529,153 @@
 
         function parseGemmaJson(rawText) {
             let text = String(rawText || '').trim();
-            let first = text.indexOf('{');
-            let last = text.lastIndexOf('}');
-            if (first === -1 || last <= first) return null;
-            try { return JSON.parse(text.slice(first, last + 1)); } catch (e) { return null; }
+            if (!text) return null;
+
+            let candidates = buildGemmaJsonCandidates(text);
+            for (let i = 0; i < candidates.length; i++) {
+                let parsed = tryParseGemmaCandidate(candidates[i]);
+                if (parsed) return parsed;
+            }
+
+            return recoverGemmaTurnFromText(text);
+        }
+
+        function buildGemmaJsonCandidates(text) {
+            let cleaned = String(text || '').trim();
+            cleaned = cleaned.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+
+            let seeds = [cleaned];
+            let first = cleaned.indexOf('{');
+            if (first !== -1) {
+                let fromFirst = cleaned.slice(first).trim();
+                seeds.push(fromFirst);
+                let last = fromFirst.lastIndexOf('}');
+                if (last > 0) seeds.push(fromFirst.slice(0, last + 1));
+            }
+
+            let unique = [];
+            let seen = Object.create(null);
+            for (let i = 0; i < seeds.length; i++) {
+                let seed = String(seeds[i] || '').replace(/\u0000/g, '').trim();
+                if (!seed || seen[seed]) continue;
+                seen[seed] = true;
+                unique.push(seed);
+
+                let repaired = repairJsonLikeText(seed);
+                if (repaired && !seen[repaired]) {
+                    seen[repaired] = true;
+                    unique.push(repaired);
+                }
+            }
+            return unique;
+        }
+
+        function repairJsonLikeText(text) {
+            let repaired = String(text || '').trim();
+            if (!repaired) return '';
+
+            // Fix common local-model artifacts like ," ,"memoryPatch" and dangling commas/quotes.
+            repaired = repaired.replace(/,\s*"\s*,\s*"/g, ',"');
+            repaired = repaired.replace(/,\s*"(?=\s*[}\]])/g, '');
+            repaired = repaired.replace(/,\s*([}\]])/g, '$1');
+            repaired = balanceJsonBrackets(repaired);
+            return repaired.trim();
+        }
+
+        function balanceJsonBrackets(text) {
+            let out = String(text || '');
+            let stack = [];
+            let inString = false;
+            let escaped = false;
+
+            for (let i = 0; i < out.length; i++) {
+                let ch = out[i];
+                if (inString) {
+                    if (escaped) escaped = false;
+                    else if (ch === '\\') escaped = true;
+                    else if (ch === '"') inString = false;
+                    continue;
+                }
+                if (ch === '"') {
+                    inString = true;
+                    continue;
+                }
+                if (ch === '{' || ch === '[') stack.push(ch);
+                else if (ch === '}' && stack[stack.length - 1] === '{') stack.pop();
+                else if (ch === ']' && stack[stack.length - 1] === '[') stack.pop();
+            }
+
+            while (stack.length > 0) {
+                out += stack.pop() === '{' ? '}' : ']';
+            }
+            return out;
+        }
+
+        function tryParseGemmaCandidate(candidate) {
+            if (!candidate) return null;
+            try {
+                let parsed = JSON.parse(candidate);
+                if (!parsed || typeof parsed !== 'object') return null;
+                if (parsed.turn && typeof parsed.turn === 'object') return parsed.turn;
+                return parsed;
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function recoverGemmaTurnFromText(text) {
+            let say = extractJsonStringField(text, 'say');
+            let pressure = extractJsonStringField(text, 'pressure');
+            let tool = extractJsonStringField(text, 'tool');
+            let reason = extractJsonStringField(text, 'reason');
+            let upgrade = extractJsonStringField(text, 'upgrade');
+            let typeIndex = extractJsonNumberField(text, 'typeIndex');
+
+            let turn = {};
+            if (say) turn.say = say;
+            if (['rush', 'balanced', 'mercy'].includes(pressure)) turn.pressure = pressure;
+
+            if (tool || reason || upgrade || typeIndex !== null) {
+                turn.action = {};
+                if (['spawn_unit', 'buy_upgrade', 'build_turret', 'use_special', 'none'].includes(tool)) {
+                    turn.action.tool = tool;
+                }
+                if (Number.isFinite(typeIndex)) turn.action.typeIndex = typeIndex;
+                if (upgrade) turn.action.upgrade = upgrade;
+                if (reason) turn.action.reason = reason;
+                if (!turn.action.tool) turn.action.tool = 'none';
+            }
+
+            if (!turn.say && !turn.action) return null;
+            if (!turn.say) turn.say = 'I am adjusting the plan.';
+            turn._recovered = true;
+            return turn;
+        }
+
+        function extractJsonStringField(text, key) {
+            let escapedKey = String(key || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            let match = String(text || '').match(new RegExp('"' + escapedKey + '"\\s*:\\s*"((?:\\\\.|[^"\\\\])*)"', 'i'));
+            if (!match) return '';
+            return decodeJsonLikeString(match[1]).trim();
+        }
+
+        function extractJsonNumberField(text, key) {
+            let escapedKey = String(key || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            let match = String(text || '').match(new RegExp('"' + escapedKey + '"\\s*:\\s*(-?\\d+|null)', 'i'));
+            if (!match) return null;
+            if (String(match[1]).toLowerCase() === 'null') return null;
+            let value = Number(match[1]);
+            return Number.isFinite(value) ? value : null;
+        }
+
+        function decodeJsonLikeString(value) {
+            return String(value || '')
+                .replace(/\\u([0-9a-fA-F]{4})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+                .replace(/\\n/g, ' ')
+                .replace(/\\r/g, ' ')
+                .replace(/\\t/g, ' ')
+                .replace(/\\"/g, '"')
+                .replace(/\\\\/g, '\\');
         }
 
         function applyGemmaDirectorTurn(turn, requestId = '') {
@@ -2603,9 +2750,34 @@
                 this.addSystem(text);
             },
             addModel(text) {
-                let message = this.normalizeLine(text, 220);
+                let message = this.normalizeLine(this.sanitizeModelLine(text), 220);
                 if (!message) return;
                 this.writeLatest(this.els['director-log'], message, 'director-msg', 'ai');
+            },
+            addModelRaw(text) {
+                let message = this.normalizeRawModelLine(text, 1400);
+                if (!message) return;
+                this.writeLatest(this.els['director-log'], message, 'director-msg', 'ai');
+            },
+            sanitizeModelLine(text) {
+                let raw = String(text || '').trim();
+                if (!raw) return '';
+                if (!this.looksLikeModelJsonLeak(raw)) return raw;
+                let recovered = recoverGemmaTurnFromText(raw);
+                if (recovered && recovered.say) return recovered.say;
+                return 'I am reworking that move.';
+            },
+            looksLikeModelJsonLeak(text) {
+                let sample = String(text || '').trim();
+                if (!sample) return false;
+                if (/^[\[{]/.test(sample)) return true;
+                return /"say"\s*:|"action"\s*:|"memoryPatch"\s*:|"pressure"\s*:/.test(sample);
+            },
+            normalizeRawModelLine(text, maxLen = 1400) {
+                let raw = String(text || '').replace(/\u0000/g, '').trim();
+                if (!raw) return '';
+                if (raw.length <= maxLen) return raw;
+                return `${raw.slice(0, maxLen)} ...[truncated ${raw.length - maxLen} chars]`;
             },
             normalizeLine(text, maxLen = 220) {
                 return String(text || '').replace(/\s+/g, ' ').trim().slice(0, maxLen);
