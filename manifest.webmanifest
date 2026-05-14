@@ -1,0 +1,20 @@
+{
+  "name": "Age of War: Sketchbook Edition",
+  "short_name": "AOW Sketch",
+  "description": "A sketchbook-style lane battle game with a local chatty AI director.",
+  "start_url": "./Age_of_War_notebook_8.html",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#ebe3d5",
+  "theme_color": "#3b332e",
+  "categories": ["games"],
+  "icons": [
+    {
+      "src": "assets/icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

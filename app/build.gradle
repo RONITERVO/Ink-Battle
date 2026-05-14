@@ -1,0 +1,63 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.sketchwar.ageofwar'
+    compileSdk 36
+    buildToolsVersion '36.0.0'
+
+    signingConfigs {
+        release {
+            def keystorePropertiesFile = rootProject.file("keystore.properties")
+            if (keystorePropertiesFile.exists()) {
+                def keystoreProperties = new Properties()
+                keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+                storeFile = rootProject.file(keystoreProperties['storeFile'])
+                storePassword = keystoreProperties['storePassword']
+                keyAlias = keystoreProperties['keyAlias']
+                keyPassword = keystoreProperties['keyPassword']
+            }
+        }
+    }
+
+    defaultConfig {
+        applicationId 'com.sketchwar.ageofwar'
+        minSdk 23
+        targetSdk 36
+        versionCode 100
+        versionName '1.0.0'
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation("com.google.ai.edge.litertlm:litertlm-android:0.11.0")
+}
+
+tasks.register('syncGameAsset', Copy) {
+    from(rootProject.file('Age_of_War_notebook_8.html'))
+    from(rootProject.file('manifest.webmanifest'))
+    from(rootProject.file('service-worker.js'))
+    from(rootProject.file('assets')) {
+        into 'assets'
+    }
+    into(layout.projectDirectory.dir('src/main/assets'))
+}
+
+tasks.matching { it.name == 'preBuild' }.configureEach {
+    dependsOn(tasks.named('syncGameAsset'))
+}

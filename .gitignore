@@ -1,0 +1,43 @@
+# Android and Gradle build outputs
+.gradle/
+**/build/
+.cxx/
+.externalNativeBuild/
+captures/
+
+# Local machine SDK configuration
+local.properties
+
+# IDE metadata
+.idea/
+*.iml
+
+# Kotlin and Java transient outputs
+.kotlin/
+*.class
+*.log
+*.hprof
+
+# Android packaged artifacts
+*.apk
+*.ap_
+*.aab
+
+# Signing keys and secret config
+*.jks
+*.keystore
+*.pem
+*.p12
+keystore.properties
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Optional JS tooling caches
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
