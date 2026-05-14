@@ -372,6 +372,8 @@ class LocalGemmaBridge(
         Output one compact JSON object only. No markdown, no code fences, no explanations outside JSON.
         {"say":"short taunt or agreement","pressure":"rush|balanced|mercy|null","action":{"tool":"spawn_unit|buy_upgrade|build_turret|use_special|none","typeIndex":0,"upgrade":"econ","reason":"short reason"}}
         Valid unit/turret typeIndex values are 0, 1, and 2. Valid upgrades are dmg, hp, econ.
+        Choose only from constraints.chooseOnlyAffordableTools and enemyChoices.affordable* lists. If nothing useful is affordable, use action.tool "none".
+        If reason is player_chat, answer extraMessage directly in say before choosing an action.
         Do not repeat recent say text or opening phrases listed in gemmaMemory.repetitionGuard.
         The snapshot age is current truth; if the same age has lasted a while, talk about the current battle state instead of greeting that age again.
         If a useful action is unclear, return action.tool "none".
@@ -385,8 +387,9 @@ class LocalGemmaBridge(
     private fun memorySystemPrompt(): String = """
         You compact memory for a Gemma 4 mobile game opponent.
         Preserve facts that change future behavior: player requests, pacts, tone preference, repeated phrases to avoid, match phase, important action outcomes, and unresolved threats.
-        Drop filler, duplicate wording, and exact old JSON unless it matters.
-        Output compact JSON only:
+        Do not copy phrases from doNotRepeat into summary. Do not reinforce banned wording.
+        Drop routine fallback unit buys, filler, duplicate wording, markdown, code fences, and exact old JSON unless it matters.
+        Output raw compact JSON only:
         {"summary":"<=700 chars","playerProfile":"<=240 chars","doNotRepeat":["short phrase"],"openLoops":["short fact"],"tone":"short style guidance"}
     """.trimIndent()
 
@@ -401,7 +404,7 @@ class LocalGemmaBridge(
         }
         return String.format(
             Locale.US,
-            "Choose one high-level enemy director turn for this live match. Return JSON only. Use gemmaMemory for continuity and avoid repeating recent lines/actions.\n%s",
+            "Choose one high-level enemy director turn for this live match. Return JSON only. Use gemmaMemory for continuity, answer player_chat messages directly, choose only affordable actions, and avoid repeating recent lines/actions.\n%s",
             trimmed
         )
     }
@@ -413,7 +416,7 @@ class LocalGemmaBridge(
         }
         return String.format(
             Locale.US,
-            "Compact this Age of War Gemma director memory for the next mobile prompt. Return JSON only.\n%s",
+            "Compact this Age of War Gemma director memory for the next mobile prompt. Return raw JSON only, with no markdown fences. Do not copy doNotRepeat phrases into summary.\n%s",
             trimmed
         )
     }

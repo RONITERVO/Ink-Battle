@@ -9,6 +9,7 @@ The app now uses a no-backend architecture for the AI opponent:
 - The JavaScript game validates every returned action before applying it.
 - Gemma turns use compact application-managed memory: each request creates a fresh LiteRT-LM conversation, then receives a bounded memory packet with a match summary, last 3 player/model turns, recent action outcomes, and repetition guards.
 - The same on-device Gemma model can compact memory opportunistically while idle; deterministic JavaScript compaction keeps memory bounded when native compaction is skipped.
+- Deterministic memory hygiene strips repeated model phrases from summaries, records only high-signal fallback events, and rewrites stale repeated `say` text before it reaches the player.
 
 ## Model Choice
 
@@ -66,6 +67,7 @@ Each local model turn logs:
 - `request.prompt`: final prompt passed to LiteRT-LM after the app's prompt cap.
 - `response.raw`: unmodified Gemma text.
 - `memory.compact.*`: native Gemma memory compaction jobs.
+- `js.say.rewritten`: stale/repeated model text that was replaced by the local memory guard.
 - `js.response.parsed`, `js.response.parse_failed`, and `js.action.result`: JavaScript parse and validation outcomes.
 
 Long values are split into numbered chunks between `BEGIN` and `END` lines so they can be reconstructed from logcat.

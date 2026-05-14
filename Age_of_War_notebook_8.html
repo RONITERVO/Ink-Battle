@@ -1193,7 +1193,7 @@
 
     <script>
         /**
-         * AGE OF WAR - SKETCHBOOK EDITION v1.0.3 (Gemma 4 compact turn memory)
+         * AGE OF WAR - SKETCHBOOK EDITION v1.0.4 (Gemma 4 compact memory hardening)
          * Fully Audited & Expanded: 
          * - Fixed Timestep Game Loop (1/60s step deterministic collision & physics)
          * - Codex Director AI styled as an immersive legal-pad slider
@@ -1206,7 +1206,7 @@
         // Context without {alpha: false} or desynchronized to ensure perfect blending of CSS and Canvas
         const canvas = document.getElementById('game-canvas');
         const ctx = canvas.getContext('2d');
-        const RELEASE_VERSION = '1.0.3';
+        const RELEASE_VERSION = '1.0.4';
         const CANVAS_WIDTH = 1280;
         const CANVAS_HEIGHT = 720;
         const GROUND_Y = 600;
@@ -1625,6 +1625,7 @@
                     actionLedger: [],
                     compactQueue: [],
                     compactionSeq: 0,
+                    turnCount: 0,
                     lastNativeCompactionAt: -999,
                     pendingJobId: ''
                 };
@@ -1659,7 +1660,12 @@
                 this.data.recentTurns.push(entry);
                 while (this.data.recentTurns.length > this.maxRecentTurns) {
                     let old = this.data.recentTurns.shift();
-                    if (old && old.text) this.queueEvent(`${old.role}: ${old.text}`, false);
+                    if (!old || !old.text) continue;
+                    if (old.role === 'player') this.queueEvent(`Earlier player message: ${old.text}`, false);
+                    else if (old.role === 'model') {
+                        this.rememberDoNotRepeat(old.text);
+                        this.queueEvent(`Earlier Gemma turn archived with ${old.action || 'no action'}`, false);
+                    }
                 }
             },
             queueEvent(line, shouldCompact = true) {
@@ -1674,6 +1680,9 @@
                 let clean = this.cleanLine(text, 160);
                 if (!clean) return;
                 this.pushTurn({ role: 'player', time: Math.round(globalTime), ages: this.ageLine(), text: clean });
+                this.data.openLoops = this.data.openLoops.filter(loop => !String(loop).startsWith('Answer player:'));
+                this.data.openLoops.push(`Answer player: ${clean}`);
+                this.data.openLoops = this.data.openLoops.slice(-5);
                 this.queueEvent(`Player said: ${clean}`);
                 this.save();
             },
@@ -1683,12 +1692,15 @@
                 this.queueEvent(clean);
                 this.save();
             },
-            recordModel(turn, outcome) {
+            recordModel(turn, outcome, originalSay = '') {
                 let say = this.cleanLine(turn && turn.say ? turn.say : '', 180);
                 let action = outcome || {};
                 let tool = action.requestedTool || ((turn && turn.action && turn.action.tool) || 'none');
                 let reason = this.cleanLine((turn && turn.action && turn.action.reason) || '', 90);
+                this.data.turnCount = (this.data.turnCount || 0) + 1;
+                if (originalSay) this.rememberDoNotRepeat(originalSay);
                 if (say) this.rememberDoNotRepeat(say);
+                this.data.openLoops = this.data.openLoops.filter(loop => !String(loop).startsWith('Answer player:'));
                 this.pushTurn({
                     role: 'model',
                     time: Math.round(globalTime),
@@ -1714,6 +1726,8 @@
                 if (!clean) return;
                 this.data.doNotRepeat = this.data.doNotRepeat.filter(line => line.toLowerCase() !== clean.toLowerCase());
                 this.data.doNotRepeat.push(clean);
+                if (/let'?s see/i.test(clean)) this.data.doNotRepeat.push("Let's see");
+                if (/stalemate/i.test(clean)) this.data.doNotRepeat.push('break this stalemate');
                 this.data.doNotRepeat = this.data.doNotRepeat.slice(-8);
             },
             buildContext(snapshot, reason) {
@@ -1756,15 +1770,29 @@
             },
             maybeCompact(reason) {
                 if (!this.data) this.init();
-                if (this.data.compactQueue.length < 6 && this.data.actionLedger.length < this.maxActions) return;
+                if (this.data.compactQueue.length < 8) return;
                 this.compactLocal(reason);
                 this.requestNativeCompaction(reason);
             },
             compactLocal(reason) {
                 let events = this.data.compactQueue.splice(0);
                 if (events.length === 0) return;
-                let joined = events.slice(-12).join(' ');
-                this.data.summary = this.cleanLine(`${this.data.summary} ${joined}`, 700);
+                let pressure = (DirectorMemory.data.agreements || {}).pressure || 'balanced';
+                let playerTurns = this.data.recentTurns.filter(t => t.role === 'player').slice(-2).map(t => t.text);
+                let actionLine = this.data.actionLedger.slice(-5).map(a => `${a.tool}:${a.applied ? 'applied' : 'blocked'}`).join(', ');
+                let highSignal = events
+                    .filter(line => !/^Fallback action spawn_unit/i.test(line))
+                    .filter(line => !/^Earlier Gemma turn archived/i.test(line))
+                    .slice(-5)
+                    .join(' ');
+                let parts = [
+                    `${this.data.difficulty || currentDifficulty} match at ${this.ageLine() || 'unknown ages'}.`,
+                    `Pressure plan: ${pressure}.`,
+                    playerTurns.length ? `Recent player: ${playerTurns.join(' / ')}.` : '',
+                    actionLine ? `Recent Gemma tools: ${actionLine}.` : '',
+                    highSignal
+                ].filter(Boolean);
+                this.data.summary = this.cleanLine(this.removeAvoidPhrases(parts.join(' ')), 700);
                 this.data.compactionSeq++;
                 this.save();
                 if (typeof NativeGemma !== 'undefined') {
@@ -1842,6 +1870,7 @@
                 this.data.tone = this.cleanLine(parsed.tone || this.data.tone, 120) || this.data.tone;
                 this.data.doNotRepeat = Array.isArray(parsed.doNotRepeat) ? parsed.doNotRepeat.map(v => this.cleanLine(v, 80)).filter(Boolean).slice(-8) : this.data.doNotRepeat.slice(-8);
                 this.data.openLoops = Array.isArray(parsed.openLoops) ? parsed.openLoops.map(v => this.cleanLine(v, 120)).filter(Boolean).slice(-5) : this.data.openLoops.slice(-5);
+                this.data.summary = this.removeAvoidPhrases(this.data.summary);
                 this.save();
                 NativeGemma.log('memory.compact.native_ready', { jobId, summaryChars: this.data.summary.length, doNotRepeat: this.data.doNotRepeat.length });
             },
@@ -1851,6 +1880,41 @@
                     this.save();
                 }
                 NativeGemma.log('memory.compact.native_error', { jobId, message: String(message || '') });
+            },
+            removeAvoidPhrases(text) {
+                let result = this.cleanLine(text, 700);
+                this.data.doNotRepeat.forEach(phrase => {
+                    let clean = this.cleanLine(phrase, 80);
+                    if (clean.length < 8) return;
+                    result = result.split(clean).join('[previous line]');
+                });
+                return this.cleanLine(result, 700);
+            },
+            shouldRewriteSay(text) {
+                let clean = this.cleanLine(text, 180);
+                if (!clean) return false;
+                let lower = clean.toLowerCase();
+                if (lower.includes("let's see") || lower.includes('break this stalemate') || lower.includes('little stone age')) return true;
+                return this.data.doNotRepeat.some(line => {
+                    let avoid = this.cleanLine(line, 80).toLowerCase();
+                    return avoid.length >= 8 && (lower === avoid || lower.includes(avoid));
+                });
+            },
+            rewriteSay(turn, outcome) {
+                let openLoop = this.data.openLoops.find(loop => String(loop).startsWith('Answer player:'));
+                if (openLoop) return this.cleanLine(`I hear you. ${openLoop.replace('Answer player:', '').trim()} is on my page while I keep the lane moving.`, 150);
+                let snapshot = AIDirector.snapshot();
+                let variants = [
+                    'I am changing the line now; the old plan is too easy to read.',
+                    'Your army count is the problem, so I am spending to contest the lane.',
+                    'That push is getting room. I need pressure that actually matters.',
+                    'The board is not decided yet; I am shifting the next buy.'
+                ];
+                if (snapshot.enemyHpRatio < 0.3) variants.unshift('My base is under real pressure; this turn is about survival.');
+                else if (snapshot.threatCount >= 3) variants.unshift('Your front line is too close, so I am answering the lane.');
+                else if (globalTime > 120) variants.unshift(`This ${AGES[gameState.enemy.age].name} fight is dragging; I am changing tempo.`);
+                let idx = (this.data.turnCount || 0) % variants.length;
+                return variants[idx];
             }
         };
 
@@ -1958,7 +2022,8 @@
                     this.updateStatus(Object.assign({}, this.status, { state: 'loading' }));
                     return false;
                 }
-                if (this.status.busy || globalTime - this.lastRequestAt < 18) return false;
+                let minGap = reason === 'player_chat' ? 4 : 18;
+                if (this.status.busy || globalTime - this.lastRequestAt < minGap) return false;
 
                 let snapshot = AIDirector.snapshot();
                 let enemyAgeData = AGES[gameState.enemy.age];
@@ -1968,11 +2033,29 @@
                     let level = Math.max(0, Math.min(9, gameState.enemy.upgrades[type] || 0));
                     nextUpgradeCosts[type] = gameState.enemy.upgrades[type] >= 10 ? null : UPGRADE_COSTS[level];
                 });
+                let enemyGold = Math.floor(gameState.enemy.gold);
+                let affordableUnits = enemyAgeData.units
+                    .map((unit, idx) => ({ typeIndex: idx, name: unit.name, type: unit.type, cost: unit.cost }))
+                    .filter(unit => enemyGold >= unit.cost && !(agreements.meleeOnly && unit.type === 'ranged'));
+                let affordableUpgrades = ['dmg', 'hp', 'econ'].filter(type => gameState.enemy.upgrades[type] < 10 && enemyGold >= nextUpgradeCosts[type]);
+                let openTurretSlots = gameState.enemy.turrets.filter((slot, idx) => slot === null && idx < gameState.enemy.unlockedSlots).length;
+                let affordableTurrets = (!agreements.noTurrets && openTurretSlots > 0)
+                    ? enemyAgeData.turrets.map((turret, idx) => ({ typeIndex: idx, cost: turret.cost })).filter(turret => enemyGold >= turret.cost)
+                    : [];
+                let affordableTools = [];
+                if (affordableUnits.length) affordableTools.push('spawn_unit');
+                if (affordableUpgrades.length) affordableTools.push('buy_upgrade');
+                if (affordableTurrets.length || (!agreements.noTurrets && gameState.enemy.unlockedSlots < 4 && enemyGold >= gameState.enemy.unlockedSlots * 500)) affordableTools.push('build_turret');
+                if (!agreements.noSpecials && gameState.enemy.specialTimer <= 0 && !gameState.specialActive) affordableTools.push('use_special');
+                affordableTools.push('none');
                 let requestId = `g${Date.now()}_${Math.floor(Math.random() * 10000)}`;
                 let payload = {
                     version: RELEASE_VERSION,
                     reason,
                     extraMessage,
+                    turnInstruction: reason === 'player_chat'
+                        ? 'Answer extraMessage directly in say before choosing an action. Keep it in character and do not ignore the player.'
+                        : 'Comment on the current battle state without repeating recent lines.',
                     difficulty: currentDifficulty,
                     memory: DirectorMemory.data,
                     gemmaMemory: GemmaMemory.buildContext(snapshot, reason),
@@ -2009,7 +2092,11 @@
                         turretCosts: enemyAgeData.turrets.map(turret => turret.cost),
                         upgradeLevels: Object.assign({}, gameState.enemy.upgrades),
                         nextUpgradeCosts,
-                        openTurretSlots: gameState.enemy.turrets.filter((slot, idx) => slot === null && idx < gameState.enemy.unlockedSlots).length,
+                        affordableUnits,
+                        affordableUpgrades,
+                        affordableTurrets,
+                        affordableTools,
+                        openTurretSlots,
                         canBuyTurretSlot: gameState.enemy.unlockedSlots < 4,
                         specialReady: gameState.enemy.specialTimer <= 0 && !gameState.specialActive
                     },
@@ -2017,6 +2104,7 @@
                         oneActionOnly: true,
                         jsonOnly: true,
                         validTools: ['spawn_unit', 'buy_upgrade', 'build_turret', 'use_special', 'none'],
+                        chooseOnlyAffordableTools: affordableTools,
                         validTypeIndexes: [0, 1, 2],
                         validUpgrades: ['dmg', 'hp', 'econ'],
                         noSpecials: !!agreements.noSpecials,
@@ -2111,10 +2199,16 @@
             let reason = action.reason || 'Gemma plan';
             let requestedTool = action.tool || 'none';
             let applied = false;
+            let originalSay = turn.say ? String(turn.say) : '';
             if (requestedTool === 'spawn_unit') applied = AIDirector.trySpawnUnit(Math.max(0, Math.min(2, Number(action.typeIndex) || 0)), reason);
             else if (requestedTool === 'buy_upgrade') applied = AIDirector.tryUpgrade(['dmg', 'hp', 'econ'].includes(action.upgrade) ? action.upgrade : 'econ', reason);
             else if (requestedTool === 'build_turret') applied = AIDirector.tryBuildTurret(reason);
             else if (requestedTool === 'use_special') applied = AIDirector.trySpecial(reason);
+
+            if (GemmaMemory.shouldRewriteSay(originalSay)) {
+                turn.say = GemmaMemory.rewriteSay(turn, { requestId, requestedTool, applied });
+                NativeGemma.log('say.rewritten', { requestId, originalSay, rewritten: turn.say });
+            }
 
             NativeGemma.log('action.result', {
                 requestId,
@@ -2123,7 +2217,7 @@
                 pressure: turn.pressure || null,
                 action
             });
-            GemmaMemory.recordModel(turn, { requestId, requestedTool, applied });
+            GemmaMemory.recordModel(turn, { requestId, requestedTool, applied }, originalSay);
             if (!applied && requestedTool !== 'none') DirectorPanel.addSystem('model move unavailable');
 
             if (turn.say) DirectorPanel.addModel(turn.say);
@@ -2574,7 +2668,9 @@
             reportTool(name, reason, force = false) {
                 if (force || globalTime - this.lastActionNoticeAt > 1.8) {
                     DirectorPanel.showAction(name, reason);
-                    GemmaMemory.recordSystem(`Fallback action ${name}: ${reason}`);
+                    if (force || /special|evolve|age/i.test(name)) {
+                        GemmaMemory.recordSystem(`Fallback action ${name}: ${reason}`);
+                    }
                     this.lastActionNoticeAt = globalTime;
                 }
             }
