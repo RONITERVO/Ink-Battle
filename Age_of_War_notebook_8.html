@@ -8,6 +8,8 @@
     <title>Age of War: Sketchbook Edition 1.0</title>
     <link rel="manifest" href="manifest.webmanifest">
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;700&family=Patrick+Hand&display=swap');
+
         /* CSS Variables - Dynamic Transition System */
         :root {
             --background: 39 35% 90%;
@@ -157,6 +159,18 @@
             }
         }
 
+        @keyframes scribbleIn {
+            0% {
+                opacity: 0;
+                transform: translateY(8px) rotate(-1deg);
+            }
+
+            100% {
+                opacity: 1;
+                transform: translateY(0) rotate(0deg);
+            }
+        }
+
         .title-float {
             animation: subtleFloat 4s ease-in-out infinite;
         }
@@ -230,6 +244,7 @@
             justify-content: center;
             padding: 0.5vw;
             position: relative;
+            margin-left: 2vw;
         }
 
         .stat-line {
@@ -253,17 +268,40 @@
             color: #4682b4;
         }
 
-        #diff-badge {
+        /* Top Left Actions (Badge & Pause) */
+        #top-left-actions {
             position: absolute;
-            top: -5px;
-            left: 5px;
+            top: -10px;
+            left: -10px;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5vw;
+            z-index: 20;
+            transform: rotate(-3deg);
+        }
+
+        #diff-badge {
             font-size: 1.8vmin;
-            padding: 2px 8px;
+            padding: 4px 12px;
             border-radius: 4px;
             font-weight: bold;
-            transform: rotate(-3deg);
             color: white;
-            box-shadow: 1px 2px 4px rgba(0, 0, 0, 0.2);
+            box-shadow: 2px 3px 6px rgba(0, 0, 0, 0.25);
+            text-align: center;
+        }
+
+        #btn-pause {
+            background: hsl(var(--card));
+            font-size: 1.8vmin;
+            padding: 4px 12px;
+            cursor: pointer;
+            color: hsl(var(--foreground));
+            box-shadow: 2px 3px 6px rgba(0, 0, 0, 0.25);
+            transition: all 0.2s;
+        }
+
+        #btn-pause:hover {
+            transform: scale(1.05);
         }
 
         /* Center Panel */
@@ -443,26 +481,38 @@
             font-style: italic;
         }
 
-        /* Health Bars Overlay */
-        #health-bars {
+        /* Commander HUD: base health, player prompt, and director response */
+        #commander-hud {
             position: absolute;
             width: calc(100% - 40px);
             left: 40px;
-            top: 23%;
+            top: 21.5%;
             display: flex;
             justify-content: space-between;
+            align-items: flex-start;
             padding: 0 2vw;
+            gap: 2vw;
             pointer-events: none;
-            z-index: 5;
+            z-index: 30;
+        }
+
+        .commander-col {
+            width: clamp(12rem, 27vw, 25rem);
+            display: flex;
+            flex-direction: column;
+            gap: 0.7vmin;
+            position: relative;
+            pointer-events: none;
         }
 
         .hp-wrapper {
             position: relative;
-            width: 22vw;
+            width: 100%;
             height: 3.5vmin;
             background: hsl(var(--card));
             padding: 2px;
             box-shadow: 2px 3px 0px rgba(0, 0, 0, 0.1);
+            pointer-events: none;
         }
 
         .hp-fill {
@@ -486,6 +536,250 @@
             font-weight: bold;
             color: hsl(var(--foreground));
             text-shadow: 1px 1px 0px rgba(255, 255, 255, 0.7);
+        }
+
+        .speech-bubble {
+            position: relative;
+            background: hsl(var(--card) / 0.96);
+            border: 1.5px solid hsl(var(--pencil));
+            border-radius: 8px 10px 7px 9px;
+            box-shadow: 3px 4px 0 hsl(var(--pencil) / 0.16);
+            padding: 0.72vmin 0.9vmin;
+            pointer-events: auto;
+            backdrop-filter: blur(4px);
+        }
+
+        .speech-bubble::after {
+            content: '';
+            position: absolute;
+            bottom: -11px;
+            border-width: 11px 10px 0;
+            border-style: solid;
+            border-color: hsl(var(--card) / 0.96) transparent transparent transparent;
+        }
+
+        .speech-bubble::before {
+            content: '';
+            position: absolute;
+            bottom: -14px;
+            border-width: 13px 12px 0;
+            border-style: solid;
+            border-color: hsl(var(--pencil)) transparent transparent transparent;
+        }
+
+        .player-bubble::after {
+            left: 1.3rem;
+        }
+
+        .player-bubble::before {
+            left: calc(1.3rem - 2px);
+        }
+
+        .ai-bubble::after {
+            right: 1.3rem;
+        }
+
+        .ai-bubble::before {
+            right: calc(1.3rem - 2px);
+        }
+
+        #director-form {
+            display: flex;
+            gap: 0.55rem;
+            align-items: center;
+            min-height: 2.35rem;
+        }
+
+        #director-input {
+            flex: 1;
+            min-width: 0;
+            border: none;
+            border-bottom: 1px dashed hsl(var(--pencil-light));
+            background: transparent;
+            outline: none;
+            color: hsl(var(--foreground));
+            font-family: 'Patrick Hand', 'Comic Sans MS', 'Segoe Print', cursive;
+            font-size: 2.25vmin;
+            line-height: 1.1;
+        }
+
+        #director-input:focus {
+            border-bottom-color: hsl(var(--accent));
+        }
+
+        #director-input::placeholder {
+            color: hsl(var(--muted-foreground));
+            font-style: italic;
+        }
+
+        #director-form button {
+            flex: 0 0 auto;
+            min-width: 3.2rem;
+            min-height: 2rem;
+            border: 1.5px solid hsl(var(--pencil));
+            border-radius: 6px;
+            background: hsl(var(--secondary) / 0.85);
+            color: hsl(var(--foreground));
+            font-family: 'Caveat', 'Comic Sans MS', 'Segoe Print', cursive;
+            font-size: 2.25vmin;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.12s, background-color 0.12s;
+        }
+
+        #director-form button:hover {
+            background: hsl(var(--secondary));
+            transform: scale(1.04) rotate(-1deg);
+        }
+
+        .ai-bubble {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5vmin;
+        }
+
+        #gemma-card {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.45rem;
+            min-height: 1.9rem;
+            padding: 0.28rem 0.35rem;
+            border: 1px dashed hsl(var(--pencil-light));
+            border-radius: 4px;
+            background: hsl(var(--background) / 0.58);
+        }
+
+        #gemma-status {
+            min-width: 0;
+            color: hsl(var(--muted-foreground));
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 1.35vmin;
+            font-weight: bold;
+            line-height: 1.08;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        #gemma-card button {
+            flex: 0 0 auto;
+            min-width: 2.35rem;
+            min-height: 1.55rem;
+            border: 1.5px solid hsl(var(--pencil-light));
+            border-radius: 4px;
+            background: hsl(var(--secondary) / 0.75);
+            color: hsl(var(--foreground));
+            font-family: 'Caveat', 'Comic Sans MS', 'Segoe Print', cursive;
+            font-size: 1.65vmin;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        #gemma-card button:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+        }
+
+        #director-memory {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.25rem;
+            min-height: 1.2rem;
+        }
+
+        .memory-chip {
+            padding: 0.16rem 0.32rem;
+            border: 1px dashed hsl(var(--pencil-light));
+            border-radius: 4px;
+            background: hsl(var(--background) / 0.62);
+            color: hsl(var(--muted-foreground));
+            font-family: 'Caveat', 'Comic Sans MS', 'Segoe Print', cursive;
+            font-size: 1.55vmin;
+            font-weight: bold;
+            line-height: 1;
+        }
+
+        #director-log {
+            height: 7.8vmin;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            gap: 0.25rem;
+            overflow: hidden;
+        }
+
+        .director-msg {
+            color: hsl(var(--foreground));
+            font-size: 2vmin;
+            line-height: 1.16;
+            word-break: break-word;
+            user-select: text;
+            animation: scribbleIn 0.3s ease-out both;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .director-msg.tool {
+            color: hsl(var(--destructive));
+            font-family: 'Caveat', 'Comic Sans MS', 'Segoe Print', cursive;
+            font-weight: bold;
+        }
+
+        #ai-action-indicator {
+            position: absolute;
+            right: 0.4rem;
+            top: -2.55rem;
+            max-width: calc(100% - 0.8rem);
+            padding: 0.32rem 0.72rem;
+            border: 1.5px solid hsl(var(--card));
+            border-radius: 999px;
+            background: hsl(var(--foreground) / 0.94);
+            color: hsl(var(--card));
+            box-shadow: 0 4px 9px rgba(0, 0, 0, 0.25);
+            font-family: 'Patrick Hand', 'Comic Sans MS', 'Segoe Print', cursive;
+            font-size: 1.65vmin;
+            font-weight: bold;
+            letter-spacing: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            opacity: 0;
+            transform: translateY(8px) scale(0.92);
+            pointer-events: none;
+        }
+
+        #ai-action-indicator.is-entering {
+            animation: actionPopIn 0.24s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        #ai-action-indicator.is-leaving {
+            animation: actionFadeAway 0.42s ease forwards;
+        }
+
+        @keyframes actionPopIn {
+            0% {
+                opacity: 0;
+                transform: translateY(8px) scale(0.92);
+            }
+
+            100% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        @keyframes actionFadeAway {
+            0% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+
+            100% {
+                opacity: 0;
+                transform: translateY(-7px) scale(0.96);
+            }
         }
 
         /* Game Over / Start Screens */
@@ -632,212 +926,40 @@
             transition: width 0.2s;
         }
 
-        /* Codex Director */
-        #director-panel {
-            position: absolute;
-            right: 1vw;
-            bottom: 1vw;
-            width: min(32vw, 390px);
-            max-width: calc(100% - 58px);
-            max-height: 39%;
-            display: flex;
-            flex-direction: column;
-            gap: 0.55vw;
-            padding: 0.85vw;
-            z-index: 30;
-            pointer-events: auto;
-            background-color: hsl(var(--card) / 0.95);
-            backdrop-filter: blur(5px);
-            color: hsl(var(--foreground));
-        }
-
-        #director-panel * {
-            pointer-events: auto;
-        }
-
-        #director-panel.collapsed {
-            width: auto;
-            min-width: 12rem;
-            max-height: none;
-        }
-
-        #director-panel.collapsed #director-memory,
-        #director-panel.collapsed #director-log,
-        #director-panel.collapsed #gemma-card,
-        #director-panel.collapsed #director-form {
-            display: none;
-        }
-
-        .director-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 0.5rem;
-        }
-
-        .director-title {
-            font-family: 'Caveat', 'Comic Sans MS', 'Segoe Print', cursive;
-            font-weight: bold;
-            font-size: 2.6vmin;
-            line-height: 1;
-        }
-
-        #director-state {
-            font-size: 1.5vmin;
-            color: hsl(var(--muted-foreground));
-            margin-left: 0.35rem;
-        }
-
-        .director-actions {
-            display: flex;
-            gap: 0.35rem;
-        }
-
-        .director-actions button,
-        #director-form button {
-            border: 1.5px solid hsl(var(--pencil-light));
-            background: hsl(var(--secondary) / 0.65);
-            color: hsl(var(--foreground));
-            font-family: inherit;
-            font-size: 1.8vmin;
-            cursor: pointer;
-            padding: 0.25rem 0.45rem;
-            border-radius: 4px;
-        }
-
-        #gemma-card {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 0.45rem;
-            padding: 0.32rem 0.4rem;
-            border: 1px dashed hsl(var(--pencil-light));
-            border-radius: 4px;
-            background: hsl(var(--background) / 0.52);
-        }
-
-        #gemma-status {
-            font-size: 1.55vmin;
-            color: hsl(var(--muted-foreground));
-            line-height: 1.05;
-        }
-
-        #gemma-card button {
-            flex: 0 0 auto;
-            border: 1.5px solid hsl(var(--pencil-light));
-            background: hsl(var(--secondary) / 0.75);
-            color: hsl(var(--foreground));
-            font-family: inherit;
-            font-size: 1.65vmin;
-            cursor: pointer;
-            padding: 0.25rem 0.45rem;
-            border-radius: 4px;
-        }
-
-        #gemma-card button:disabled {
-            opacity: 0.45;
-            cursor: not-allowed;
-        }
-
-        #director-log {
-            overflow-y: auto;
-            min-height: 5.6rem;
-            max-height: 17vmin;
-            padding-right: 0.2rem;
-            scrollbar-width: thin;
-        }
-
-        .director-msg {
-            font-size: 1.8vmin;
-            line-height: 1.15;
-            padding: 0.32rem 0.4rem;
-            margin-bottom: 0.3rem;
-            border-left: 3px solid hsl(var(--accent));
-            background: hsl(var(--secondary) / 0.38);
-            border-radius: 4px;
-            user-select: text;
-        }
-
-        .director-msg.player {
-            border-left-color: hsl(var(--diff-hard));
-            background: hsl(var(--card) / 0.5);
-        }
-
-        .director-msg.tool {
-            border-left-color: hsl(var(--destructive));
-        }
-
-        #director-memory {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.3rem;
-            min-height: 1.35rem;
-        }
-
-        .memory-chip {
-            font-size: 1.45vmin;
-            line-height: 1;
-            padding: 0.25rem 0.38rem;
-            border: 1px dashed hsl(var(--pencil-light));
-            border-radius: 4px;
-            background: hsl(var(--background) / 0.6);
-            color: hsl(var(--muted-foreground));
-        }
-
-        #director-form {
-            display: flex;
-            gap: 0.4rem;
-        }
-
-        #director-input {
-            flex: 1;
-            min-width: 0;
-            user-select: text;
-            touch-action: manipulation;
-            border: 1.5px solid hsl(var(--pencil-light));
-            border-radius: 4px;
-            background: hsl(var(--background) / 0.8);
-            color: hsl(var(--foreground));
-            font-family: inherit;
-            font-size: 1.8vmin;
-            padding: 0.35rem 0.45rem;
-        }
-
         #pause-overlay {
             z-index: 60;
         }
 
         @media (max-width: 900px),
         (max-height: 520px) {
-            #director-panel {
-                width: min(40vw, 340px);
-                max-height: 34%;
-                padding: 0.55rem;
+            #commander-hud {
+                top: 21%;
+                padding: 0 1.2vw;
+                gap: 1vw;
             }
 
-            .director-title {
-                font-size: 2.8vmin;
+            .commander-col {
+                width: clamp(10rem, 30vw, 19rem);
+                gap: 0.5vmin;
             }
 
-            .director-msg,
-            #director-input,
-            .director-actions button,
-            #director-form button {
-                font-size: 2vmin;
+            .speech-bubble {
+                padding: 0.55vmin 0.7vmin;
             }
 
             #gemma-status,
             #gemma-card button {
-                font-size: 1.9vmin;
+                font-size: 1.5vmin;
             }
 
             #director-log {
-                max-height: 13vmin;
-                min-height: 4.4rem;
+                height: 6.6vmin;
             }
+        }
 
-            .memory-chip {
-                font-size: 1.7vmin;
+        @media (max-height: 460px) {
+            #director-memory {
+                display: none;
             }
         }
     </style>
@@ -879,13 +1001,20 @@
 
             <div id="ui-layer" class="hidden">
                 <div id="top-bar" class="torn-paper notebook-lines sketchy-border">
-                    <div id="diff-badge"></div>
+
+                    <div id="top-left-actions">
+                        <button id="btn-pause" class="sketchy-border-thin font-sketch"
+                            onclick="togglePause()">Pause</button>
+                        <div id="diff-badge"></div>
+                    </div>
+
                     <div id="stats-panel">
                         <div class="stat-line">Gold: <span id="ui-gold" class="stat-val text-gold">175</span></div>
                         <div class="stat-line">XP: <span id="ui-xp" class="stat-val text-xp">0</span></div>
                         <div class="stat-line">Income: <span id="ui-income" class="stat-val text-gold">5.0/s</span>
                         </div>
                     </div>
+
                     <div id="center-panel">
                         <div id="age-title" class="font-sketch title-float">Prehistoric Age</div>
                         <div class="center-btns">
@@ -899,6 +1028,7 @@
                             </button>
                         </div>
                     </div>
+
                     <div id="action-panel">
                         <div id="tabs">
                             <button class="tab-btn active" id="tab-units" onclick="switchTab('units')">Units</button>
@@ -959,37 +1089,35 @@
                         </div>
                     </div>
                 </div>
-                <div id="health-bars">
-                    <div class="hp-wrapper sketchy-border-thin">
-                        <div class="hp-fill" id="player-hp-fill"></div>
-                        <div class="hp-text" id="player-hp-text">500 / 500</div>
-                    </div>
-                    <div class="hp-wrapper sketchy-border-thin">
-                        <div class="hp-fill" id="enemy-hp-fill"></div>
-                        <div class="hp-text" id="enemy-hp-text">500 / 500</div>
-                    </div>
-                </div>
 
-                <div id="director-panel" class="torn-paper sketchy-border-thin hidden" aria-live="polite">
-                    <div class="director-header">
-                        <div><span class="director-title">Codex Director</span><span id="director-state">local</span>
+                <div id="commander-hud" aria-live="polite">
+                    <div class="commander-col player-col">
+                        <div class="hp-wrapper sketchy-border-thin">
+                            <div class="hp-fill" id="player-hp-fill"></div>
+                            <div class="hp-text" id="player-hp-text">500 / 500</div>
                         </div>
-                        <div class="director-actions">
-                            <button id="btn-pause" onclick="togglePause()">Pause</button>
-                            <button id="btn-director-collapse" onclick="toggleDirectorPanel()">Hide</button>
+                        <form id="director-form" class="speech-bubble player-bubble" onsubmit="submitDirectorChat(event)">
+                            <input id="director-input" maxlength="160" autocomplete="off"
+                                placeholder="Pact, truce, rush me...">
+                            <button type="submit">Say</button>
+                        </form>
+                    </div>
+
+                    <div class="commander-col ai-col hidden" id="ai-hud">
+                        <div id="ai-action-indicator" class="hidden"></div>
+                        <div class="hp-wrapper sketchy-border-thin">
+                            <div class="hp-fill" id="enemy-hp-fill"></div>
+                            <div class="hp-text" id="enemy-hp-text">500 / 500</div>
+                        </div>
+                        <div class="speech-bubble ai-bubble">
+                            <div id="gemma-card">
+                                <span id="gemma-status">Gemma: checking support</span>
+                                <button id="btn-gemma-install" onclick="installLocalGemma()">Get</button>
+                            </div>
+                            <div id="director-memory"></div>
+                            <div id="director-log"></div>
                         </div>
                     </div>
-                    <div id="gemma-card">
-                        <span id="gemma-status">Local Gemma: checking Android support</span>
-                        <button id="btn-gemma-install" onclick="installLocalGemma()">Get Gemma</button>
-                    </div>
-                    <div id="director-memory"></div>
-                    <div id="director-log"></div>
-                    <form id="director-form" onsubmit="submitDirectorChat(event)">
-                        <input id="director-input" maxlength="160" autocomplete="off"
-                            placeholder="Make a pact or taunt the director">
-                        <button type="submit">Send</button>
-                    </form>
                 </div>
 
                 <div id="pause-overlay" class="overlay-screen hidden">
@@ -1042,21 +1170,20 @@
 
     <script>
         /**
-         * AGE OF WAR - SKETCHBOOK EDITION v1.0 (Final Release)
+         * AGE OF WAR - SKETCHBOOK EDITION v1.0.1 (Final Release w/ UX Polish)
          * Fully Audited & Expanded: 
          * - Fixed Timestep Game Loop (1/60s step deterministic collision & physics)
-         * - Codex Director AI with local chat, memory, agreements, and tool-style actions
+         * - Codex Director AI styled as an immersive legal-pad slider
          * - Persistent LocalStorage (Tracks beaten difficulties and director agreements)
          * - Tooltip Hover System (Displays comprehensive unit/turret stats on hover)
          * - Procedural Watercolor Wash Engine (RESTORED Iteration 1 Multiply Blending)
          * - Expanded Object Pools to prevent exhaustion on "Impossible" late game
-         * - Cleaned up and un-minified drawing code for maintainability
          */
 
         // Context without {alpha: false} or desynchronized to ensure perfect blending of CSS and Canvas
         const canvas = document.getElementById('game-canvas');
         const ctx = canvas.getContext('2d');
-        const RELEASE_VERSION = '1.0.0';
+        const RELEASE_VERSION = '1.0.1';
         const CANVAS_WIDTH = 1280;
         const CANVAS_HEIGHT = 720;
         const GROUND_Y = 600;
@@ -1190,7 +1317,7 @@
                 if (a.noSpecials) tags.push('no specials');
                 if (a.noTurrets) tags.push('no turrets');
                 if (a.meleeOnly) tags.push('melee only');
-                this.data.notes.forEach(note => tags.push(`memory: ${note}`));
+                this.data.notes.forEach(note => tags.push(`note: ${note}`));
                 return tags;
             }
         };
@@ -1471,37 +1598,38 @@
             },
             updateStatus(next) {
                 this.status = Object.assign({}, this.status, next || {});
-                let label = 'Local Gemma: ';
-                let action = 'Get Gemma';
+                let label = 'ENG: ';
+                let action = 'BOOT';
                 let disabled = false;
                 let state = this.status.state || 'unknown';
-                let ram = this.status.totalRamGb ? `, ${this.status.totalRamGb}GB RAM` : '';
+                let ram = this.status.totalRamGb ? ` (${this.status.totalRamGb}GB)` : '';
 
                 if (state === 'ready') {
-                    label += `${this.status.modelName || 'Gemma 4'} ready${ram}`;
-                    action = 'Ready';
+                    label += `ONLINE - ${this.status.modelName || 'Gemma 4'}`;
+                    action = 'RDY';
                     disabled = true;
                 } else if (state === 'loading') {
-                    label += `loading ${this.status.modelName || 'model'}`;
-                    action = 'Loading';
+                    label += `LOADING - ${this.status.modelName || 'model'}`;
+                    action = '...';
                     disabled = true;
                 } else if (state === 'downloading') {
                     let pct = Math.max(0, Math.min(100, Math.floor(this.status.progress || 0)));
-                    label += `downloading ${pct}%`;
+                    label += `DL: ${pct}%`;
                     action = `${pct}%`;
                     disabled = true;
                 } else if (state === 'installed') {
-                    label += `${this.status.modelName || 'Gemma 4'} installed`;
-                    action = 'Load';
+                    label += `STORED - ${this.status.modelName || 'Gemma 4'}`;
+                    action = 'LOAD';
                 } else if (state === 'unavailable') {
-                    label += 'Android build required';
-                    action = 'Offline';
+                    label += 'STANDBY (Browser)';
+                    action = 'OFF';
                     disabled = true;
                 } else if (state === 'error') {
-                    label += this.status.message || 'needs retry';
-                    action = 'Retry';
+                    label += 'ERR: ' + (this.status.message || 'retry needed');
+                    action = 'RTRY';
                 } else {
-                    label += `download ${this.status.modelName || 'Gemma 4 E2B'}${ram}`;
+                    label += `DL: ${this.status.modelName || 'Gemma 4'}${ram}`;
+                    action = 'GET';
                 }
 
                 let statusEl = document.getElementById('gemma-status');
@@ -1640,14 +1768,12 @@
 
             let action = turn.action || {};
             let reason = action.reason || 'Gemma plan';
-            let used = false;
-            if (action.tool === 'spawn_unit') used = AIDirector.trySpawnUnit(Math.max(0, Math.min(2, Number(action.typeIndex) || 0)), reason);
-            else if (action.tool === 'buy_upgrade') used = AIDirector.tryUpgrade(['dmg', 'hp', 'econ'].includes(action.upgrade) ? action.upgrade : 'econ', reason);
-            else if (action.tool === 'build_turret') used = AIDirector.tryBuildTurret(reason);
-            else if (action.tool === 'use_special') used = AIDirector.trySpecial(reason);
+            if (action.tool === 'spawn_unit') AIDirector.trySpawnUnit(Math.max(0, Math.min(2, Number(action.typeIndex) || 0)), reason);
+            else if (action.tool === 'buy_upgrade') AIDirector.tryUpgrade(['dmg', 'hp', 'econ'].includes(action.upgrade) ? action.upgrade : 'econ', reason);
+            else if (action.tool === 'build_turret') AIDirector.tryBuildTurret(reason);
+            else if (action.tool === 'use_special') AIDirector.trySpecial(reason);
 
             if (turn.say) DirectorPanel.add('ai', String(turn.say).slice(0, 220));
-            if (used) DirectorPanel.add('ai', `Gemma tool:${action.tool} -> ${reason}`, true);
         }
 
         window.onLocalGemmaStatus = (json) => {
@@ -1656,34 +1782,67 @@
         window.onLocalGemmaResponse = (requestId, text) => NativeGemma.receive(requestId, text);
         window.onLocalGemmaError = (requestId, message) => NativeGemma.error(requestId, message);
 
-        // --- DIRECTOR CHAT SURFACE ---
+        // --- DIRECTOR CHAT SURFACE (COMMANDER HUD) ---
         const DirectorPanel = {
             els: {},
-            collapsed: false,
+            actionTimeout: null,
+            actionHideTimeout: null,
             init() {
-                ['director-panel', 'director-log', 'director-input', 'director-memory', 'director-state', 'btn-director-collapse', 'btn-pause'].forEach(id => {
+                ['commander-hud', 'ai-hud', 'director-log', 'director-input', 'director-memory', 'ai-action-indicator', 'btn-pause'].forEach(id => {
                     this.els[id] = document.getElementById(id);
                 });
                 this.renderMemory();
             },
             start(diffKey) {
-                if (!this.els['director-panel']) return;
-                this.els['director-panel'].classList.remove('hidden');
-                this.els['director-log'].innerHTML = '';
-                this.els['director-state'].innerText = `local ${DIFFICULTY_SETTINGS[diffKey].name}`;
+                if (!this.els['ai-hud']) return;
+                this.els['ai-hud'].classList.remove('hidden');
+                if (this.els['director-log']) this.els['director-log'].innerHTML = '';
                 this.renderMemory();
                 NativeGemma.refresh();
-                this.add('ai', `Local director online. I can make pacts, remember short notes, and spend the enemy side through tools.`);
+
+                setTimeout(() => {
+                    this.add('ai', `Director online. Pacts and notes are active.`);
+                }, 800);
             },
             add(role, text, tool = false) {
                 let log = this.els['director-log'];
                 if (!log || !text) return;
+                if (role === 'player') return;
                 let row = document.createElement('div');
-                row.className = `director-msg ${role === 'player' ? 'player' : ''} ${tool ? 'tool' : ''}`.trim();
+                row.className = `director-msg ${tool ? 'tool' : ''}`.trim();
                 row.innerText = text;
                 log.appendChild(row);
-                while (log.children.length > 36) log.removeChild(log.firstChild);
+                while (log.children.length > 3) log.removeChild(log.firstChild);
                 log.scrollTop = log.scrollHeight;
+            },
+            showAction(toolName, reason) {
+                let indicator = this.els['ai-action-indicator'];
+                if (!indicator) return;
+
+                let name = String(toolName || '').toLowerCase();
+                let label = 'MOVE';
+                if (name.includes('spawn') || name.includes('unit')) label = 'UNIT';
+                else if (name.includes('upgrade') || name.includes('econ') || name.includes('dmg') || name.includes('hp')) label = 'UPGRADE';
+                else if (name.includes('turret') || name.includes('slot')) label = 'FORT';
+                else if (name.includes('evolve') || name.includes('age')) label = 'AGE';
+                else if (name.includes('special')) label = 'SPECIAL';
+
+                let detail = String(reason || 'new plan').replace(/\s+/g, ' ').trim().slice(0, 56);
+                indicator.innerText = `${label}: ${detail}`;
+                indicator.classList.remove('hidden', 'is-entering', 'is-leaving');
+                void indicator.offsetWidth;
+                indicator.classList.add('is-entering');
+
+                clearTimeout(this.actionTimeout);
+                clearTimeout(this.actionHideTimeout);
+                this.actionTimeout = setTimeout(() => {
+                    indicator.classList.remove('is-entering');
+                    indicator.classList.add('is-leaving');
+                    this.actionHideTimeout = setTimeout(() => {
+                        indicator.classList.add('hidden');
+                        indicator.classList.remove('is-leaving');
+                    }, 440);
+                }, 2100);
             },
             renderMemory() {
                 let host = this.els['director-memory'];
@@ -1699,7 +1858,6 @@
             handlePlayerText(raw) {
                 let message = String(raw || '').trim();
                 if (!message) return;
-                this.add('player', message);
 
                 let text = message.toLowerCase();
                 let replies = [];
@@ -1764,7 +1922,7 @@
                 }
 
                 this.renderMemory();
-                this.add('ai', replies.join(' '));
+                setTimeout(() => this.add('ai', replies.join(' ')), 400);
                 NativeGemma.requestTurn('player_chat', message);
             }
         };
@@ -1778,12 +1936,8 @@
         }
 
         function toggleDirectorPanel() {
-            let panel = DirectorPanel.els['director-panel'];
-            let btn = DirectorPanel.els['btn-director-collapse'];
-            if (!panel) return;
-            DirectorPanel.collapsed = !DirectorPanel.collapsed;
-            panel.classList.toggle('collapsed', DirectorPanel.collapsed);
-            if (btn) btn.innerText = DirectorPanel.collapsed ? 'Show' : 'Hide';
+            let hud = DirectorPanel.els['ai-hud'];
+            if (hud) hud.classList.toggle('hidden');
         }
 
         function togglePause(forceState) {
@@ -1804,6 +1958,7 @@
             restraintUntil: 0,
             lastPlayerAge: 0,
             lastEnemyAge: 0,
+            lastActionNoticeAt: -99,
             start(diffKey) {
                 this.actionTimer = 0.8;
                 this.chatTimer = 3.5;
@@ -1811,6 +1966,7 @@
                 this.restraintUntil = 0;
                 this.lastPlayerAge = 0;
                 this.lastEnemyAge = 0;
+                this.lastActionNoticeAt = -99;
                 this.lowHpWarned = false;
                 DirectorPanel.start(diffKey);
             },
@@ -1887,7 +2043,7 @@
                 }
                 if (gameState.enemy.age !== this.lastEnemyAge) {
                     this.lastEnemyAge = gameState.enemy.age;
-                    DirectorPanel.add('ai', `tool:evolve_enemy -> ${AGES[gameState.enemy.age].name}`, true);
+                    DirectorPanel.showAction('evolve_enemy', AGES[gameState.enemy.age].name);
                 }
                 if (snapshot.enemyHpRatio < 0.25 && !this.lowHpWarned) {
                     this.lowHpWarned = true;
@@ -2029,9 +2185,9 @@
                 return true;
             },
             reportTool(name, reason, force = false) {
-                if (force || this.chatTimer < 7) {
-                    DirectorPanel.add('ai', `tool:${name} -> ${reason}`, true);
-                    this.chatTimer = Math.max(this.chatTimer, 5);
+                if (force || globalTime - this.lastActionNoticeAt > 1.8) {
+                    DirectorPanel.showAction(name, reason);
+                    this.lastActionNoticeAt = globalTime;
                 }
             }
         };

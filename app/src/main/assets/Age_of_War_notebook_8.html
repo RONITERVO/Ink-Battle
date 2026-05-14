@@ -28,14 +28,6 @@
             --diff-hard: 200 45% 45%;
             --diff-harder: 30 80% 50%;
             --diff-impossible: 0 65% 50%;
-
-            /* Legal Pad Theme */
-            --pad-bg: #fdf5d3;
-            --pad-line: #a6cce3;
-            --pad-margin: #e88c8c;
-            --ink-player: #0050a0;
-            --ink-ai: #222222;
-            --ink-tool: #d32f2f;
         }
 
         /* Resets & Base Styles */
@@ -489,26 +481,38 @@
             font-style: italic;
         }
 
-        /* Health Bars Overlay */
-        #health-bars {
+        /* Commander HUD: base health, player prompt, and director response */
+        #commander-hud {
             position: absolute;
             width: calc(100% - 40px);
             left: 40px;
-            top: 23%;
+            top: 21.5%;
             display: flex;
             justify-content: space-between;
+            align-items: flex-start;
             padding: 0 2vw;
+            gap: 2vw;
             pointer-events: none;
-            z-index: 5;
+            z-index: 30;
+        }
+
+        .commander-col {
+            width: clamp(12rem, 27vw, 25rem);
+            display: flex;
+            flex-direction: column;
+            gap: 0.7vmin;
+            position: relative;
+            pointer-events: none;
         }
 
         .hp-wrapper {
             position: relative;
-            width: 22vw;
+            width: 100%;
             height: 3.5vmin;
             background: hsl(var(--card));
             padding: 2px;
             box-shadow: 2px 3px 0px rgba(0, 0, 0, 0.1);
+            pointer-events: none;
         }
 
         .hp-fill {
@@ -532,6 +536,250 @@
             font-weight: bold;
             color: hsl(var(--foreground));
             text-shadow: 1px 1px 0px rgba(255, 255, 255, 0.7);
+        }
+
+        .speech-bubble {
+            position: relative;
+            background: hsl(var(--card) / 0.96);
+            border: 1.5px solid hsl(var(--pencil));
+            border-radius: 8px 10px 7px 9px;
+            box-shadow: 3px 4px 0 hsl(var(--pencil) / 0.16);
+            padding: 0.72vmin 0.9vmin;
+            pointer-events: auto;
+            backdrop-filter: blur(4px);
+        }
+
+        .speech-bubble::after {
+            content: '';
+            position: absolute;
+            bottom: -11px;
+            border-width: 11px 10px 0;
+            border-style: solid;
+            border-color: hsl(var(--card) / 0.96) transparent transparent transparent;
+        }
+
+        .speech-bubble::before {
+            content: '';
+            position: absolute;
+            bottom: -14px;
+            border-width: 13px 12px 0;
+            border-style: solid;
+            border-color: hsl(var(--pencil)) transparent transparent transparent;
+        }
+
+        .player-bubble::after {
+            left: 1.3rem;
+        }
+
+        .player-bubble::before {
+            left: calc(1.3rem - 2px);
+        }
+
+        .ai-bubble::after {
+            right: 1.3rem;
+        }
+
+        .ai-bubble::before {
+            right: calc(1.3rem - 2px);
+        }
+
+        #director-form {
+            display: flex;
+            gap: 0.55rem;
+            align-items: center;
+            min-height: 2.35rem;
+        }
+
+        #director-input {
+            flex: 1;
+            min-width: 0;
+            border: none;
+            border-bottom: 1px dashed hsl(var(--pencil-light));
+            background: transparent;
+            outline: none;
+            color: hsl(var(--foreground));
+            font-family: 'Patrick Hand', 'Comic Sans MS', 'Segoe Print', cursive;
+            font-size: 2.25vmin;
+            line-height: 1.1;
+        }
+
+        #director-input:focus {
+            border-bottom-color: hsl(var(--accent));
+        }
+
+        #director-input::placeholder {
+            color: hsl(var(--muted-foreground));
+            font-style: italic;
+        }
+
+        #director-form button {
+            flex: 0 0 auto;
+            min-width: 3.2rem;
+            min-height: 2rem;
+            border: 1.5px solid hsl(var(--pencil));
+            border-radius: 6px;
+            background: hsl(var(--secondary) / 0.85);
+            color: hsl(var(--foreground));
+            font-family: 'Caveat', 'Comic Sans MS', 'Segoe Print', cursive;
+            font-size: 2.25vmin;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.12s, background-color 0.12s;
+        }
+
+        #director-form button:hover {
+            background: hsl(var(--secondary));
+            transform: scale(1.04) rotate(-1deg);
+        }
+
+        .ai-bubble {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5vmin;
+        }
+
+        #gemma-card {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.45rem;
+            min-height: 1.9rem;
+            padding: 0.28rem 0.35rem;
+            border: 1px dashed hsl(var(--pencil-light));
+            border-radius: 4px;
+            background: hsl(var(--background) / 0.58);
+        }
+
+        #gemma-status {
+            min-width: 0;
+            color: hsl(var(--muted-foreground));
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 1.35vmin;
+            font-weight: bold;
+            line-height: 1.08;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        #gemma-card button {
+            flex: 0 0 auto;
+            min-width: 2.35rem;
+            min-height: 1.55rem;
+            border: 1.5px solid hsl(var(--pencil-light));
+            border-radius: 4px;
+            background: hsl(var(--secondary) / 0.75);
+            color: hsl(var(--foreground));
+            font-family: 'Caveat', 'Comic Sans MS', 'Segoe Print', cursive;
+            font-size: 1.65vmin;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        #gemma-card button:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+        }
+
+        #director-memory {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.25rem;
+            min-height: 1.2rem;
+        }
+
+        .memory-chip {
+            padding: 0.16rem 0.32rem;
+            border: 1px dashed hsl(var(--pencil-light));
+            border-radius: 4px;
+            background: hsl(var(--background) / 0.62);
+            color: hsl(var(--muted-foreground));
+            font-family: 'Caveat', 'Comic Sans MS', 'Segoe Print', cursive;
+            font-size: 1.55vmin;
+            font-weight: bold;
+            line-height: 1;
+        }
+
+        #director-log {
+            height: 7.8vmin;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            gap: 0.25rem;
+            overflow: hidden;
+        }
+
+        .director-msg {
+            color: hsl(var(--foreground));
+            font-size: 2vmin;
+            line-height: 1.16;
+            word-break: break-word;
+            user-select: text;
+            animation: scribbleIn 0.3s ease-out both;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .director-msg.tool {
+            color: hsl(var(--destructive));
+            font-family: 'Caveat', 'Comic Sans MS', 'Segoe Print', cursive;
+            font-weight: bold;
+        }
+
+        #ai-action-indicator {
+            position: absolute;
+            right: 0.4rem;
+            top: -2.55rem;
+            max-width: calc(100% - 0.8rem);
+            padding: 0.32rem 0.72rem;
+            border: 1.5px solid hsl(var(--card));
+            border-radius: 999px;
+            background: hsl(var(--foreground) / 0.94);
+            color: hsl(var(--card));
+            box-shadow: 0 4px 9px rgba(0, 0, 0, 0.25);
+            font-family: 'Patrick Hand', 'Comic Sans MS', 'Segoe Print', cursive;
+            font-size: 1.65vmin;
+            font-weight: bold;
+            letter-spacing: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            opacity: 0;
+            transform: translateY(8px) scale(0.92);
+            pointer-events: none;
+        }
+
+        #ai-action-indicator.is-entering {
+            animation: actionPopIn 0.24s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        #ai-action-indicator.is-leaving {
+            animation: actionFadeAway 0.42s ease forwards;
+        }
+
+        @keyframes actionPopIn {
+            0% {
+                opacity: 0;
+                transform: translateY(8px) scale(0.92);
+            }
+
+            100% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        @keyframes actionFadeAway {
+            0% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+
+            100% {
+                opacity: 0;
+                transform: translateY(-7px) scale(0.96);
+            }
         }
 
         /* Game Over / Start Screens */
@@ -678,329 +926,25 @@
             transition: width 0.2s;
         }
 
-        /* ==============================================================
-           THE LEGAL PAD CODEX (AI DIRECTOR PANEL OVERHAUL)
-           ============================================================== */
-        #director-panel {
-            position: absolute;
-            right: 0;
-            top: 22%;
-            width: min(34vw, 420px);
-            max-height: 75%;
-            background-color: var(--pad-bg);
-            background-image:
-                linear-gradient(90deg, transparent 45px, var(--pad-margin) 45px, var(--pad-margin) 47px, transparent 47px),
-                repeating-linear-gradient(0deg, transparent, transparent 27px, var(--pad-line) 27px, var(--pad-line) 28px);
-            box-shadow: -5px 10px 25px rgba(0, 0, 0, 0.25), inset 0 0 20px rgba(139, 69, 19, 0.03);
-            border-radius: 4px 0 0 8px;
-            display: flex;
-            flex-direction: column;
-            z-index: 30;
-            pointer-events: auto;
-            transform: translateX(0);
-            transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.1);
-        }
-
-        #director-panel * {
-            pointer-events: auto;
-        }
-
-        /* Slide out collapsed state */
-        #director-panel.collapsed {
-            transform: translateX(100%);
-        }
-
-        /* The Metadata Clip / Tape */
-        .pad-clip {
-            position: absolute;
-            top: -12px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 90px;
-            height: 28px;
-            background: #cfcfcf;
-            border: 2px solid #555;
-            border-radius: 6px;
-            box-shadow: 2px 4px 6px rgba(0, 0, 0, 0.2), inset 0 2px 4px rgba(255, 255, 255, 0.7);
-            z-index: 5;
-        }
-
-        .pad-clip::after {
-            content: '';
-            position: absolute;
-            bottom: -10px;
-            left: 12px;
-            right: 12px;
-            height: 10px;
-            border: 2px solid #555;
-            border-top: none;
-            border-radius: 0 0 10px 10px;
-            box-shadow: 2px 2px 3px rgba(0, 0, 0, 0.1);
-        }
-
-        /* Toggle Tab */
-        #director-toggle-tab {
-            position: absolute;
-            left: -42px;
-            top: 15%;
-            width: 42px;
-            height: 110px;
-            background: var(--pad-bg);
-            border: 2px solid var(--pad-margin);
-            border-right: none;
-            border-radius: 12px 0 0 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            box-shadow: -4px 4px 10px rgba(0, 0, 0, 0.15);
-        }
-
-        #director-toggle-tab span {
-            writing-mode: vertical-rl;
-            transform: rotate(180deg);
-            font-family: 'Caveat', cursive;
-            font-size: 2.8vmin;
-            font-weight: bold;
-            color: var(--ink-tool);
-            letter-spacing: 2px;
-        }
-
-        #director-toggle-tab:hover {
-            background: #fdfaf0;
-        }
-
-        .director-header {
-            padding: 15px 15px 5px 55px;
-            margin-top: 10px;
-        }
-
-        .director-title {
-            font-family: 'Caveat', cursive;
-            font-weight: bold;
-            font-size: 3.5vmin;
-            color: var(--ink-ai);
-            text-decoration: underline;
-            text-decoration-color: var(--pad-line);
-        }
-
-        #director-state {
-            font-size: 1.8vmin;
-            color: var(--ink-tool);
-            font-family: 'Caveat', cursive;
-            margin-left: 10px;
-            opacity: 0.8;
-        }
-
-        /* Gemma Typewriter Note */
-        #gemma-card {
-            margin: 5px 15px 10px 55px;
-            padding: 6px 12px;
-            background: rgba(255, 255, 255, 0.6);
-            border: 1px dashed rgba(0, 0, 0, 0.3);
-            transform: rotate(-1deg);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 10px;
-            font-family: 'Courier New', Courier, monospace;
-            box-shadow: 1px 2px 4px rgba(0, 0, 0, 0.05);
-        }
-
-        #gemma-status {
-            font-size: 1.3vmin;
-            color: #444;
-            line-height: 1.1;
-            font-weight: bold;
-        }
-
-        #gemma-card button {
-            border: 2px solid #444;
-            background: transparent;
-            color: #222;
-            font-family: 'Courier New', Courier, monospace;
-            font-size: 1.4vmin;
-            cursor: pointer;
-            padding: 2px 6px;
-            font-weight: bold;
-            transition: all 0.2s;
-        }
-
-        #gemma-card button:hover:not(:disabled) {
-            background: #444;
-            color: white;
-        }
-
-        #gemma-card button:disabled {
-            opacity: 0.4;
-            cursor: not-allowed;
-        }
-
-        /* Memory Highlights */
-        #director-memory {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-            padding: 0 15px 10px 55px;
-            min-height: 28px;
-        }
-
-        .memory-chip {
-            font-family: 'Caveat', cursive;
-            font-size: 2.2vmin;
-            font-weight: bold;
-            padding: 0 6px;
-            line-height: 1.1;
-            color: #333;
-            background: rgba(255, 235, 59, 0.5);
-            /* Yellow highlighter */
-            transform: skew(-5deg) rotate(-1deg);
-        }
-
-        /* The Conversation Log */
-        #director-log {
-            flex: 1;
-            overflow-y: auto;
-            overflow-x: hidden;
-            padding: 0 15px 10px 55px;
-            scrollbar-width: thin;
-            scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
-        }
-
-        #director-log::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        #director-log::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        #director-log::-webkit-scrollbar-thumb {
-            background: rgba(0, 0, 0, 0.2);
-            border-radius: 3px;
-        }
-
-        .director-msg {
-            font-family: 'Patrick Hand', cursive;
-            font-size: 2.4vmin;
-            line-height: 28px;
-            color: var(--ink-ai);
-            position: relative;
-            word-wrap: break-word;
-            animation: scribbleIn 0.3s ease-out both;
-        }
-
-        .director-msg::before {
-            content: '-';
-            position: absolute;
-            left: -15px;
-            opacity: 0.5;
-        }
-
-        .director-msg.player {
-            color: var(--ink-player);
-            text-align: right;
-        }
-
-        .director-msg.player::before {
-            content: '';
-        }
-
-        .director-msg.tool {
-            color: var(--ink-tool);
-            font-family: 'Caveat', cursive;
-            font-size: 2.2vmin;
-            opacity: 0.85;
-            transform: rotate(-0.5deg);
-        }
-
-        .director-msg.tool::before {
-            content: '*';
-            font-weight: bold;
-        }
-
-        /* Input Form (Bottom Line) */
-        #director-form {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-            margin: 5px 15px 15px 55px;
-            border-top: 2px solid rgba(0, 0, 0, 0.05);
-            padding-top: 5px;
-        }
-
-        #director-input {
-            flex: 1;
-            background: transparent;
-            border: none;
-            outline: none;
-            font-family: 'Patrick Hand', cursive;
-            font-size: 2.4vmin;
-            color: var(--ink-player);
-            line-height: 28px;
-            text-decoration: underline;
-            text-decoration-color: transparent;
-            transition: text-decoration-color 0.2s;
-        }
-
-        #director-input:focus {
-            text-decoration-color: rgba(0, 80, 160, 0.3);
-        }
-
-        #director-input::placeholder {
-            color: rgba(0, 80, 160, 0.4);
-        }
-
-        #director-form button {
-            background: transparent;
-            border: 2px solid var(--ink-player);
-            color: var(--ink-player);
-            font-family: 'Caveat', cursive;
-            font-size: 2.2vmin;
-            font-weight: bold;
-            cursor: pointer;
-            padding: 2px 10px;
-            border-radius: 4px;
-            transform: rotate(-2deg);
-            transition: all 0.15s;
-        }
-
-        #director-form button:hover {
-            background: rgba(0, 80, 160, 0.1);
-            transform: scale(1.05) rotate(0);
-        }
-
         #pause-overlay {
             z-index: 60;
         }
 
         @media (max-width: 900px),
         (max-height: 520px) {
-            #director-panel {
-                width: min(42vw, 360px);
+            #commander-hud {
+                top: 21%;
+                padding: 0 1.2vw;
+                gap: 1vw;
             }
 
-            .director-title {
-                font-size: 3vmin;
+            .commander-col {
+                width: clamp(10rem, 30vw, 19rem);
+                gap: 0.5vmin;
             }
 
-            .director-msg,
-            #director-input {
-                font-size: 2.2vmin;
-                line-height: 24px;
-            }
-
-            #director-panel {
-                background-image: linear-gradient(90deg, transparent 40px, var(--pad-margin) 40px, var(--pad-margin) 42px, transparent 42px), repeating-linear-gradient(0deg, transparent, transparent 23px, var(--pad-line) 23px, var(--pad-line) 24px);
-            }
-
-            .director-header,
-            #gemma-card,
-            #director-memory,
-            #director-log,
-            #director-form {
-                padding-left: 45px;
-                margin-left: 45px;
+            .speech-bubble {
+                padding: 0.55vmin 0.7vmin;
             }
 
             #gemma-status,
@@ -1008,8 +952,14 @@
                 font-size: 1.5vmin;
             }
 
-            #director-toggle-tab span {
-                font-size: 2.5vmin;
+            #director-log {
+                height: 6.6vmin;
+            }
+        }
+
+        @media (max-height: 460px) {
+            #director-memory {
+                display: none;
             }
         }
     </style>
@@ -1140,43 +1090,34 @@
                     </div>
                 </div>
 
-                <div id="health-bars">
-                    <div class="hp-wrapper sketchy-border-thin">
-                        <div class="hp-fill" id="player-hp-fill"></div>
-                        <div class="hp-text" id="player-hp-text">500 / 500</div>
-                    </div>
-                    <div class="hp-wrapper sketchy-border-thin">
-                        <div class="hp-fill" id="enemy-hp-fill"></div>
-                        <div class="hp-text" id="enemy-hp-text">500 / 500</div>
-                    </div>
-                </div>
-
-                <!-- Overhauled Legal Pad Codex Panel -->
-                <div id="director-panel" class="hidden collapsed" aria-live="polite">
-                    <div class="pad-clip"></div>
-                    <div id="director-toggle-tab" onclick="toggleDirectorPanel()">
-                        <span id="director-tab-text">CODEX</span>
+                <div id="commander-hud" aria-live="polite">
+                    <div class="commander-col player-col">
+                        <div class="hp-wrapper sketchy-border-thin">
+                            <div class="hp-fill" id="player-hp-fill"></div>
+                            <div class="hp-text" id="player-hp-text">500 / 500</div>
+                        </div>
+                        <form id="director-form" class="speech-bubble player-bubble" onsubmit="submitDirectorChat(event)">
+                            <input id="director-input" maxlength="160" autocomplete="off"
+                                placeholder="Pact, truce, rush me...">
+                            <button type="submit">Say</button>
+                        </form>
                     </div>
 
-                    <div class="director-header">
-                        <span class="director-title">Codex Log</span>
-                        <span id="director-state">(local)</span>
+                    <div class="commander-col ai-col hidden" id="ai-hud">
+                        <div id="ai-action-indicator" class="hidden"></div>
+                        <div class="hp-wrapper sketchy-border-thin">
+                            <div class="hp-fill" id="enemy-hp-fill"></div>
+                            <div class="hp-text" id="enemy-hp-text">500 / 500</div>
+                        </div>
+                        <div class="speech-bubble ai-bubble">
+                            <div id="gemma-card">
+                                <span id="gemma-status">Gemma: checking support</span>
+                                <button id="btn-gemma-install" onclick="installLocalGemma()">Get</button>
+                            </div>
+                            <div id="director-memory"></div>
+                            <div id="director-log"></div>
+                        </div>
                     </div>
-
-                    <div id="gemma-card">
-                        <span id="gemma-status">ENG: VERIFYING SUPPORT</span>
-                        <button id="btn-gemma-install" onclick="installLocalGemma()">BOOT</button>
-                    </div>
-
-                    <div id="director-memory"></div>
-
-                    <div id="director-log"></div>
-
-                    <form id="director-form" onsubmit="submitDirectorChat(event)">
-                        <input id="director-input" maxlength="160" autocomplete="off"
-                            placeholder="Write a pact or taunt...">
-                        <button type="submit">Send</button>
-                    </form>
                 </div>
 
                 <div id="pause-overlay" class="overlay-screen hidden">
@@ -1827,14 +1768,12 @@
 
             let action = turn.action || {};
             let reason = action.reason || 'Gemma plan';
-            let used = false;
-            if (action.tool === 'spawn_unit') used = AIDirector.trySpawnUnit(Math.max(0, Math.min(2, Number(action.typeIndex) || 0)), reason);
-            else if (action.tool === 'buy_upgrade') used = AIDirector.tryUpgrade(['dmg', 'hp', 'econ'].includes(action.upgrade) ? action.upgrade : 'econ', reason);
-            else if (action.tool === 'build_turret') used = AIDirector.tryBuildTurret(reason);
-            else if (action.tool === 'use_special') used = AIDirector.trySpecial(reason);
+            if (action.tool === 'spawn_unit') AIDirector.trySpawnUnit(Math.max(0, Math.min(2, Number(action.typeIndex) || 0)), reason);
+            else if (action.tool === 'buy_upgrade') AIDirector.tryUpgrade(['dmg', 'hp', 'econ'].includes(action.upgrade) ? action.upgrade : 'econ', reason);
+            else if (action.tool === 'build_turret') AIDirector.tryBuildTurret(reason);
+            else if (action.tool === 'use_special') AIDirector.trySpecial(reason);
 
             if (turn.say) DirectorPanel.add('ai', String(turn.say).slice(0, 220));
-            if (used) DirectorPanel.add('ai', `tool:${action.tool} (${reason})`, true);
         }
 
         window.onLocalGemmaStatus = (json) => {
@@ -1843,40 +1782,67 @@
         window.onLocalGemmaResponse = (requestId, text) => NativeGemma.receive(requestId, text);
         window.onLocalGemmaError = (requestId, message) => NativeGemma.error(requestId, message);
 
-        // --- DIRECTOR CHAT SURFACE (LEGAL PAD CODEX) ---
+        // --- DIRECTOR CHAT SURFACE (COMMANDER HUD) ---
         const DirectorPanel = {
             els: {},
-            collapsed: true,
+            actionTimeout: null,
+            actionHideTimeout: null,
             init() {
-                ['director-panel', 'director-log', 'director-input', 'director-memory', 'director-state', 'btn-pause', 'director-tab-text'].forEach(id => {
+                ['commander-hud', 'ai-hud', 'director-log', 'director-input', 'director-memory', 'ai-action-indicator', 'btn-pause'].forEach(id => {
                     this.els[id] = document.getElementById(id);
                 });
                 this.renderMemory();
             },
             start(diffKey) {
-                if (!this.els['director-panel']) return;
-                this.els['director-panel'].classList.remove('hidden');
-                this.els['director-log'].innerHTML = '';
-                this.els['director-state'].innerText = `(${DIFFICULTY_SETTINGS[diffKey].name})`;
+                if (!this.els['ai-hud']) return;
+                this.els['ai-hud'].classList.remove('hidden');
+                if (this.els['director-log']) this.els['director-log'].innerHTML = '';
                 this.renderMemory();
                 NativeGemma.refresh();
 
-                // Auto-open on start to show interaction potential
-                if (this.collapsed) toggleDirectorPanel();
-
                 setTimeout(() => {
-                    this.add('ai', `Local director online. I can make pacts, remember short notes, and adapt to your playstyle.`);
+                    this.add('ai', `Director online. Pacts and notes are active.`);
                 }, 800);
             },
             add(role, text, tool = false) {
                 let log = this.els['director-log'];
                 if (!log || !text) return;
+                if (role === 'player') return;
                 let row = document.createElement('div');
-                row.className = `director-msg ${role === 'player' ? 'player' : ''} ${tool ? 'tool' : ''}`.trim();
+                row.className = `director-msg ${tool ? 'tool' : ''}`.trim();
                 row.innerText = text;
                 log.appendChild(row);
-                while (log.children.length > 36) log.removeChild(log.firstChild);
+                while (log.children.length > 3) log.removeChild(log.firstChild);
                 log.scrollTop = log.scrollHeight;
+            },
+            showAction(toolName, reason) {
+                let indicator = this.els['ai-action-indicator'];
+                if (!indicator) return;
+
+                let name = String(toolName || '').toLowerCase();
+                let label = 'MOVE';
+                if (name.includes('spawn') || name.includes('unit')) label = 'UNIT';
+                else if (name.includes('upgrade') || name.includes('econ') || name.includes('dmg') || name.includes('hp')) label = 'UPGRADE';
+                else if (name.includes('turret') || name.includes('slot')) label = 'FORT';
+                else if (name.includes('evolve') || name.includes('age')) label = 'AGE';
+                else if (name.includes('special')) label = 'SPECIAL';
+
+                let detail = String(reason || 'new plan').replace(/\s+/g, ' ').trim().slice(0, 56);
+                indicator.innerText = `${label}: ${detail}`;
+                indicator.classList.remove('hidden', 'is-entering', 'is-leaving');
+                void indicator.offsetWidth;
+                indicator.classList.add('is-entering');
+
+                clearTimeout(this.actionTimeout);
+                clearTimeout(this.actionHideTimeout);
+                this.actionTimeout = setTimeout(() => {
+                    indicator.classList.remove('is-entering');
+                    indicator.classList.add('is-leaving');
+                    this.actionHideTimeout = setTimeout(() => {
+                        indicator.classList.add('hidden');
+                        indicator.classList.remove('is-leaving');
+                    }, 440);
+                }, 2100);
             },
             renderMemory() {
                 let host = this.els['director-memory'];
@@ -1892,7 +1858,6 @@
             handlePlayerText(raw) {
                 let message = String(raw || '').trim();
                 if (!message) return;
-                this.add('player', message);
 
                 let text = message.toLowerCase();
                 let replies = [];
@@ -1971,12 +1936,8 @@
         }
 
         function toggleDirectorPanel() {
-            let panel = DirectorPanel.els['director-panel'];
-            let tabTxt = DirectorPanel.els['director-tab-text'];
-            if (!panel) return;
-            DirectorPanel.collapsed = !DirectorPanel.collapsed;
-            panel.classList.toggle('collapsed', DirectorPanel.collapsed);
-            if (tabTxt) tabTxt.innerText = DirectorPanel.collapsed ? 'CODEX' : 'HIDE';
+            let hud = DirectorPanel.els['ai-hud'];
+            if (hud) hud.classList.toggle('hidden');
         }
 
         function togglePause(forceState) {
@@ -1997,6 +1958,7 @@
             restraintUntil: 0,
             lastPlayerAge: 0,
             lastEnemyAge: 0,
+            lastActionNoticeAt: -99,
             start(diffKey) {
                 this.actionTimer = 0.8;
                 this.chatTimer = 3.5;
@@ -2004,6 +1966,7 @@
                 this.restraintUntil = 0;
                 this.lastPlayerAge = 0;
                 this.lastEnemyAge = 0;
+                this.lastActionNoticeAt = -99;
                 this.lowHpWarned = false;
                 DirectorPanel.start(diffKey);
             },
@@ -2080,7 +2043,7 @@
                 }
                 if (gameState.enemy.age !== this.lastEnemyAge) {
                     this.lastEnemyAge = gameState.enemy.age;
-                    DirectorPanel.add('ai', `tool:evolve_enemy (${AGES[gameState.enemy.age].name})`, true);
+                    DirectorPanel.showAction('evolve_enemy', AGES[gameState.enemy.age].name);
                 }
                 if (snapshot.enemyHpRatio < 0.25 && !this.lowHpWarned) {
                     this.lowHpWarned = true;
@@ -2222,9 +2185,9 @@
                 return true;
             },
             reportTool(name, reason, force = false) {
-                if (force || this.chatTimer < 7) {
-                    DirectorPanel.add('ai', `tool:${name} (${reason})`, true);
-                    this.chatTimer = Math.max(this.chatTimer, 5);
+                if (force || globalTime - this.lastActionNoticeAt > 1.8) {
+                    DirectorPanel.showAction(name, reason);
+                    this.lastActionNoticeAt = globalTime;
                 }
             }
         };
