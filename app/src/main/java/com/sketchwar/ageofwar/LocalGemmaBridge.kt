@@ -30,7 +30,7 @@ class LocalGemmaBridge(
         const val LOG_TAG = "AgeOfWarGemma"
         const val LOG_CHUNK_SIZE = 3_000
         const val MAX_PROMPT_PAYLOAD_CHARS = 12_000
-        const val MAX_SCREENSHOT_BYTES = 700_000
+        const val MAX_CONTEXT_IMAGE_BYTES = 700_000
         const val ENABLE_IMAGE_INPUT = true
 
         private val ENGINE_LOCK = Any()
@@ -40,7 +40,6 @@ class LocalGemmaBridge(
         @Volatile private var sharedLoading: Boolean = false
         @Volatile private var sharedLoadingPath: String? = null
         @Volatile private var sharedBusy: Boolean = false
-        @Volatile private var sharedMemoryBusy: Boolean = false
         @Volatile private var sharedLastError: String? = null
     }
 
@@ -134,7 +133,7 @@ class LocalGemmaBridge(
                 return buildStatus("ready", current).toString()
             }
             if (sharedLoading) return buildStatus("loading", current).toString()
-            if (sharedEngine != null && sharedModelPath != path && (sharedBusy || sharedMemoryBusy)) {
+            if (sharedEngine != null && sharedModelPath != path && sharedBusy) {
                 sharedLastError = "Gemma is busy"
                 return buildStatus(null, current).toString()
             }
@@ -186,12 +185,12 @@ class LocalGemmaBridge(
     }
 
     @JavascriptInterface
-    fun generateDirectorTurnWithImage(requestId: String, payloadJson: String, screenshotDataUrl: String?) {
+    fun generateDirectorTurnWithImage(requestId: String, payloadJson: String, contextImageDataUrl: String?) {
         val path = prefs.getString("modelPath", null)
         var busyNow = false
         var loaded: Engine? = null
         synchronized(ENGINE_LOCK) {
-            if (sharedBusy || sharedMemoryBusy) {
+            if (sharedBusy) {
                 busyNow = true
             } else {
                 val candidate = sharedEngine
@@ -218,20 +217,20 @@ class LocalGemmaBridge(
         val startedAt = System.currentTimeMillis()
         logLine("request.start requestId=$requestId payloadChars=${payloadJson.length}")
         logLong("request.payload requestId=$requestId", payloadJson)
-        val screenshotBytes = decodeScreenshotDataUrl(requestId, screenshotDataUrl)
+        val contextImageBytes = decodeContextImageDataUrl(requestId, contextImageDataUrl)
         postStatus("ready")
         executor.execute {
             var turnConversation: Conversation? = null
-            var screenshotFile: File? = null
+            var contextImageFile: File? = null
             var finalStatus = "ready"
             try {
                 val prompt = buildPrompt(payloadJson)
                 logLong("request.prompt requestId=$requestId", prompt)
                 turnConversation = activeEngine.createConversation(conversationConfig())
-                val contents = if (screenshotBytes != null) {
-                    screenshotFile = writeScreenshotFile(requestId, screenshotBytes)
+                val contents = if (contextImageBytes != null) {
+                    contextImageFile = writeContextImageFile(requestId, contextImageBytes)
                     Contents.of(
-                        com.google.ai.edge.litertlm.Content.ImageFile(screenshotFile!!.absolutePath),
+                        com.google.ai.edge.litertlm.Content.ImageFile(contextImageFile!!.absolutePath),
                         com.google.ai.edge.litertlm.Content.Text(prompt)
                     )
                 } else {
@@ -254,75 +253,9 @@ class LocalGemmaBridge(
                 try { turnConversation?.close() } catch (closeFailure: Throwable) {
                     logError("conversation.close_error requestId=$requestId", closeFailure)
                 }
-                try { screenshotFile?.delete() } catch (_: Throwable) {}
+                try { contextImageFile?.delete() } catch (_: Throwable) {}
                 synchronized(ENGINE_LOCK) {
                     sharedBusy = false
-                }
-                postStatus(finalStatus)
-            }
-        }
-    }
-
-    @JavascriptInterface
-    fun compactDirectorMemory(jobId: String, payloadJson: String) {
-        val path = prefs.getString("modelPath", null)
-        var busyNow = false
-        var loaded: Engine? = null
-        synchronized(ENGINE_LOCK) {
-            if (sharedBusy || sharedMemoryBusy) {
-                busyNow = true
-            } else {
-                val candidate = sharedEngine
-                if (candidate != null && sharedModelPath == path) {
-                    sharedMemoryBusy = true
-                    loaded = candidate
-                }
-            }
-        }
-
-        if (busyNow) {
-            logLine("memory.compact.rejected busy jobId=$jobId")
-            postMemoryError(jobId, "Gemma is busy")
-            return
-        }
-        val activeEngine = loaded
-        if (activeEngine == null) {
-            logLine("memory.compact.rejected loading jobId=$jobId payloadChars=${payloadJson.length}")
-            loadModel()
-            postMemoryError(jobId, "Gemma is loading")
-            return
-        }
-
-        val startedAt = System.currentTimeMillis()
-        logLine("memory.compact.start jobId=$jobId payloadChars=${payloadJson.length}")
-        logLong("memory.compact.payload jobId=$jobId", payloadJson)
-        postStatus("ready")
-        executor.execute {
-            var memoryConversation: Conversation? = null
-            var finalStatus = "ready"
-            try {
-                val prompt = buildMemoryPrompt(payloadJson)
-                logLong("memory.compact.prompt jobId=$jobId", prompt)
-                memoryConversation = activeEngine.createConversation(memoryConversationConfig())
-                val responseMsg = memoryConversation.sendMessage(prompt)
-                val response = responseMsg.contents.contents.filterIsInstance<com.google.ai.edge.litertlm.Content.Text>().joinToString("") { it.text }
-                val elapsedMs = System.currentTimeMillis() - startedAt
-                logLine("memory.compact.ready jobId=$jobId responseChars=${response.length} elapsedMs=$elapsedMs")
-                logLong("memory.compact.raw jobId=$jobId", response)
-                postMemory(jobId, response)
-            } catch (t: Throwable) {
-                synchronized(ENGINE_LOCK) {
-                    sharedLastError = t.message ?: t.javaClass.simpleName
-                }
-                logError("memory.compact.error jobId=$jobId", t)
-                postMemoryError(jobId, t.message ?: "Memory compaction failed")
-                finalStatus = "error"
-            } finally {
-                synchronized(ENGINE_LOCK) {
-                    sharedMemoryBusy = false
-                }
-                try { memoryConversation?.close() } catch (closeFailure: Throwable) {
-                    logError("memory.conversation.close_error jobId=$jobId", closeFailure)
                 }
                 postStatus(finalStatus)
             }
@@ -391,14 +324,12 @@ class LocalGemmaBridge(
         var ready = false
         var loading = false
         var busy = false
-        var memoryBusy = false
         var message = ""
 
         synchronized(ENGINE_LOCK) {
             ready = sharedEngine != null && sharedModelPath == modelPath
             loading = sharedLoading && sharedLoadingPath == modelPath
-            busy = sharedBusy || sharedMemoryBusy
-            memoryBusy = sharedMemoryBusy
+            busy = sharedBusy
             message = sharedLastError ?: ""
         }
 
@@ -435,8 +366,7 @@ class LocalGemmaBridge(
             .put("minRamGb", spec.minRamGb)
             .put("totalRamGb", totalRamGb())
             .put("progress", progress)
-            .put("busy", busy || memoryBusy)
-            .put("memoryBusy", memoryBusy)
+            .put("busy", busy)
             .put("message", message)
     }
 
@@ -453,14 +383,6 @@ class LocalGemmaBridge(
         runJs("window.onLocalGemmaError(${JSONObject.quote(requestId)}, ${JSONObject.quote(message)});")
     }
 
-    private fun postMemory(jobId: String, text: String) {
-        runJs("window.onLocalGemmaMemory(${JSONObject.quote(jobId)}, ${JSONObject.quote(text)});")
-    }
-
-    private fun postMemoryError(jobId: String, message: String) {
-        runJs("window.onLocalGemmaMemoryError(${JSONObject.quote(jobId)}, ${JSONObject.quote(message)});")
-    }
-
     private fun runJs(script: String) {
         activity.runOnUiThread {
             if (!activity.isFinishing && !activity.isDestroyed) webView.evaluateJavascript(script, null)
@@ -471,37 +393,24 @@ class LocalGemmaBridge(
         You are the local Gemma 4 director for Age of War: Sketchbook Edition.
         You play the enemy side, but you are also an entertaining opponent who can honor pacts.
         Each request is stateless: use only the current payload, snapshot, persistent pacts, and gemmaMemory.
-        gemmaMemory contains a compact match summary, recent player/model turns, action outcomes, and repetition guards.
-        When an image is attached, it is a live gameplay screenshot. You are Gemma, the enemy director on the red base health bar side. The opposing/player troops and base are the user's side.
-        Use the image for visual lane context, troop clustering, front-line pressure, base danger, and age/theme cues. Use JSON for exact numbers and legal actions.
+        gemmaMemory contains bounded match memory, recent player/model turns, recent events, action outcomes, and repetition guards.
+        When an image is attached, it is a labeled tactical context map, not raw sketch art. You are Gemma, the red enemy on the right side. The blue left side is the player/user.
+        Read the image labels before interpreting lines: dashed vertical lines are front lines, gray vertical lines are base hit lines, shaded red is Gemma base danger, blue markers are player units, and red markers are your units. Use JSON for exact numbers and legal actions.
         Never ask for network access.
-        Output one compact JSON object only. No markdown, no code fences, no explanations outside JSON.
-        {"say":"short taunt or agreement","pressure":"rush|balanced|mercy|null","action":{"tool":"spawn_unit|buy_upgrade|build_turret|use_special|none","typeIndex":0,"upgrade":"econ","reason":"short reason"}}
+        Output one small JSON object only. No markdown, no code fences, no explanations outside JSON.
+        {"say":"short taunt or agreement","pressure":"rush|balanced|mercy|null","action":{"tool":"spawn_unit|buy_upgrade|build_turret|use_special|none","typeIndex":0,"upgrade":"econ","reason":"short reason"},"memoryPatch":{"summary":"optional <=700 chars","playerProfile":"optional <=240 chars","doNotRepeat":["short phrase"],"openLoops":["short fact"],"tone":"short style guidance","suggestions":["<=48 char player command"]}}
         Valid unit/turret typeIndex values are 0, 1, and 2. Valid upgrades are dmg, hp, econ.
         Choose only from constraints.chooseOnlyAffordableTools and enemyChoices.affordable* lists. If nothing useful is affordable, use action.tool "none".
         If reason is player_chat, answer extraMessage directly in say before choosing an action.
         Do not repeat recent say text or opening phrases listed in gemmaMemory.repetitionGuard.
         The snapshot age is current truth; if the same age has lasted a while, talk about the current battle state instead of greeting that age again.
+        Use memoryPatch to keep future turns focused when the player says something important, the match phase changes, or your own repeated phrasing needs a guard. Omit memoryPatch if nothing changed.
         If a useful action is unclear, return action.tool "none".
         Prefer fair, varied, readable decisions over perfect play.
     """.trimIndent()
 
     private fun conversationConfig(): ConversationConfig = ConversationConfig(
         systemInstruction = Contents.of(systemPrompt())
-    )
-
-    private fun memorySystemPrompt(): String = """
-        You compact memory for a Gemma 4 mobile game opponent.
-        Preserve facts that change future behavior: player requests, pacts, tone preference, repeated phrases to avoid, match phase, important action outcomes, and unresolved threats.
-        Also generate 1 to 3 short suggestions for what the player could type next in the command input.
-        Do not copy phrases from doNotRepeat into summary. Do not reinforce banned wording.
-        Drop routine fallback unit buys, filler, duplicate wording, markdown, code fences, and exact old JSON unless it matters.
-        Output raw compact JSON only:
-        {"summary":"<=700 chars","playerProfile":"<=240 chars","doNotRepeat":["short phrase"],"openLoops":["short fact"],"tone":"short style guidance","suggestions":["<=48 char player command"]}
-    """.trimIndent()
-
-    private fun memoryConversationConfig(): ConversationConfig = ConversationConfig(
-        systemInstruction = Contents.of(memorySystemPrompt())
     )
 
     private fun buildPrompt(payloadJson: String): String {
@@ -511,56 +420,44 @@ class LocalGemmaBridge(
         }
         return String.format(
             Locale.US,
-            "Choose one high-level enemy director turn for this live match. Return JSON only. Use gemmaMemory for continuity, answer player_chat messages directly, choose only affordable actions, and avoid repeating recent lines/actions.\n%s",
+            "Choose one high-level enemy director turn for this live match. Return JSON only. Use gemmaMemory for continuity, answer player_chat messages directly, choose only affordable actions, avoid repeating recent lines/actions, and include memoryPatch only when future turns need updated memory.\n%s",
             trimmed
         )
     }
 
-    private fun buildMemoryPrompt(payloadJson: String): String {
-        val trimmed = payloadJson.take(MAX_PROMPT_PAYLOAD_CHARS)
-        if (payloadJson.length > MAX_PROMPT_PAYLOAD_CHARS) {
-            logLine("memory.compact.prompt_truncated payloadChars=${payloadJson.length} promptPayloadChars=$MAX_PROMPT_PAYLOAD_CHARS")
-        }
-        return String.format(
-            Locale.US,
-            "Compact this Age of War Gemma director memory for the next mobile prompt and generate concise player input suggestions. Return raw JSON only, with no markdown fences. Do not copy doNotRepeat phrases into summary.\n%s",
-            trimmed
-        )
-    }
-
-    private fun decodeScreenshotDataUrl(requestId: String, dataUrl: String?): ByteArray? {
+    private fun decodeContextImageDataUrl(requestId: String, dataUrl: String?): ByteArray? {
         if (dataUrl.isNullOrBlank()) {
-            logLine("request.screenshot requestId=$requestId absent")
+            logLine("request.context_image requestId=$requestId absent")
             return null
         }
         if (!ENABLE_IMAGE_INPUT) {
-            logLine("request.screenshot requestId=$requestId disabled chars=${dataUrl.length}")
+            logLine("request.context_image requestId=$requestId disabled chars=${dataUrl.length}")
             return null
         }
         val comma = dataUrl.indexOf(',')
         if (comma <= 0 || !dataUrl.startsWith("data:image/")) {
-            logLine("request.screenshot requestId=$requestId invalid_data_url chars=${dataUrl.length}")
+            logLine("request.context_image requestId=$requestId invalid_data_url chars=${dataUrl.length}")
             return null
         }
         return try {
             val bytes = Base64.decode(dataUrl.substring(comma + 1), Base64.DEFAULT)
-            if (bytes.size > MAX_SCREENSHOT_BYTES) {
-                logLine("request.screenshot requestId=$requestId too_large bytes=${bytes.size} max=$MAX_SCREENSHOT_BYTES")
+            if (bytes.size > MAX_CONTEXT_IMAGE_BYTES) {
+                logLine("request.context_image requestId=$requestId too_large bytes=${bytes.size} max=$MAX_CONTEXT_IMAGE_BYTES")
                 null
             } else {
-                logLine("request.screenshot requestId=$requestId bytes=${bytes.size} mime=${dataUrl.substring(5, comma).take(40)}")
+                logLine("request.context_image requestId=$requestId bytes=${bytes.size} mime=${dataUrl.substring(5, comma).take(40)}")
                 bytes
             }
         } catch (t: Throwable) {
-            logError("request.screenshot_decode_error requestId=$requestId", t)
+            logError("request.context_image_decode_error requestId=$requestId", t)
             null
         }
     }
 
-    private fun writeScreenshotFile(requestId: String, bytes: ByteArray): File {
+    private fun writeContextImageFile(requestId: String, bytes: ByteArray): File {
         val file = File.createTempFile("gemma_image_", ".jpg", File(cacheDirPath))
         file.writeBytes(bytes)
-        logLine("request.screenshot_file requestId=$requestId path=${file.absolutePath} bytes=${bytes.size}")
+        logLine("request.context_image_file requestId=$requestId path=${file.absolutePath} bytes=${bytes.size}")
         return file
     }
 

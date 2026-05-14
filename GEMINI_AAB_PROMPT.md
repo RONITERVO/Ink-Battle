@@ -29,7 +29,7 @@ Please focus only on release-blocking Android build/package issues:
 Desired result:
 - Debug build installs on a real 6GB+ Android phone.
 - Player can tap Get Gemma, download model, go offline, and still get local model director turns.
-- Gemma turns stay stable in long matches because the LiteRT-LM engine is process-scoped, while each request uses a fresh LiteRT-LM conversation plus compact app-managed memory; after each Gemma turn, the compactor updates memory and input suggestions, with `AgeOfWarGemma` diagnostics for payload, prompt, raw response, memory compaction, parse result, and action result.
-- Gemma director turns attach a compressed gameplay screenshot when available; prompt context tells Gemma it controls the red base health bar/enemy side. The native bridge configures `visionBackend` and sends screenshots via a short-lived `Content.ImageFile`.
+- Gemma turns stay stable in long matches because the LiteRT-LM engine is process-scoped, while each request uses a fresh LiteRT-LM conversation plus bounded app-managed memory; the main turn can return `memoryPatch` for memory and input suggestions, with `AgeOfWarGemma` diagnostics for payload, prompt, raw response, parse result, and action result.
+- Gemma director turns attach a labeled tactical context image when available; prompt context tells Gemma it controls the red/right enemy side and the image labels define hit lines, front lines, danger zones, and unit markers. The native bridge configures `visionBackend` and sends the image via a short-lived `Content.ImageFile`.
 - Release build generates `app/build/outputs/bundle/release/app-release.aab`.
 ```

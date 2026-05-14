@@ -5,12 +5,12 @@ The app now uses a no-backend architecture for the AI opponent:
 - The game always has the deterministic local Codex Director fallback.
 - On Android, the WebView exposes `LocalGemmaAndroid` through `LocalGemmaBridge.kt`.
 - After user consent, Android `DownloadManager` downloads a `.litertlm` Gemma 4 model into the app's external files directory.
-- LiteRT-LM loads the model locally and returns compact JSON director turns.
+- LiteRT-LM loads the model locally and returns small JSON director turns.
 - The LiteRT-LM engine is process-scoped and survives Activity/WebView recreation; only short-lived request conversations are closed after each turn.
 - The JavaScript game validates every returned action before applying it.
-- Gemma turns use compact application-managed memory: each request creates a fresh LiteRT-LM conversation, then receives a bounded memory packet with a match summary, last 3 player/model turns, recent action outcomes, and repetition guards.
-- Gemma director turns also receive a compressed gameplay screenshot when available. The native bridge configures LiteRT-LM `visionBackend` and sends screenshots through a short-lived cache JPEG using `Content.ImageFile`.
-- After each Gemma director turn, the same on-device Gemma model compacts memory and generates short suggested player commands for the input placeholder.
+- Gemma turns use bounded application-managed memory: each request creates a fresh LiteRT-LM conversation and receives the current summary, recent player/model turns, recent events, action outcomes, and repetition guards.
+- Gemma director turns also receive a labeled tactical context image when available. The JavaScript app redraws the live lane as a clear diagram with base ownership, hit lines, front lines, danger zones, unit markers, counts, and a legend. The native bridge configures LiteRT-LM `visionBackend` and sends the image through a short-lived cache JPEG using `Content.ImageFile`.
+- The main Gemma turn may return an optional `memoryPatch` with bounded summary, phrase guards, open loops, tone, and input suggestions. There is no separate post-turn model memory job.
 - Deterministic memory hygiene strips repeated model phrases from summaries and records only high-signal fallback events, but never replaces visible Gemma speech.
 
 ## Model Choice
@@ -36,10 +36,9 @@ Configured downloads:
   - LiteRT-LM engine setup.
   - Process-scoped engine reuse across Activity/WebView recreation.
   - GPU first, CPU fallback.
-  - JSON-only director prompt tuned for Gemma 4 compact memory.
-  - Multimodal director prompt with explicit red-base/enemy-side screenshot perspective.
-  - LiteRT-LM `visionBackend` setup and short-lived `ImageFile` screenshots for Android image input stability.
-  - Post-turn `compactDirectorMemory` bridge for bounded mobile memory summaries and player input suggestions.
+  - JSON-only director prompt tuned for bounded Gemma 4 turn memory and optional `memoryPatch`.
+  - Multimodal director prompt with explicit red/right-side Gemma ownership and tactical-map label guidance.
+  - LiteRT-LM `visionBackend` setup and short-lived `ImageFile` context images for Android image input stability.
   - Chunked `AgeOfWarGemma` logcat diagnostics for exact request payloads, prompts, raw responses, parse failures, and action results.
 - `app/src/main/java/com/sketchwar/ageofwar/MainActivity.java`
   - Registers the bridge as `LocalGemmaAndroid`.
@@ -57,7 +56,7 @@ Configured downloads:
 4. App asks for confirmation before the multi-GB download.
 5. Fallback AI continues playing during download and model loading.
 6. Once ready, Gemma periodically produces high-level director turns.
-7. After each Gemma turn, the compactor updates bounded memory and the command input placeholder suggestion.
+7. If Gemma returns `memoryPatch`, the same turn updates bounded memory and the command input placeholder suggestion.
 
 ## Gemma Diagnostics
 
@@ -70,10 +69,9 @@ adb logcat -v time -s AgeOfWarGemma:I
 Each local model turn logs:
 
 - `request.payload`: exact JSON sent by the WebView bridge.
-- `request.screenshot`: attached screenshot byte count and MIME metadata.
+- `request.context_image`: attached tactical context image byte count and MIME metadata.
 - `request.prompt`: final prompt passed to LiteRT-LM after the app's prompt cap.
 - `response.raw`: unmodified Gemma text.
-- `memory.compact.*`: native Gemma memory compaction jobs.
 - `js.response.parsed`, `js.response.parse_failed`, and `js.action.result`: JavaScript parse and validation outcomes.
 
 Long values are split into numbered chunks between `BEGIN` and `END` lines so they can be reconstructed from logcat.
