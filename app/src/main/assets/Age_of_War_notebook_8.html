@@ -1193,7 +1193,7 @@
 
     <script>
         /**
-         * AGE OF WAR - SKETCHBOOK EDITION v1.0.1 (Final Release w/ UX Polish)
+         * AGE OF WAR - SKETCHBOOK EDITION v1.0.2 (Gemma 4 diagnostics and stateless turns)
          * Fully Audited & Expanded: 
          * - Fixed Timestep Game Loop (1/60s step deterministic collision & physics)
          * - Codex Director AI styled as an immersive legal-pad slider
@@ -1206,7 +1206,7 @@
         // Context without {alpha: false} or desynchronized to ensure perfect blending of CSS and Canvas
         const canvas = document.getElementById('game-canvas');
         const ctx = canvas.getContext('2d');
-        const RELEASE_VERSION = '1.0.1';
+        const RELEASE_VERSION = '1.0.2';
         const CANVAS_WIDTH = 1280;
         const CANVAS_HEIGHT = 720;
         const GROUND_Y = 600;
@@ -1619,6 +1619,12 @@
                     this.updateStatus({ state: 'error', modelName: 'Android Gemma', message: 'Bridge unavailable' });
                 }
             },
+            log(event, details = {}) {
+                if (!this.available || !window.LocalGemmaAndroid || typeof window.LocalGemmaAndroid.logDirectorEvent !== 'function') return;
+                try {
+                    window.LocalGemmaAndroid.logDirectorEvent(String(event || 'event'), JSON.stringify(details || {}));
+                } catch (e) { }
+            },
             updateStatus(next) {
                 this.status = Object.assign({}, this.status, next || {});
                 let label = '';
@@ -1698,6 +1704,13 @@
                 if (this.status.busy || globalTime - this.lastRequestAt < 18) return false;
 
                 let snapshot = AIDirector.snapshot();
+                let enemyAgeData = AGES[gameState.enemy.age];
+                let agreements = DirectorMemory.data.agreements || {};
+                let nextUpgradeCosts = {};
+                ['dmg', 'hp', 'econ'].forEach(type => {
+                    let level = Math.max(0, Math.min(9, gameState.enemy.upgrades[type] || 0));
+                    nextUpgradeCosts[type] = gameState.enemy.upgrades[type] >= 10 ? null : UPGRADE_COSTS[level];
+                });
                 let requestId = `g${Date.now()}_${Math.floor(Math.random() * 10000)}`;
                 let payload = {
                     version: RELEASE_VERSION,
@@ -1728,6 +1741,31 @@
                             pressure: snapshot.pressure
                         }
                     },
+                    enemyChoices: {
+                        unitOptions: enemyAgeData.units.map((unit, idx) => ({
+                            typeIndex: idx,
+                            name: unit.name,
+                            type: unit.type,
+                            cost: unit.cost
+                        })),
+                        turretCosts: enemyAgeData.turrets.map(turret => turret.cost),
+                        upgradeLevels: Object.assign({}, gameState.enemy.upgrades),
+                        nextUpgradeCosts,
+                        openTurretSlots: gameState.enemy.turrets.filter((slot, idx) => slot === null && idx < gameState.enemy.unlockedSlots).length,
+                        canBuyTurretSlot: gameState.enemy.unlockedSlots < 4,
+                        specialReady: gameState.enemy.specialTimer <= 0 && !gameState.specialActive
+                    },
+                    constraints: {
+                        oneActionOnly: true,
+                        jsonOnly: true,
+                        validTools: ['spawn_unit', 'buy_upgrade', 'build_turret', 'use_special', 'none'],
+                        validTypeIndexes: [0, 1, 2],
+                        validUpgrades: ['dmg', 'hp', 'econ'],
+                        noSpecials: !!agreements.noSpecials,
+                        noTurrets: !!agreements.noTurrets,
+                        meleeOnly: !!agreements.meleeOnly,
+                        pressurePlan: agreements.pressure || 'balanced'
+                    },
                     schema: {
                         say: 'short in-character message',
                         pressure: 'rush|balanced|mercy|null',
@@ -1739,18 +1777,27 @@
                         }
                     }
                 };
+                let payloadJson = JSON.stringify(payload);
 
                 this.pending[requestId] = payload;
                 this.lastRequestAt = globalTime;
                 this.status.busy = true;
                 this.updateStatus(this.status);
+                this.log('request.pre_send', {
+                    requestId,
+                    reason,
+                    gameTime: Math.round(globalTime),
+                    payloadChars: payloadJson.length,
+                    difficulty: currentDifficulty
+                });
                 try {
-                    window.LocalGemmaAndroid.generateDirectorTurn(requestId, JSON.stringify(payload));
+                    window.LocalGemmaAndroid.generateDirectorTurn(requestId, payloadJson);
                     return true;
                 } catch (e) {
                     delete this.pending[requestId];
                     this.status.busy = false;
                     this.updateStatus(this.status);
+                    this.log('request.bridge_error', { requestId, message: String(e && e.message ? e.message : e) });
                     return false;
                 }
             },
@@ -1760,15 +1807,18 @@
                 this.refresh();
                 let parsed = parseGemmaJson(rawText);
                 if (!parsed) {
+                    this.log('response.parse_failed', { requestId, rawText: String(rawText || '') });
                     DirectorPanel.addModel(String(rawText || ''));
                     return;
                 }
-                applyGemmaDirectorTurn(parsed);
+                this.log('response.parsed', { requestId, turn: parsed });
+                applyGemmaDirectorTurn(parsed, requestId);
             },
             error(requestId, message) {
                 delete this.pending[requestId];
                 this.status.busy = false;
                 this.updateStatus(Object.assign({}, this.status, { state: this.status.state === 'ready' ? 'ready' : 'error', message }));
+                this.log('request.error', { requestId, message: String(message || '') });
                 DirectorPanel.addSystem(`Local Gemma could not answer: ${message}`);
             }
         };
@@ -1790,7 +1840,7 @@
             try { return JSON.parse(text.slice(first, last + 1)); } catch (e) { return null; }
         }
 
-        function applyGemmaDirectorTurn(turn) {
+        function applyGemmaDirectorTurn(turn, requestId = '') {
             if (turn.pressure && ['rush', 'balanced', 'mercy'].includes(turn.pressure)) {
                 DirectorMemory.setPressure(turn.pressure);
                 DirectorPanel.renderMemory();
@@ -1798,10 +1848,21 @@
 
             let action = turn.action || {};
             let reason = action.reason || 'Gemma plan';
-            if (action.tool === 'spawn_unit') AIDirector.trySpawnUnit(Math.max(0, Math.min(2, Number(action.typeIndex) || 0)), reason);
-            else if (action.tool === 'buy_upgrade') AIDirector.tryUpgrade(['dmg', 'hp', 'econ'].includes(action.upgrade) ? action.upgrade : 'econ', reason);
-            else if (action.tool === 'build_turret') AIDirector.tryBuildTurret(reason);
-            else if (action.tool === 'use_special') AIDirector.trySpecial(reason);
+            let requestedTool = action.tool || 'none';
+            let applied = false;
+            if (requestedTool === 'spawn_unit') applied = AIDirector.trySpawnUnit(Math.max(0, Math.min(2, Number(action.typeIndex) || 0)), reason);
+            else if (requestedTool === 'buy_upgrade') applied = AIDirector.tryUpgrade(['dmg', 'hp', 'econ'].includes(action.upgrade) ? action.upgrade : 'econ', reason);
+            else if (requestedTool === 'build_turret') applied = AIDirector.tryBuildTurret(reason);
+            else if (requestedTool === 'use_special') applied = AIDirector.trySpecial(reason);
+
+            NativeGemma.log('action.result', {
+                requestId,
+                requestedTool,
+                applied,
+                pressure: turn.pressure || null,
+                action
+            });
+            if (!applied && requestedTool !== 'none') DirectorPanel.addSystem('model move unavailable');
 
             if (turn.say) DirectorPanel.addModel(turn.say);
         }

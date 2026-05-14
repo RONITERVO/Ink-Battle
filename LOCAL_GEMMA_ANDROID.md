@@ -7,6 +7,7 @@ The app now uses a no-backend architecture for the AI opponent:
 - After user consent, Android `DownloadManager` downloads a `.litertlm` Gemma 4 model into the app's external files directory.
 - LiteRT-LM loads the model locally and returns compact JSON director turns.
 - The JavaScript game validates every returned action before applying it.
+- Gemma turns are stateless: each request creates a fresh LiteRT-LM conversation so older prompts and responses cannot accumulate during long matches.
 
 ## Model Choice
 
@@ -30,7 +31,8 @@ Configured downloads:
   - DownloadManager install.
   - LiteRT-LM engine setup.
   - GPU first, CPU fallback.
-  - JSON-only director prompt.
+  - JSON-only director prompt tuned for stateless Gemma 4 turns.
+  - Chunked `AgeOfWarGemma` logcat diagnostics for exact request payloads, prompts, raw responses, parse failures, and action results.
 - `app/src/main/java/com/sketchwar/ageofwar/MainActivity.java`
   - Registers the bridge as `LocalGemmaAndroid`.
 - `app/build.gradle`
@@ -47,6 +49,23 @@ Configured downloads:
 4. App asks for confirmation before the multi-GB download.
 5. Fallback AI continues playing during download and model loading.
 6. Once ready, Gemma periodically produces high-level director turns.
+
+## Gemma Diagnostics
+
+Capture a gameplay log from a connected Android device with:
+
+```powershell
+adb logcat -v time -s AgeOfWarGemma:I
+```
+
+Each local model turn logs:
+
+- `request.payload`: exact JSON sent by the WebView bridge.
+- `request.prompt`: final prompt passed to LiteRT-LM after the app's prompt cap.
+- `response.raw`: unmodified Gemma text.
+- `js.response.parsed`, `js.response.parse_failed`, and `js.action.result`: JavaScript parse and validation outcomes.
+
+Long values are split into numbered chunks between `BEGIN` and `END` lines so they can be reconstructed from logcat.
 
 ## Safety Rules
 
