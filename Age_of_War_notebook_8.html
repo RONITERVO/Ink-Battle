@@ -577,9 +577,41 @@
         }
 
         .player-last-text {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            min-width: 0;
+            white-space: nowrap;
+        }
+
+        .player-last-message {
+            flex: 1;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
+        }
+
+        .player-last-seen {
+            flex: 0 0 auto;
+            font-family: 'Patrick Hand', 'Comic Sans MS', 'Segoe Print', cursive;
+            font-size: 1.25vmin;
+            line-height: 1;
+            border: 1px dashed hsl(var(--pencil-light) / 0.62);
+            border-radius: 999px;
+            padding: 0.03rem 0.32rem;
+            text-transform: lowercase;
+            letter-spacing: 0.01em;
+        }
+
+        .player-last-seen.is-pending {
+            color: hsl(var(--muted-foreground) / 0.9);
+            background: hsl(var(--background) / 0.72);
+        }
+
+        .player-last-seen.is-seen {
+            color: hsl(var(--accent));
+            border-color: hsl(var(--accent) / 0.58);
+            background: hsl(var(--accent) / 0.14);
         }
 
         .director-input-row {
@@ -1902,7 +1934,22 @@
             }
         };
 
-        function captureGemmaContextImage(snapshot = null) {
+        function normalizeGemmaRecentUserMessage(value, maxLen = 120) {
+            return String(value || '').replace(/\s+/g, ' ').trim().slice(0, maxLen);
+        }
+
+        function fitGemmaContextText(g, text, maxWidth) {
+            let clean = normalizeGemmaRecentUserMessage(text, 160);
+            if (!clean || maxWidth <= 24) return '';
+            if (g.measureText(clean).width <= maxWidth) return clean;
+            let trimmed = clean;
+            while (trimmed.length > 4 && g.measureText(`${trimmed}...`).width > maxWidth) {
+                trimmed = trimmed.slice(0, -1).trimEnd();
+            }
+            return trimmed.length > 0 ? `${trimmed}...` : '';
+        }
+
+        function captureGemmaContextImage(snapshot = null, recentUserMessage = '') {
             if (!LOCAL_GEMMA_IMAGE_INPUT_ENABLED) return null;
             if (!canvas || !gameState || !gameState.running) return null;
             try {
@@ -1911,7 +1958,7 @@
                 shot.height = 432;
                 let g = shot.getContext('2d', { alpha: false });
                 if (!g) return null;
-                drawGemmaContextImage(g, shot.width, shot.height, snapshot || AIDirector.snapshot());
+                drawGemmaContextImage(g, shot.width, shot.height, snapshot || AIDirector.snapshot(), recentUserMessage);
                 return shot.toDataURL('image/jpeg', 0.86);
             } catch (e) {
                 NativeGemma.log('context_image.capture_failed', { message: String(e && e.message ? e.message : e) });
@@ -1919,7 +1966,7 @@
             }
         }
 
-        function drawGemmaContextImage(g, width, height, snapshot) {
+        function drawGemmaContextImage(g, width, height, snapshot, recentUserMessage = '') {
             const playerColor = '#1d4ed8';
             const enemyColor = '#b91c1c';
             const ink = '#111827';
@@ -1950,6 +1997,18 @@
             drawGemmaContextBase(g, width - 222, 76, 198, 82, enemyColor, 'GEMMA BASE (YOU)', AGES[gameState.enemy.age].name, pct(snapshot.enemyHpRatio), gameState.enemy);
 
             drawGemmaContextLegend(g, width / 2 - 150, 76, 300, 82, playerColor, enemyColor, ink, muted);
+
+            let recentUserLine = normalizeGemmaRecentUserMessage(recentUserMessage, 120);
+            if (recentUserLine) {
+                drawGemmaContextRoundRect(g, 24, 162, width - 48, 24, 6, '#fff7ed', '#f59e0b', 1.25);
+                g.fillStyle = '#9a3412';
+                g.font = '800 10px system-ui, Arial, sans-serif';
+                g.textAlign = 'left';
+                g.fillText('LATEST PLAYER CHAT (SEEN ONCE):', 34, 174);
+                g.fillStyle = '#111827';
+                g.font = '700 11px system-ui, Arial, sans-serif';
+                g.fillText(fitGemmaContextText(g, recentUserLine, width - 290), 230, 174);
+            }
 
             g.fillStyle = '#dbeafe';
             g.fillRect(mapX(0), laneY - 82, mapX(BASE_WIDTH) - mapX(0), 164);
@@ -2238,6 +2297,7 @@
             available: false,
             status: { state: 'browser', modelName: 'Local fallback', progress: 0, totalRamGb: 0 },
             pending: {},
+            queuedUserComment: null,
             lastRequestAt: -999,
             init() {
                 this.available = !!window.LocalGemmaAndroid;
@@ -2329,7 +2389,16 @@
                     DirectorPanel.addSystem('Android could not start the Gemma download.');
                 }
             },
-            requestTurn(reason, extraMessage = '') {
+            queueRecentUserComment(lineId, message) {
+                let clean = normalizeGemmaRecentUserMessage(message, 120);
+                if (!clean) return;
+                this.queuedUserComment = {
+                    lineId: String(lineId || ''),
+                    text: clean,
+                    queuedAt: Date.now()
+                };
+            },
+            requestTurn(reason, extraMessage = '', options = {}) {
                 if (!this.available || !gameState.running || gameState.paused) return false;
                 if (!['ready', 'installed'].includes(this.status.state)) return false;
                 if (this.status.state === 'installed') {
@@ -2363,12 +2432,29 @@
                 if (affordableTurrets.length || (!agreements.noTurrets && gameState.enemy.unlockedSlots < 4 && enemyGold >= gameState.enemy.unlockedSlots * 500)) affordableTools.push('build_turret');
                 if (!agreements.noSpecials && gameState.enemy.specialTimer <= 0 && !gameState.specialActive) affordableTools.push('use_special');
                 affordableTools.push('none');
-                let contextImageDataUrl = captureGemmaContextImage(snapshot);
+                let cleanExtraMessage = normalizeGemmaRecentUserMessage(extraMessage, 120);
+                let requestedUserLineId = options && options.userLineId ? String(options.userLineId) : '';
+                let relayComment = null;
+                if (reason === 'player_chat' && cleanExtraMessage) {
+                    relayComment = {
+                        lineId: requestedUserLineId || (this.queuedUserComment ? this.queuedUserComment.lineId : ''),
+                        text: cleanExtraMessage,
+                        source: 'player_chat'
+                    };
+                } else if (this.queuedUserComment && this.queuedUserComment.text) {
+                    relayComment = {
+                        lineId: this.queuedUserComment.lineId,
+                        text: this.queuedUserComment.text,
+                        source: 'queued_recent_player_line'
+                    };
+                }
+
+                let contextImageDataUrl = captureGemmaContextImage(snapshot, relayComment ? relayComment.text : '');
                 let requestId = `g${Date.now()}_${Math.floor(Math.random() * 10000)}`;
                 let payload = {
                     version: RELEASE_VERSION,
                     reason,
-                    extraMessage,
+                    extraMessage: cleanExtraMessage,
                     turnInstruction: reason === 'player_chat'
                         ? 'Answer extraMessage directly in say before choosing an action. Keep it in character and do not ignore the player.'
                         : 'Comment on the current battle state without repeating recent lines.',
@@ -2377,6 +2463,8 @@
                         imageType: 'annotated tactical map, not raw sketch art',
                         perspective: 'You are Gemma, the red enemy on the right side of the image.',
                         ownershipHint: 'Blue markers and the left base are the player/user. Red markers and the right base are your Gemma enemy side.',
+                        recentUserMessage: relayComment ? relayComment.text : '',
+                        recentUserMessageIncludedInImage: !!relayComment,
                         useImageFor: contextImageDataUrl
                             ? 'Read the labels first. The image labels explain front lines, hit lines, danger zone, unit sides, unit types, and troop clusters. Trust JSON for exact numbers and legal actions.'
                             : 'No image is attached in this build. Use JSON snapshot, lane metrics, memory, and age/theme fields for context.'
@@ -2464,7 +2552,12 @@
                 };
                 let payloadJson = JSON.stringify(payload);
 
-                this.pending[requestId] = payload;
+                this.pending[requestId] = {
+                    payload,
+                    reason,
+                    userLineId: relayComment ? relayComment.lineId : '',
+                    relayedUserMessage: relayComment ? relayComment.text : ''
+                };
                 this.lastRequestAt = globalTime;
                 this.status.busy = true;
                 this.updateStatus(this.status);
@@ -2483,6 +2576,14 @@
                     } else {
                         window.LocalGemmaAndroid.generateDirectorTurn(requestId, payloadJson);
                     }
+                    if (relayComment && relayComment.lineId) {
+                        DirectorPanel.markPlayerLineSeen(relayComment.lineId, requestId);
+                    }
+                    if (relayComment && this.queuedUserComment) {
+                        let sameLine = relayComment.lineId && relayComment.lineId === this.queuedUserComment.lineId;
+                        let sameText = relayComment.text === this.queuedUserComment.text;
+                        if (sameLine || sameText) this.queuedUserComment = null;
+                    }
                     return true;
                 } catch (e) {
                     delete this.pending[requestId];
@@ -2493,6 +2594,7 @@
                 }
             },
             receive(requestId, rawText) {
+                let pendingMeta = this.pending[requestId] || null;
                 delete this.pending[requestId];
                 this.status.busy = false;
                 this.refresh();
@@ -2506,7 +2608,11 @@
                     delete parsed._recovered;
                     this.log('response.parse_recovered', { requestId, turn: parsed });
                 }
-                this.log('response.parsed', { requestId, turn: parsed });
+                this.log('response.parsed', {
+                    requestId,
+                    turn: parsed,
+                    reason: pendingMeta && pendingMeta.reason ? pendingMeta.reason : ''
+                });
                 applyGemmaDirectorTurn(parsed, requestId);
             },
             error(requestId, message) {
@@ -2545,6 +2651,8 @@
             cleaned = cleaned.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
 
             let seeds = [cleaned];
+            let balanced = extractBalancedJsonObject(cleaned);
+            if (balanced) seeds.push(balanced);
             let first = cleaned.indexOf('{');
             if (first !== -1) {
                 let fromFirst = cleaned.slice(first).trim();
@@ -2576,10 +2684,41 @@
 
             // Fix common local-model artifacts like ," ,"memoryPatch" and dangling commas/quotes.
             repaired = repaired.replace(/,\s*"\s*,\s*"/g, ',"');
+            repaired = repaired.replace(/"\s*(NotRepeat|notRepeat|NoRepeat)"\s*:/g, '"doNotRepeat":');
+            repaired = repaired.replace(/"\s*(memPatch|memory_patch)"\s*:/g, '"memoryPatch":');
             repaired = repaired.replace(/,\s*"(?=\s*[}\]])/g, '');
             repaired = repaired.replace(/,\s*([}\]])/g, '$1');
             repaired = balanceJsonBrackets(repaired);
             return repaired.trim();
+        }
+
+        function extractBalancedJsonObject(text) {
+            let source = String(text || '');
+            let start = source.indexOf('{');
+            if (start === -1) return '';
+
+            let depth = 0;
+            let inString = false;
+            let escaped = false;
+            for (let i = start; i < source.length; i++) {
+                let ch = source[i];
+                if (inString) {
+                    if (escaped) escaped = false;
+                    else if (ch === '\\') escaped = true;
+                    else if (ch === '"') inString = false;
+                    continue;
+                }
+                if (ch === '"') {
+                    inString = true;
+                    continue;
+                }
+                if (ch === '{') depth++;
+                else if (ch === '}') {
+                    depth--;
+                    if (depth === 0) return source.slice(start, i + 1).trim();
+                }
+            }
+            return source.slice(start).trim();
         }
 
         function balanceJsonBrackets(text) {
@@ -2616,11 +2755,86 @@
             try {
                 let parsed = JSON.parse(candidate);
                 if (!parsed || typeof parsed !== 'object') return null;
-                if (parsed.turn && typeof parsed.turn === 'object') return parsed.turn;
-                return parsed;
+                return normalizeGemmaTurnObject(parsed);
             } catch (e) {
                 return null;
             }
+        }
+
+        function cleanGemmaText(value, maxLen = 220) {
+            return String(value || '').replace(/\s+/g, ' ').trim().slice(0, maxLen);
+        }
+
+        function normalizeGemmaList(value, maxItems = 6, maxLen = 120) {
+            return (Array.isArray(value) ? value : [])
+                .map(item => cleanGemmaText(item, maxLen))
+                .filter(Boolean)
+                .slice(0, maxItems);
+        }
+
+        function normalizeGemmaMemoryPatch(patch) {
+            if (!patch || typeof patch !== 'object') return null;
+            let out = {};
+
+            let summary = cleanGemmaText(patch.summary, 700);
+            if (summary) out.summary = summary;
+
+            let profile = cleanGemmaText(patch.playerProfile, 240);
+            if (profile) out.playerProfile = profile;
+
+            let tone = cleanGemmaText(patch.tone, 120);
+            if (tone) out.tone = tone;
+
+            let doNotRepeatSource = patch.doNotRepeat || patch.notRepeat || patch.NotRepeat || patch.noRepeat || patch.avoidSay;
+            let doNotRepeat = normalizeGemmaList(doNotRepeatSource, 8, 80);
+            if (doNotRepeat.length) out.doNotRepeat = doNotRepeat;
+
+            let openLoops = normalizeGemmaList(patch.openLoops, 5, 120);
+            if (openLoops.length) out.openLoops = openLoops;
+
+            let suggestions = normalizeGemmaList(patch.suggestions, 3, 48);
+            if (suggestions.length) out.suggestions = suggestions;
+
+            return Object.keys(out).length ? out : null;
+        }
+
+        function normalizeGemmaTurnObject(parsed) {
+            if (!parsed || typeof parsed !== 'object') return null;
+            let raw = (parsed.turn && typeof parsed.turn === 'object') ? parsed.turn : parsed;
+            if (!raw || typeof raw !== 'object') return null;
+
+            let turn = {};
+            let say = cleanGemmaText(raw.say, 240);
+            if (say) turn.say = say;
+
+            let pressure = cleanGemmaText(raw.pressure, 16).toLowerCase();
+            if (['rush', 'balanced', 'mercy'].includes(pressure)) turn.pressure = pressure;
+
+            let actionRaw = raw.action && typeof raw.action === 'object' ? raw.action : null;
+            if (actionRaw) {
+                let action = {};
+                let tool = cleanGemmaText(actionRaw.tool, 24);
+                if (['spawn_unit', 'buy_upgrade', 'build_turret', 'use_special', 'none'].includes(tool)) {
+                    action.tool = tool;
+                }
+                let typeIndex = Number(actionRaw.typeIndex);
+                if (Number.isFinite(typeIndex)) action.typeIndex = Math.max(0, Math.min(2, Math.round(typeIndex)));
+                let upgrade = cleanGemmaText(actionRaw.upgrade, 12).toLowerCase();
+                if (['dmg', 'hp', 'econ'].includes(upgrade)) action.upgrade = upgrade;
+                let reason = cleanGemmaText(actionRaw.reason, 96);
+                if (reason) action.reason = reason;
+                if (Object.keys(action).length > 0) {
+                    if (!action.tool) action.tool = 'none';
+                    turn.action = action;
+                }
+            }
+
+            let patch = normalizeGemmaMemoryPatch(raw.memoryPatch || raw.memory || raw.turnMemory);
+            if (patch) turn.memoryPatch = patch;
+
+            if (!turn.say && !turn.action) return null;
+            if (!turn.say) turn.say = 'I am adjusting the plan.';
+            return turn;
         }
 
         function recoverGemmaTurnFromText(text) {
@@ -2648,8 +2862,10 @@
 
             if (!turn.say && !turn.action) return null;
             if (!turn.say) turn.say = 'I am adjusting the plan.';
-            turn._recovered = true;
-            return turn;
+            let normalized = normalizeGemmaTurnObject(turn);
+            if (!normalized) return null;
+            normalized._recovered = true;
+            return normalized;
         }
 
         function extractJsonStringField(text, key) {
@@ -2718,6 +2934,8 @@
             aiWriteTimeout: null,
             playerWriteTimeout: null,
             systemWriteTimeout: null,
+            playerLineSeq: 0,
+            currentPlayerLine: null,
             init() {
                 ['commander-hud', 'ai-hud', 'director-log', 'director-tool-log', 'director-input', 'director-memory', 'player-last-line', 'btn-pause'].forEach(id => {
                     this.els[id] = document.getElementById(id);
@@ -2734,6 +2952,8 @@
                     this.els['player-last-line'].innerHTML = '';
                     this.els['player-last-line'].classList.add('hidden');
                 }
+                this.playerLineSeq = 0;
+                this.currentPlayerLine = null;
                 this.renderMemory();
                 NativeGemma.refresh();
 
@@ -2744,10 +2964,77 @@
             add(role, text, tool = false) {
                 if (!text) return;
                 if (role === 'player') {
-                    this.writeLatest(this.els['player-last-line'], this.normalizeLine(text, 120), 'player-last-text', 'player');
-                    return;
+                    return this.addPlayerLine(text);
                 }
                 this.addSystem(text);
+            },
+            addPlayerLine(text) {
+                let message = this.normalizeLine(text, 120);
+                if (!message) return '';
+                this.playerLineSeq++;
+                let line = {
+                    id: `pl${Date.now()}_${this.playerLineSeq}`,
+                    text: message,
+                    seen: false,
+                    requestId: ''
+                };
+                this.currentPlayerLine = line;
+                this.renderPlayerLine(line);
+                return line.id;
+            },
+            renderPlayerLine(line) {
+                let host = this.els['player-last-line'];
+                if (!host || !line) return;
+                host.classList.remove('hidden');
+                clearTimeout(this.playerWriteTimeout);
+
+                let render = () => {
+                    host.innerHTML = '';
+                    let row = document.createElement('div');
+                    row.className = 'player-last-text is-writing';
+                    row.setAttribute('data-player-line-id', line.id);
+
+                    let seen = document.createElement('span');
+                    seen.className = `player-last-seen ${line.seen ? 'is-seen' : 'is-pending'}`;
+                    seen.innerText = line.seen ? 'seen' : 'pending';
+
+                    let text = document.createElement('span');
+                    text.className = 'player-last-message';
+                    text.innerText = line.text;
+
+                    row.appendChild(seen);
+                    row.appendChild(text);
+                    host.appendChild(row);
+                };
+
+                let current = host.firstElementChild;
+                if (current) {
+                    current.classList.remove('is-writing');
+                    current.classList.add('is-erasing');
+                    this.playerWriteTimeout = setTimeout(render, 190);
+                } else {
+                    render();
+                }
+            },
+            markPlayerLineSeen(lineId, requestId = '') {
+                if (!lineId || !this.currentPlayerLine || this.currentPlayerLine.id !== lineId) return;
+                if (requestId && this.currentPlayerLine.requestId === requestId && this.currentPlayerLine.seen) return;
+
+                this.currentPlayerLine.seen = true;
+                if (requestId) this.currentPlayerLine.requestId = requestId;
+
+                let host = this.els['player-last-line'];
+                let row = host ? host.firstElementChild : null;
+                if (row && row.getAttribute('data-player-line-id') === lineId) {
+                    let badge = row.querySelector('.player-last-seen');
+                    if (badge) {
+                        badge.classList.remove('is-pending');
+                        badge.classList.add('is-seen');
+                        badge.innerText = 'seen';
+                    }
+                    return;
+                }
+                this.renderPlayerLine(this.currentPlayerLine);
             },
             addModel(text) {
                 let message = this.normalizeLine(this.sanitizeModelLine(text), 220);
@@ -2836,7 +3123,8 @@
             handlePlayerText(raw) {
                 let message = String(raw || '').trim();
                 if (!message) return;
-                this.add('player', message);
+                let playerLineId = this.add('player', message);
+                NativeGemma.queueRecentUserComment(playerLineId, message);
                 GemmaMemory.recordPlayer(message);
 
                 let text = message.toLowerCase();
@@ -2905,7 +3193,7 @@
                 this.renderMemory();
                 GemmaMemory.recordSystem(`Local director replied: ${replies.join(' ')}`);
                 setTimeout(() => this.add('ai', replies.join(' ')), 400);
-                NativeGemma.requestTurn('player_chat', message);
+                NativeGemma.requestTurn('player_chat', message, { userLineId: playerLineId });
             }
         };
 
