@@ -1,4 +1,4 @@
-# Age of War: Sketchbook Edition 1.0
+# Age of War: Sketchbook Edition 1.0.8
 
 This folder now contains the 1.0 web game, offline PWA metadata, and an Android
 WebView shell for Google Play packaging.
@@ -58,6 +58,12 @@ and assets into `app/src/main/assets` before Android packaging.
 - The Android project uses Android Gradle Plugin 9.2.0, which requires JDK 17 and Gradle 9.4.1.
 - No OpenAI API key, unofficial OpenAI subscriber-login flow, or backend is included in the client.
 - Local Gemma 4 model downloads require user consent and internet only for the model download. Inference runs on-device afterward.
+- Local Gemma 4 director turns use bounded mobile memory: fresh conversations receive a summary, recent player/model turns, recent events, action outcomes, and repetition guards.
+- The normal Gemma turn can return an optional `memoryPatch` for future-turn memory and input suggestions; there is no separate post-turn model memory job.
+- Chunked `AgeOfWarGemma` logcat diagnostics are included for payload/response diagnosis.
+- Deterministic memory hygiene removes repeated model lines from summaries without replacing visible Gemma speech.
+- Gemma director turns include a labeled tactical context image instead of a raw gameplay screenshot. The native bridge configures LiteRT-LM `visionBackend` and sends the image via the documented `ImageFile` path instead of raw `ImageBytes`.
+- The LiteRT-LM engine is now process-scoped, so Activity/WebView recreation reuses the loaded Gemma model instead of unloading and reloading it.
 - `Gemma 4 E2B` is the default 6GB+ phone model; `Gemma 4 E4B` is reserved for devices reporting at least 12GB RAM.
 
 ## Final Manual Checks
@@ -65,6 +71,7 @@ and assets into `app/src/main/assets` before Android packaging.
 - Play each difficulty for at least one full age transition.
 - Confirm director pacts persist after reload.
 - On a real phone, tap `Get Gemma`, download the model, go offline, and confirm Gemma director turns still appear.
+- Capture Gemma diagnostics during a real match with `adb logcat -v time -s AgeOfWarGemma:I`.
 - Confirm Android back button pauses the game.
 - Build a signed release app bundle in Android Studio.
 - Complete Play Console store listing, content rating, data safety, and closed testing before production rollout.

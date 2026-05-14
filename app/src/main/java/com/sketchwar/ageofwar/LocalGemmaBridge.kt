@@ -5,6 +5,8 @@ import android.app.ActivityManager
 import android.app.DownloadManager
 import android.content.Context
 import android.net.Uri
+import android.util.Base64
+import android.util.Log
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import com.google.ai.edge.litertlm.Backend
@@ -14,9 +16,7 @@ import com.google.ai.edge.litertlm.ConversationConfig
 import com.google.ai.edge.litertlm.Engine
 import com.google.ai.edge.litertlm.EngineConfig
 import com.google.ai.edge.litertlm.ExperimentalApi
-import com.google.ai.edge.litertlm.ExperimentalFlags
 import com.google.ai.edge.litertlm.LogSeverity
-import com.google.ai.edge.litertlm.SamplerConfig
 import java.io.File
 import java.util.Locale
 import java.util.concurrent.Executors
@@ -26,6 +26,23 @@ class LocalGemmaBridge(
     private val activity: Activity,
     private val webView: WebView
 ) : AutoCloseable {
+    private companion object {
+        const val LOG_TAG = "AgeOfWarGemma"
+        const val LOG_CHUNK_SIZE = 3_000
+        const val MAX_PROMPT_PAYLOAD_CHARS = 12_000
+        const val MAX_CONTEXT_IMAGE_BYTES = 700_000
+        const val ENABLE_IMAGE_INPUT = true
+
+        private val ENGINE_LOCK = Any()
+        @Volatile private var sharedEngine: Engine? = null
+        @Volatile private var sharedModelPath: String? = null
+        @Volatile private var sharedModelKey: String? = null
+        @Volatile private var sharedLoading: Boolean = false
+        @Volatile private var sharedLoadingPath: String? = null
+        @Volatile private var sharedBusy: Boolean = false
+        @Volatile private var sharedLastError: String? = null
+    }
+
     private data class ModelSpec(
         val key: String,
         val name: String,
@@ -55,17 +72,12 @@ class LocalGemmaBridge(
     )
 
     private val executor = Executors.newSingleThreadExecutor()
-    private val prefs = activity.getSharedPreferences("local_gemma_v1", Context.MODE_PRIVATE)
+    private val cacheDirPath = activity.applicationContext.cacheDir.absolutePath
+    private val prefs = activity.applicationContext.getSharedPreferences("local_gemma_v1", Context.MODE_PRIVATE)
     private val downloadManager = activity.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
     private val modelDir: File by lazy {
         File(activity.getExternalFilesDir(null) ?: activity.filesDir, "models").apply { mkdirs() }
     }
-
-    @Volatile private var engine: Engine? = null
-    @Volatile private var conversation: Conversation? = null
-    @Volatile private var busy: Boolean = false
-    @Volatile private var loading: Boolean = false
-    @Volatile private var lastError: String? = null
 
     @JavascriptInterface
     fun getStatus(): String = buildStatus().toString()
@@ -74,6 +86,7 @@ class LocalGemmaBridge(
     fun requestInstall(modelKey: String?): String {
         val spec = chooseModel(modelKey)
         val destination = modelFile(spec)
+        logLine("install.request model=${spec.key} path=${destination.absolutePath}")
         if (destination.exists() && destination.length() > 100_000_000L) {
             prefs.edit()
                 .putString("modelKey", spec.key)
@@ -83,7 +96,10 @@ class LocalGemmaBridge(
             return buildStatus("installed", spec).toString()
         }
 
-        if (destination.exists()) destination.delete()
+        if (destination.exists()) {
+            logLine("install.delete_partial model=${spec.key} bytes=${destination.length()}")
+            destination.delete()
+        }
         val request = DownloadManager.Request(Uri.parse(spec.url))
             .setTitle("Downloading ${spec.name}")
             .setDescription("Age of War local director model")
@@ -107,31 +123,56 @@ class LocalGemmaBridge(
         val current = currentModel()
         val path = prefs.getString("modelPath", null)
         if (current == null || path == null || !File(path).exists()) {
+            logLine("load.missing model=${current?.key ?: "auto"} path=${path ?: ""}")
             return buildStatus("missing", chooseModel("auto")).toString()
         }
-        if (engine != null) return buildStatus("ready", current).toString()
-        if (loading) return buildStatus("loading", current).toString()
 
-        loading = true
-        lastError = null
+        synchronized(ENGINE_LOCK) {
+            if (sharedEngine != null && sharedModelPath == path) {
+                logLine("load.reuse model=${current.key} path=$path")
+                return buildStatus("ready", current).toString()
+            }
+            if (sharedLoading) return buildStatus("loading", current).toString()
+            if (sharedEngine != null && sharedModelPath != path && sharedBusy) {
+                sharedLastError = "Gemma is busy"
+                return buildStatus(null, current).toString()
+            }
+            sharedLoading = true
+            sharedLoadingPath = path
+            sharedLastError = null
+        }
+
+        logLine("load.start model=${current.key} path=$path")
         postStatus("loading")
         executor.execute {
+            var loaded: Engine? = null
+            var previous: Engine? = null
             try {
                 Engine.setNativeMinLogSeverity(LogSeverity.ERROR)
-                val loaded = createEngine(path)
-                val config = ConversationConfig(
-                    systemInstruction = Contents.of(systemPrompt()),
-                    samplerConfig = SamplerConfig(topK = 20, topP = 0.9, temperature = 0.65)
-                )
-                val convo = loaded.createConversation(config)
-                engine = loaded
-                conversation = convo
-                loading = false
+                loaded = createEngine(path)
+                synchronized(ENGINE_LOCK) {
+                    previous = if (sharedEngine != null && sharedModelPath != path) sharedEngine else null
+                    sharedEngine = loaded
+                    sharedModelPath = path
+                    sharedModelKey = current.key
+                    sharedLoading = false
+                    sharedLoadingPath = null
+                    sharedLastError = null
+                }
+                closeEngineQuietly(previous)
+                loaded = null
+                logLine("load.ready model=${current.key} reused=false")
                 postStatus("ready")
             } catch (t: Throwable) {
-                closeEngine()
-                loading = false
-                lastError = t.message ?: t.javaClass.simpleName
+                closeEngineQuietly(loaded)
+                synchronized(ENGINE_LOCK) {
+                    if (sharedLoadingPath == path) {
+                        sharedLoading = false
+                        sharedLoadingPath = null
+                    }
+                    sharedLastError = t.message ?: t.javaClass.simpleName
+                }
+                logError("load.error model=${current.key}", t)
                 postStatus("error")
             }
         }
@@ -140,45 +181,104 @@ class LocalGemmaBridge(
 
     @JavascriptInterface
     fun generateDirectorTurn(requestId: String, payloadJson: String) {
-        if (busy) {
+        generateDirectorTurnWithImage(requestId, payloadJson, null)
+    }
+
+    @JavascriptInterface
+    fun generateDirectorTurnWithImage(requestId: String, payloadJson: String, contextImageDataUrl: String?) {
+        val path = prefs.getString("modelPath", null)
+        var busyNow = false
+        var loaded: Engine? = null
+        synchronized(ENGINE_LOCK) {
+            if (sharedBusy) {
+                busyNow = true
+            } else {
+                val candidate = sharedEngine
+                if (candidate != null && sharedModelPath == path) {
+                    sharedBusy = true
+                    loaded = candidate
+                }
+            }
+        }
+
+        if (busyNow) {
+            logLine("request.rejected busy requestId=$requestId")
             postError(requestId, "Gemma is still thinking")
             return
         }
-        val convo = conversation
-        if (convo == null) {
+        val activeEngine = loaded
+        if (activeEngine == null) {
+            logLine("request.rejected loading requestId=$requestId payloadChars=${payloadJson.length}")
             loadModel()
             postError(requestId, "Gemma is loading")
             return
         }
 
-        busy = true
+        val startedAt = System.currentTimeMillis()
+        logLine("request.start requestId=$requestId payloadChars=${payloadJson.length}")
+        logLong("request.payload requestId=$requestId", payloadJson)
+        val contextImageBytes = decodeContextImageDataUrl(requestId, contextImageDataUrl)
         postStatus("ready")
         executor.execute {
+            var turnConversation: Conversation? = null
+            var contextImageFile: File? = null
+            var finalStatus = "ready"
             try {
                 val prompt = buildPrompt(payloadJson)
-                val responseMsg = convo.sendMessage(prompt)
+                logLong("request.prompt requestId=$requestId", prompt)
+                turnConversation = activeEngine.createConversation(conversationConfig())
+                val contents = if (contextImageBytes != null) {
+                    contextImageFile = writeContextImageFile(requestId, contextImageBytes)
+                    Contents.of(
+                        com.google.ai.edge.litertlm.Content.ImageFile(contextImageFile!!.absolutePath),
+                        com.google.ai.edge.litertlm.Content.Text(prompt)
+                    )
+                } else {
+                    Contents.of(prompt)
+                }
+                val responseMsg = turnConversation.sendMessage(contents)
                 val response = responseMsg.contents.contents.filterIsInstance<com.google.ai.edge.litertlm.Content.Text>().joinToString("") { it.text }
-                busy = false
+                val elapsedMs = System.currentTimeMillis() - startedAt
+                logLine("response.ready requestId=$requestId responseChars=${response.length} elapsedMs=$elapsedMs")
+                logLong("response.raw requestId=$requestId", response)
                 postResponse(requestId, response)
-                postStatus("ready")
             } catch (t: Throwable) {
-                busy = false
-                lastError = t.message ?: t.javaClass.simpleName
-                postError(requestId, lastError ?: "Generation failed")
-                postStatus("error")
+                synchronized(ENGINE_LOCK) {
+                    sharedLastError = t.message ?: t.javaClass.simpleName
+                }
+                logError("request.error requestId=$requestId", t)
+                postError(requestId, t.message ?: t.javaClass.simpleName)
+                finalStatus = "error"
+            } finally {
+                try { turnConversation?.close() } catch (closeFailure: Throwable) {
+                    logError("conversation.close_error requestId=$requestId", closeFailure)
+                }
+                try { contextImageFile?.delete() } catch (_: Throwable) {}
+                synchronized(ENGINE_LOCK) {
+                    sharedBusy = false
+                }
+                postStatus(finalStatus)
             }
         }
     }
 
+    @JavascriptInterface
+    fun logDirectorEvent(event: String, detailsJson: String?) {
+        val safeEvent = event.replace(Regex("[^A-Za-z0-9_.-]"), "_").take(80)
+        val details = detailsJson ?: ""
+        logLine("js.$safeEvent chars=${details.length}")
+        if (details.isNotBlank()) logLong("js.$safeEvent", details)
+    }
+
     @OptIn(ExperimentalApi::class)
     private fun createEngine(path: String): Engine {
-        ExperimentalFlags.enableSpeculativeDecoding = true
         return try {
             Engine(
                 EngineConfig(
                     modelPath = path,
                     backend = Backend.GPU(),
-                    cacheDir = activity.cacheDir.absolutePath
+                    visionBackend = Backend.CPU(),
+                    cacheDir = cacheDirPath
                 )
             ).also { it.initialize() }
         } catch (gpuFailure: Throwable) {
@@ -186,7 +286,8 @@ class LocalGemmaBridge(
                 EngineConfig(
                     modelPath = path,
                     backend = Backend.CPU(),
-                    cacheDir = activity.cacheDir.absolutePath
+                    visionBackend = Backend.CPU(),
+                    cacheDir = cacheDirPath
                 )
             ).also { it.initialize() }
         }
@@ -216,11 +317,23 @@ class LocalGemmaBridge(
 
     private fun buildStatus(forcedState: String? = null, forcedSpec: ModelSpec? = null): JSONObject {
         val spec = forcedSpec ?: currentModel() ?: chooseModel("auto")
+        val modelPath = prefs.getString("modelPath", null)
         val downloadId = prefs.getLong("downloadId", -1L)
         var state = forcedState ?: "available"
         var progress = 0
+        var ready = false
+        var loading = false
+        var busy = false
+        var message = ""
 
-        if (engine != null && forcedState == null) state = "ready"
+        synchronized(ENGINE_LOCK) {
+            ready = sharedEngine != null && sharedModelPath == modelPath
+            loading = sharedLoading && sharedLoadingPath == modelPath
+            busy = sharedBusy
+            message = sharedLastError ?: ""
+        }
+
+        if (ready && forcedState == null) state = "ready"
         else if (loading && forcedState == null) state = "loading"
         else if (downloadId > 0 && forcedState == null) {
             val query = DownloadManager.Query().setFilterById(downloadId)
@@ -254,7 +367,7 @@ class LocalGemmaBridge(
             .put("totalRamGb", totalRamGb())
             .put("progress", progress)
             .put("busy", busy)
-            .put("message", lastError ?: "")
+            .put("message", message)
     }
 
     private fun postStatus(forcedState: String? = null) {
@@ -272,38 +385,114 @@ class LocalGemmaBridge(
 
     private fun runJs(script: String) {
         activity.runOnUiThread {
-            if (!activity.isFinishing) webView.evaluateJavascript(script, null)
+            if (!activity.isFinishing && !activity.isDestroyed) webView.evaluateJavascript(script, null)
         }
     }
 
     private fun systemPrompt(): String = """
         You are the local Gemma 4 director for Age of War: Sketchbook Edition.
         You play the enemy side, but you are also an entertaining opponent who can honor pacts.
-        Use the game snapshot and memory only. Never ask for network access.
-        Output only compact JSON:
-        {"say":"short taunt or agreement","pressure":"rush|balanced|mercy|null","action":{"tool":"spawn_unit|buy_upgrade|build_turret|use_special|none","typeIndex":0,"upgrade":"econ","reason":"short reason"}}
+        Each request is stateless: use only the current payload, snapshot, persistent pacts, and gemmaMemory.
+        gemmaMemory contains bounded match memory, recent player/model turns, recent events, action outcomes, and repetition guards.
+        When an image is attached, it is a labeled tactical context map, not raw sketch art. You are Gemma, the red enemy on the right side. The blue left side is the player/user.
+        Read the image labels before interpreting lines: dashed vertical lines are front lines, gray vertical lines are base hit lines, shaded red is Gemma base danger, blue markers are player units, and red markers are your units. Use JSON for exact numbers and legal actions.
+        Never ask for network access.
+        Output one small JSON object only. No markdown, no code fences, no explanations outside JSON.
+        {"say":"short taunt or agreement","pressure":"rush|balanced|mercy|null","action":{"tool":"spawn_unit|buy_upgrade|build_turret|use_special|none","typeIndex":0,"upgrade":"econ","reason":"short reason"},"memoryPatch":{"summary":"optional <=700 chars","playerProfile":"optional <=240 chars","doNotRepeat":["short phrase"],"openLoops":["short fact"],"tone":"short style guidance","suggestions":["<=48 char player command"]}}
         Valid unit/turret typeIndex values are 0, 1, and 2. Valid upgrades are dmg, hp, econ.
+        Choose only from constraints.chooseOnlyAffordableTools and enemyChoices.affordable* lists. If nothing useful is affordable, use action.tool "none".
+        If reason is player_chat, answer extraMessage directly in say before choosing an action.
+        Do not repeat recent say text or opening phrases listed in gemmaMemory.repetitionGuard.
+        The snapshot age is current truth; if the same age has lasted a while, talk about the current battle state instead of greeting that age again.
+        Use memoryPatch to keep future turns focused when the player says something important, the match phase changes, or your own repeated phrasing needs a guard. Omit memoryPatch if nothing changed.
+        If a useful action is unclear, return action.tool "none".
         Prefer fair, varied, readable decisions over perfect play.
     """.trimIndent()
 
+    private fun conversationConfig(): ConversationConfig = ConversationConfig(
+        systemInstruction = Contents.of(systemPrompt())
+    )
+
     private fun buildPrompt(payloadJson: String): String {
-        val trimmed = payloadJson.take(12_000)
+        val trimmed = payloadJson.take(MAX_PROMPT_PAYLOAD_CHARS)
+        if (payloadJson.length > MAX_PROMPT_PAYLOAD_CHARS) {
+            logLine("request.prompt_truncated payloadChars=${payloadJson.length} promptPayloadChars=$MAX_PROMPT_PAYLOAD_CHARS")
+        }
         return String.format(
             Locale.US,
-            "Choose one high-level enemy director turn for this live match. Return JSON only.\n%s",
+            "Choose one high-level enemy director turn for this live match. Return JSON only. Use gemmaMemory for continuity, answer player_chat messages directly, choose only affordable actions, avoid repeating recent lines/actions, and include memoryPatch only when future turns need updated memory.\n%s",
             trimmed
         )
     }
 
-    private fun closeEngine() {
-        try { conversation?.close() } catch (_: Throwable) {}
-        conversation = null
+    private fun decodeContextImageDataUrl(requestId: String, dataUrl: String?): ByteArray? {
+        if (dataUrl.isNullOrBlank()) {
+            logLine("request.context_image requestId=$requestId absent")
+            return null
+        }
+        if (!ENABLE_IMAGE_INPUT) {
+            logLine("request.context_image requestId=$requestId disabled chars=${dataUrl.length}")
+            return null
+        }
+        val comma = dataUrl.indexOf(',')
+        if (comma <= 0 || !dataUrl.startsWith("data:image/")) {
+            logLine("request.context_image requestId=$requestId invalid_data_url chars=${dataUrl.length}")
+            return null
+        }
+        return try {
+            val bytes = Base64.decode(dataUrl.substring(comma + 1), Base64.DEFAULT)
+            if (bytes.size > MAX_CONTEXT_IMAGE_BYTES) {
+                logLine("request.context_image requestId=$requestId too_large bytes=${bytes.size} max=$MAX_CONTEXT_IMAGE_BYTES")
+                null
+            } else {
+                logLine("request.context_image requestId=$requestId bytes=${bytes.size} mime=${dataUrl.substring(5, comma).take(40)}")
+                bytes
+            }
+        } catch (t: Throwable) {
+            logError("request.context_image_decode_error requestId=$requestId", t)
+            null
+        }
+    }
+
+    private fun writeContextImageFile(requestId: String, bytes: ByteArray): File {
+        val file = File.createTempFile("gemma_image_", ".jpg", File(cacheDirPath))
+        file.writeBytes(bytes)
+        logLine("request.context_image_file requestId=$requestId path=${file.absolutePath} bytes=${bytes.size}")
+        return file
+    }
+
+    private fun closeEngineQuietly(engine: Engine?) {
         try { engine?.close() } catch (_: Throwable) {}
-        engine = null
+    }
+
+    private fun logLine(message: String) {
+        Log.i(LOG_TAG, message)
+    }
+
+    private fun logLong(label: String, value: String) {
+        if (value.isEmpty()) {
+            Log.i(LOG_TAG, "$label BEGIN chars=0")
+            Log.i(LOG_TAG, "$label END")
+            return
+        }
+        val chunks = (value.length + LOG_CHUNK_SIZE - 1) / LOG_CHUNK_SIZE
+        Log.i(LOG_TAG, "$label BEGIN chars=${value.length} chunks=$chunks")
+        var start = 0
+        var index = 1
+        while (start < value.length) {
+            val end = minOf(value.length, start + LOG_CHUNK_SIZE)
+            Log.i(LOG_TAG, "$label chunk=$index/$chunks ${value.substring(start, end)}")
+            start = end
+            index++
+        }
+        Log.i(LOG_TAG, "$label END")
+    }
+
+    private fun logError(message: String, throwable: Throwable) {
+        Log.e(LOG_TAG, "$message: ${throwable.message ?: throwable.javaClass.simpleName}", throwable)
     }
 
     override fun close() {
-        executor.execute { closeEngine() }
         executor.shutdown()
     }
 }

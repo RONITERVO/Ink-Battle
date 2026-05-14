@@ -577,9 +577,41 @@
         }
 
         .player-last-text {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            min-width: 0;
+            white-space: nowrap;
+        }
+
+        .player-last-message {
+            flex: 1;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
+        }
+
+        .player-last-seen {
+            flex: 0 0 auto;
+            font-family: 'Patrick Hand', 'Comic Sans MS', 'Segoe Print', cursive;
+            font-size: 1.25vmin;
+            line-height: 1;
+            border: 1px dashed hsl(var(--pencil-light) / 0.62);
+            border-radius: 999px;
+            padding: 0.03rem 0.32rem;
+            text-transform: lowercase;
+            letter-spacing: 0.01em;
+        }
+
+        .player-last-seen.is-pending {
+            color: hsl(var(--muted-foreground) / 0.9);
+            background: hsl(var(--background) / 0.72);
+        }
+
+        .player-last-seen.is-seen {
+            color: hsl(var(--accent));
+            border-color: hsl(var(--accent) / 0.58);
+            background: hsl(var(--accent) / 0.14);
         }
 
         .director-input-row {
@@ -1193,7 +1225,7 @@
 
     <script>
         /**
-         * AGE OF WAR - SKETCHBOOK EDITION v1.0.1 (Final Release w/ UX Polish)
+         * AGE OF WAR - SKETCHBOOK EDITION v1.0.8 (Gemma 4 vision backend)
          * Fully Audited & Expanded: 
          * - Fixed Timestep Game Loop (1/60s step deterministic collision & physics)
          * - Codex Director AI styled as an immersive legal-pad slider
@@ -1206,7 +1238,8 @@
         // Context without {alpha: false} or desynchronized to ensure perfect blending of CSS and Canvas
         const canvas = document.getElementById('game-canvas');
         const ctx = canvas.getContext('2d');
-        const RELEASE_VERSION = '1.0.1';
+        const RELEASE_VERSION = '1.0.8';
+        const LOCAL_GEMMA_IMAGE_INPUT_ENABLED = true;
         const CANVAS_WIDTH = 1280;
         const CANVAS_HEIGHT = 720;
         const GROUND_Y = 600;
@@ -1597,11 +1630,674 @@
             }
         };
 
+        // --- GEMMA TURN MEMORY AND VISION CONTEXT ---
+        const GemmaMemory = {
+            key: 'aow_sketch_gemma_memory_v1',
+            version: 2,
+            maxRecentTurns: 6,
+            maxActions: 10,
+            maxEvents: 12,
+            data: null,
+            init() {
+                let stored = null;
+                try {
+                    let raw = localStorage.getItem(this.key);
+                    if (raw) stored = JSON.parse(raw);
+                } catch (e) { }
+                this.data = this.normalizeData(stored);
+                this.save();
+                this.updateInputSuggestion();
+            },
+            freshData(diffKey) {
+                return {
+                    version: this.version,
+                    matchId: '',
+                    difficulty: diffKey || 'normal',
+                    summary: 'No active match yet.',
+                    playerProfile: '',
+                    tone: 'varied, concise, competitive but fair',
+                    doNotRepeat: [],
+                    openLoops: [],
+                    recentTurns: [],
+                    actionLedger: [],
+                    suggestions: [],
+                    eventLog: [],
+                    turnCount: 0
+                };
+            },
+            normalizeData(raw) {
+                let diffKey = raw && typeof raw === 'object' ? (raw.difficulty || currentDifficulty || 'normal') : 'normal';
+                let data = this.freshData(diffKey);
+                if (!raw || typeof raw !== 'object') return data;
+                data.matchId = this.cleanLine(raw.matchId, 80);
+                data.summary = this.cleanLine(raw.summary || data.summary, 700);
+                data.playerProfile = this.cleanLine(raw.playerProfile, 240);
+                data.tone = this.cleanLine(raw.tone || data.tone, 120) || data.tone;
+                data.doNotRepeat = this.normalizeList(raw.doNotRepeat, 8, 80);
+                data.openLoops = this.normalizeList(raw.openLoops, 5, 120);
+                data.recentTurns = this.normalizeTurnList(raw.recentTurns);
+                data.actionLedger = this.normalizeActionList(raw.actionLedger);
+                data.suggestions = this.normalizeSuggestions(raw.suggestions);
+                data.eventLog = this.normalizeList(raw.eventLog, this.maxEvents, 180);
+                data.turnCount = Number.isFinite(Number(raw.turnCount)) ? Math.max(0, Number(raw.turnCount)) : 0;
+                return data;
+            },
+            normalizeList(value, maxItems, maxLen) {
+                return (Array.isArray(value) ? value : [])
+                    .map(item => this.cleanLine(item, maxLen))
+                    .filter(Boolean)
+                    .slice(-maxItems);
+            },
+            normalizeTurnList(value) {
+                return (Array.isArray(value) ? value : []).map(turn => ({
+                    role: turn && turn.role === 'model' ? 'model' : 'player',
+                    time: Math.round(Number(turn && turn.time) || 0),
+                    ages: this.cleanLine(turn && turn.ages, 80),
+                    text: this.cleanLine(turn && turn.text, 180),
+                    action: this.cleanLine(turn && turn.action, 80),
+                    reason: this.cleanLine(turn && turn.reason, 90)
+                })).filter(turn => turn.text).slice(-this.maxRecentTurns);
+            },
+            normalizeActionList(value) {
+                return (Array.isArray(value) ? value : []).map(action => ({
+                    time: Math.round(Number(action && action.time) || 0),
+                    tool: this.cleanLine(action && action.tool, 40) || 'none',
+                    applied: !!(action && action.applied),
+                    reason: this.cleanLine(action && action.reason, 90),
+                    say: this.cleanLine(action && action.say, 120)
+                })).slice(-this.maxActions);
+            },
+            start(diffKey) {
+                let previous = this.data || this.freshData(diffKey);
+                this.data = this.freshData(diffKey);
+                this.data.matchId = `m${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+                this.data.playerProfile = this.cleanLine(previous.playerProfile || '', 240);
+                this.data.tone = this.cleanLine(previous.tone || this.data.tone, 120) || this.data.tone;
+                this.data.summary = `${(DIFFICULTY_SETTINGS[diffKey] || {}).name || diffKey} match opened in Stone Age. Track current ages from snapshot; avoid repeating first-contact age greetings.`;
+                this.data.suggestions = ['rush me', 'go easy', 'no specials'];
+                this.save();
+                this.updateInputSuggestion();
+            },
+            clearAll() {
+                this.data = this.freshData(currentDifficulty);
+                this.data.matchId = `m${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+                this.data.summary = 'Player cleared Gemma turn memory for this match.';
+                this.data.suggestions = ['rush me', 'truce for 20 seconds', 'forget'];
+                this.save();
+                this.updateInputSuggestion();
+            },
+            save() {
+                try { localStorage.setItem(this.key, JSON.stringify(this.data)); } catch (e) { }
+            },
+            cleanLine(value, maxLen = 180) {
+                return String(value || '').replace(/\s+/g, ' ').trim().slice(0, maxLen);
+            },
+            ageLine() {
+                if (!gameState || !gameState.player || !gameState.enemy) return '';
+                return `${AGES[gameState.player.age].name} vs ${AGES[gameState.enemy.age].name}`;
+            },
+            pushTurn(entry) {
+                if (!this.data) this.init();
+                this.data.recentTurns.push(entry);
+                while (this.data.recentTurns.length > this.maxRecentTurns) {
+                    let old = this.data.recentTurns.shift();
+                    if (!old || !old.text) continue;
+                    if (old.role === 'model') this.rememberDoNotRepeat(old.text);
+                }
+            },
+            recordEvent(line) {
+                if (!this.data) this.init();
+                let clean = this.cleanLine(line, 180);
+                if (!clean) return;
+                this.data.eventLog.push(clean);
+                this.data.eventLog = this.data.eventLog.slice(-this.maxEvents);
+            },
+            recordPlayer(text) {
+                let clean = this.cleanLine(text, 160);
+                if (!clean) return;
+                this.pushTurn({ role: 'player', time: Math.round(globalTime), ages: this.ageLine(), text: clean });
+                this.data.openLoops = this.data.openLoops.filter(loop => !String(loop).startsWith('Answer player:'));
+                this.data.openLoops.push(`Answer player: ${clean}`);
+                this.data.openLoops = this.data.openLoops.slice(-5);
+                this.recordEvent(`Player said: ${clean}`);
+                this.updateLocalDigest('player_message');
+                this.save();
+            },
+            recordSystem(text) {
+                let clean = this.cleanLine(text, 180);
+                if (!clean) return;
+                this.recordEvent(clean);
+                this.save();
+            },
+            recordModel(turn, outcome) {
+                let say = this.cleanLine(turn && turn.say ? turn.say : '', 180);
+                let action = outcome || {};
+                let tool = action.requestedTool || ((turn && turn.action && turn.action.tool) || 'none');
+                let reason = this.cleanLine((turn && turn.action && turn.action.reason) || '', 90);
+                this.data.turnCount = (this.data.turnCount || 0) + 1;
+                if (say) this.rememberDoNotRepeat(say);
+                this.data.openLoops = this.data.openLoops.filter(loop => !String(loop).startsWith('Answer player:'));
+                this.pushTurn({
+                    role: 'model',
+                    time: Math.round(globalTime),
+                    ages: this.ageLine(),
+                    text: say || '(no line)',
+                    action: `${tool}:${action.applied ? 'applied' : 'blocked'}`,
+                    reason
+                });
+                this.data.actionLedger.push({
+                    time: Math.round(globalTime),
+                    tool,
+                    applied: !!action.applied,
+                    reason,
+                    say
+                });
+                this.data.actionLedger = this.data.actionLedger.slice(-this.maxActions);
+                this.recordEvent(`Gemma ${action.applied ? 'applied' : 'could not apply'} ${tool}${reason ? ` because ${reason}` : ''}`);
+                let patch = turn && (turn.memoryPatch || turn.memory || turn.turnMemory);
+                if (!this.applyMemoryPatch(patch)) this.updateLocalDigest('model_turn');
+                this.save();
+                this.updateInputSuggestion();
+            },
+            rememberDoNotRepeat(text) {
+                let clean = this.cleanLine(text, 120);
+                if (!clean) return;
+                this.data.doNotRepeat = this.data.doNotRepeat.filter(line => line.toLowerCase() !== clean.toLowerCase());
+                this.data.doNotRepeat.push(clean);
+                if (/let'?s see/i.test(clean)) this.data.doNotRepeat.push("Let's see");
+                if (/stalemate/i.test(clean)) this.data.doNotRepeat.push('break this stalemate');
+                this.data.doNotRepeat = this.data.doNotRepeat.slice(-8);
+            },
+            buildContext(snapshot, reason) {
+                if (!this.data) this.init();
+                return {
+                    protocol: 'GemmaTurnMemory/v1',
+                    summary: this.data.summary,
+                    playerProfile: this.data.playerProfile,
+                    tone: this.data.tone,
+                    recentTurns: this.data.recentTurns.slice(-this.maxRecentTurns),
+                    recentActions: this.data.actionLedger.slice(-8),
+                    openLoops: this.data.openLoops.slice(-5),
+                    suggestions: this.data.suggestions.slice(0, 3),
+                    recentEvents: this.data.eventLog.slice(-this.maxEvents),
+                    repetitionGuard: this.repetitionGuard(snapshot),
+                    memoryPatchInstruction: 'Return memoryPatch with concise summary/playerProfile/tone/doNotRepeat/openLoops/suggestions when future turns need updated memory.',
+                    reason
+                };
+            },
+            repetitionGuard(snapshot) {
+                let avoidSay = this.data.doNotRepeat.slice(-6);
+                if (globalTime > 45) {
+                    avoidSay.push("Let's see what you've got");
+                    avoidSay.push('little Stone Age');
+                    avoidSay.push('Time to make a move');
+                }
+                let phaseHint = 'Use the current snapshot; do not greet the same age again.';
+                if (snapshot) {
+                    if (snapshot.enemyHpRatio < 0.25) phaseHint = 'Enemy base is in danger. Acknowledge the threat and choose defense or desperation, not an opening taunt.';
+                    else if (snapshot.threatCount >= 3) phaseHint = 'Player pressure is near the enemy base. Talk about the lane threat.';
+                    else if (globalTime > 120 && gameState.player.age === gameState.enemy.age) phaseHint = `Long ${AGES[gameState.player.age].name} fight. Vary wording and discuss economy, pressure, or survival.`;
+                }
+                if ((DirectorMemory.data.agreements || {}).pressure === 'mercy') {
+                    phaseHint += ' Mercy pact still allows defending the base when threatened.';
+                }
+                return {
+                    avoidSay: avoidSay.slice(-9),
+                    avoidActionReasons: this.data.actionLedger.map(a => a.reason).filter(Boolean).slice(-6),
+                    phaseHint,
+                    currentAges: this.ageLine()
+                };
+            },
+            applyMemoryPatch(patch) {
+                if (!patch || typeof patch !== 'object') return false;
+                let changed = false;
+                let setLine = (key, maxLen) => {
+                    if (typeof patch[key] !== 'string') return;
+                    let clean = this.cleanLine(patch[key], maxLen);
+                    if (clean && clean !== this.data[key]) {
+                        this.data[key] = clean;
+                        changed = true;
+                    }
+                };
+                setLine('summary', 700);
+                setLine('playerProfile', 240);
+                setLine('tone', 120);
+                if (Array.isArray(patch.doNotRepeat)) {
+                    this.data.doNotRepeat = this.normalizeList(patch.doNotRepeat, 8, 80);
+                    changed = true;
+                }
+                if (Array.isArray(patch.openLoops)) {
+                    this.data.openLoops = this.normalizeList(patch.openLoops, 5, 120);
+                    changed = true;
+                }
+                if (Array.isArray(patch.suggestions)) {
+                    this.data.suggestions = this.normalizeSuggestions(patch.suggestions);
+                    changed = true;
+                }
+                this.data.summary = this.removeAvoidPhrases(this.data.summary);
+                return changed;
+            },
+            updateLocalDigest(reason) {
+                let pressure = (DirectorMemory.data.agreements || {}).pressure || 'balanced';
+                let playerTurns = this.data.recentTurns.filter(t => t.role === 'player').slice(-2).map(t => t.text);
+                let actionLine = this.data.actionLedger.slice(-5).map(a => `${a.tool}:${a.applied ? 'applied' : 'blocked'}`).join(', ');
+                let highSignal = this.data.eventLog
+                    .filter(line => !/^Fallback action spawn_unit/i.test(line))
+                    .slice(-5)
+                    .join(' ');
+                let parts = [
+                    `${this.data.difficulty || currentDifficulty} match at ${this.ageLine() || 'unknown ages'}.`,
+                    `Pressure plan: ${pressure}.`,
+                    playerTurns.length ? `Recent player: ${playerTurns.join(' / ')}.` : '',
+                    actionLine ? `Recent Gemma tools: ${actionLine}.` : '',
+                    highSignal
+                ].filter(Boolean);
+                this.data.summary = this.cleanLine(this.removeAvoidPhrases(parts.join(' ')), 700);
+                if (typeof NativeGemma !== 'undefined') {
+                    NativeGemma.log('memory.local_digest', {
+                        reason,
+                        matchId: this.data.matchId,
+                        summaryChars: this.data.summary.length
+                    });
+                }
+            },
+            removeAvoidPhrases(text) {
+                let result = this.cleanLine(text, 700);
+                this.data.doNotRepeat.forEach(phrase => {
+                    let clean = this.cleanLine(phrase, 80);
+                    if (clean.length < 8) return;
+                    result = result.split(clean).join('[previous line]');
+                });
+                return this.cleanLine(result, 700);
+            },
+            normalizeSuggestions(value) {
+                let raw = Array.isArray(value) ? value : [];
+                let out = raw.map(item => {
+                    if (typeof item === 'string') return this.cleanLine(item, 48);
+                    if (item && typeof item === 'object') return this.cleanLine(item.text || item.target || item.say || '', 48);
+                    return '';
+                }).filter(Boolean);
+                if (out.length === 0) out = this.fallbackSuggestions();
+                return [...new Set(out.map(v => v.trim()))].slice(0, 3);
+            },
+            fallbackSuggestions() {
+                let pressure = (DirectorMemory.data.agreements || {}).pressure || 'balanced';
+                if (pressure === 'mercy') return ['rush me now', 'balanced plan', 'no turrets'];
+                if (pressure === 'rush') return ['go easy', 'truce for 20 seconds', 'melee only'];
+                return ['rush me', 'go easy', 'remember I like late game'];
+            },
+            updateInputSuggestion() {
+                let input = document.getElementById('director-input');
+                if (!input) return;
+                let suggestion = this.data && this.data.suggestions && this.data.suggestions[0];
+                input.placeholder = suggestion || '...';
+            }
+        };
+
+        function normalizeGemmaRecentUserMessage(value, maxLen = 120) {
+            return String(value || '').replace(/\s+/g, ' ').trim().slice(0, maxLen);
+        }
+
+        function fitGemmaContextText(g, text, maxWidth) {
+            let clean = normalizeGemmaRecentUserMessage(text, 160);
+            if (!clean || maxWidth <= 24) return '';
+            if (g.measureText(clean).width <= maxWidth) return clean;
+            let trimmed = clean;
+            while (trimmed.length > 4 && g.measureText(`${trimmed}...`).width > maxWidth) {
+                trimmed = trimmed.slice(0, -1).trimEnd();
+            }
+            return trimmed.length > 0 ? `${trimmed}...` : '';
+        }
+
+        function captureGemmaContextImage(snapshot = null, recentUserMessage = '') {
+            if (!LOCAL_GEMMA_IMAGE_INPUT_ENABLED) return null;
+            if (!canvas || !gameState || !gameState.running) return null;
+            try {
+                let shot = document.createElement('canvas');
+                shot.width = 768;
+                shot.height = 432;
+                let g = shot.getContext('2d', { alpha: false });
+                if (!g) return null;
+                drawGemmaContextImage(g, shot.width, shot.height, snapshot || AIDirector.snapshot(), recentUserMessage);
+                return shot.toDataURL('image/jpeg', 0.86);
+            } catch (e) {
+                NativeGemma.log('context_image.capture_failed', { message: String(e && e.message ? e.message : e) });
+                return null;
+            }
+        }
+
+        function drawGemmaContextImage(g, width, height, snapshot, recentUserMessage = '') {
+            const playerColor = '#1d4ed8';
+            const enemyColor = '#b91c1c';
+            const ink = '#111827';
+            const muted = '#6b7280';
+            const paper = '#fffaf0';
+            const laneLeft = 48;
+            const laneRight = width - 48;
+            const laneY = 246;
+            const laneW = laneRight - laneLeft;
+            const mapX = worldX => laneLeft + Math.max(0, Math.min(1, worldX / CANVAS_WIDTH)) * laneW;
+            const pct = value => `${Math.round(Math.max(0, Math.min(1, value || 0)) * 100)}%`;
+
+            g.fillStyle = paper;
+            g.fillRect(0, 0, width, height);
+            g.fillStyle = '#f3ead7';
+            for (let y = 24; y < height; y += 36) {
+                g.fillRect(0, y, width, 1);
+            }
+
+            g.fillStyle = ink;
+            g.font = '700 22px system-ui, Arial, sans-serif';
+            g.textAlign = 'center';
+            g.fillText('TACTICAL CONTEXT MAP FOR GEMMA', width / 2, 32);
+            g.font = '600 14px system-ui, Arial, sans-serif';
+            g.fillText('BLUE PLAYER starts left and attacks right. RED GEMMA ENEMY starts right and attacks left.', width / 2, 54);
+
+            drawGemmaContextBase(g, 24, 76, 198, 82, playerColor, 'PLAYER BASE', AGES[gameState.player.age].name, pct(snapshot.playerHpRatio), gameState.player);
+            drawGemmaContextBase(g, width - 222, 76, 198, 82, enemyColor, 'GEMMA BASE (YOU)', AGES[gameState.enemy.age].name, pct(snapshot.enemyHpRatio), gameState.enemy);
+
+            drawGemmaContextLegend(g, width / 2 - 150, 76, 300, 82, playerColor, enemyColor, ink, muted);
+
+            let recentUserLine = normalizeGemmaRecentUserMessage(recentUserMessage, 120);
+            if (recentUserLine) {
+                drawGemmaContextRoundRect(g, 24, 162, width - 48, 24, 6, '#fff7ed', '#f59e0b', 1.25);
+                g.fillStyle = '#9a3412';
+                g.font = '800 10px system-ui, Arial, sans-serif';
+                g.textAlign = 'left';
+                g.fillText('LATEST PLAYER CHAT (SEEN ONCE):', 34, 174);
+                g.fillStyle = '#111827';
+                g.font = '700 11px system-ui, Arial, sans-serif';
+                g.fillText(fitGemmaContextText(g, recentUserLine, width - 290), 230, 174);
+            }
+
+            g.fillStyle = '#dbeafe';
+            g.fillRect(mapX(0), laneY - 82, mapX(BASE_WIDTH) - mapX(0), 164);
+            g.fillStyle = '#fee2e2';
+            g.fillRect(mapX(CANVAS_WIDTH - BASE_WIDTH), laneY - 82, mapX(CANVAS_WIDTH) - mapX(CANVAS_WIDTH - BASE_WIDTH), 164);
+            g.fillStyle = 'rgba(185, 28, 28, 0.10)';
+            g.fillRect(mapX(CANVAS_WIDTH - BASE_WIDTH - 620), laneY - 88, mapX(CANVAS_WIDTH - BASE_WIDTH) - mapX(CANVAS_WIDTH - BASE_WIDTH - 620), 176);
+
+            g.strokeStyle = ink;
+            g.lineWidth = 4;
+            g.beginPath();
+            g.moveTo(laneLeft, laneY);
+            g.lineTo(laneRight, laneY);
+            g.stroke();
+
+            drawGemmaContextArrow(g, laneLeft + 120, laneY - 64, laneRight - 120, laneY - 64, playerColor, 'PLAYER PUSHES ->');
+            drawGemmaContextArrow(g, laneRight - 120, laneY + 64, laneLeft + 120, laneY + 64, enemyColor, '<- GEMMA PUSHES');
+
+            drawGemmaContextVertical(g, mapX(BASE_WIDTH), laneY - 94, laneY + 94, '#374151', 'PLAYER HIT LINE', 'left');
+            drawGemmaContextVertical(g, mapX(CANVAS_WIDTH - BASE_WIDTH), laneY - 94, laneY + 94, '#374151', 'GEMMA HIT LINE', 'right');
+            drawGemmaContextVertical(g, mapX(snapshot.playerFrontX || BASE_WIDTH), laneY - 116, laneY + 116, playerColor, 'PLAYER FRONT', 'left', true);
+            drawGemmaContextVertical(g, mapX(snapshot.enemyFrontX || (CANVAS_WIDTH - BASE_WIDTH)), laneY - 116, laneY + 116, enemyColor, 'GEMMA FRONT', 'right', true);
+
+            drawGemmaContextLabel(g, 'GEMMA DANGER ZONE: player units here threaten your base', mapX(CANVAS_WIDTH - BASE_WIDTH - 310), laneY - 104, {
+                fill: '#fff7ed',
+                color: enemyColor,
+                align: 'center',
+                font: '700 12px system-ui, Arial, sans-serif'
+            });
+
+            let markers = collectGemmaContextUnitMarkers();
+            if (markers.length === 0) {
+                drawGemmaContextLabel(g, 'NO ACTIVE UNITS IN LANE', width / 2, laneY - 10, {
+                    fill: '#ffffff',
+                    color: muted,
+                    align: 'center',
+                    font: '700 14px system-ui, Arial, sans-serif'
+                });
+            } else {
+                markers.forEach(marker => {
+                    let x = mapX(marker.x);
+                    let y = laneY + (marker.team === 1 ? -32 : 32) + (marker.type === 'heavy' ? 14 : marker.type === 'ranged' ? 0 : -14);
+                    drawGemmaContextUnitMarker(g, x, y, marker, marker.team === 1 ? playerColor : enemyColor);
+                });
+            }
+
+            drawGemmaContextTurrets(g, mapX(BASE_WIDTH * 0.5), laneY + 118, gameState.player, playerColor, 'Player turrets');
+            drawGemmaContextTurrets(g, mapX(CANVAS_WIDTH - BASE_WIDTH * 0.5), laneY + 118, gameState.enemy, enemyColor, 'Gemma turrets');
+
+            let closest = snapshot.closestThreatDist >= 9999 ? 'none' : `${Math.floor(snapshot.closestThreatDist)} px from Gemma hit line`;
+            let status = [
+                `Time ${Math.round(globalTime)}s`,
+                `Player units ${snapshot.playerUnits}`,
+                `Gemma units ${snapshot.enemyUnits}`,
+                `Threats near Gemma base ${snapshot.threatCount}`,
+                `Closest player threat: ${closest}`,
+                `Pressure pact: ${snapshot.pressure || 'balanced'}`
+            ];
+            g.fillStyle = '#111827';
+            g.font = '600 13px system-ui, Arial, sans-serif';
+            g.textAlign = 'left';
+            status.forEach((line, idx) => g.fillText(line, 32 + (idx % 3) * 238, 384 + Math.floor(idx / 3) * 22));
+
+            g.fillStyle = muted;
+            g.font = '600 11px system-ui, Arial, sans-serif';
+            g.textAlign = 'center';
+            g.fillText('Image is a labeled tactical diagram, not the sketch art. Labels define what each line and marker means.', width / 2, height - 14);
+        }
+
+        function drawGemmaContextBase(g, x, y, w, h, color, title, age, hpText, state) {
+            drawGemmaContextRoundRect(g, x, y, w, h, 8, '#ffffff', color, 2);
+            g.fillStyle = color;
+            g.font = '800 14px system-ui, Arial, sans-serif';
+            g.textAlign = 'left';
+            g.fillText(title, x + 12, y + 22);
+            g.fillStyle = '#111827';
+            g.font = '600 12px system-ui, Arial, sans-serif';
+            g.fillText(age, x + 12, y + 42);
+            g.fillText(`HP ${hpText}  Gold ${Math.floor(state.gold)}`, x + 12, y + 62);
+            g.fillStyle = '#e5e7eb';
+            g.fillRect(x + 108, y + 28, 72, 10);
+            g.fillStyle = color;
+            g.fillRect(x + 108, y + 28, Math.max(0, Math.min(72, 72 * state.hp / state.maxHp)), 10);
+        }
+
+        function drawGemmaContextLegend(g, x, y, w, h, playerColor, enemyColor, ink, muted) {
+            drawGemmaContextRoundRect(g, x, y, w, h, 8, '#ffffff', '#d1d5db', 1);
+            g.fillStyle = ink;
+            g.font = '800 13px system-ui, Arial, sans-serif';
+            g.textAlign = 'center';
+            g.fillText('LEGEND', x + w / 2, y + 20);
+            drawGemmaContextShape(g, x + 30, y + 42, 'melee', playerColor);
+            drawGemmaContextShape(g, x + 92, y + 42, 'ranged', enemyColor);
+            drawGemmaContextShape(g, x + 158, y + 42, 'heavy', ink);
+            g.fillStyle = muted;
+            g.font = '700 11px system-ui, Arial, sans-serif';
+            g.textAlign = 'left';
+            g.fillText('circle melee', x + 42, y + 46);
+            g.fillText('triangle ranged', x + 104, y + 46);
+            g.fillText('diamond heavy', x + 170, y + 46);
+            g.fillText('dashed vertical = front line', x + 30, y + 68);
+            g.fillText('gray vertical = base hit line', x + 170, y + 68);
+        }
+
+        function collectGemmaContextUnitMarkers() {
+            let units = [];
+            if (!gameState.units || !gameState.units.pool) return units;
+            for (let i = 0; i < gameState.units.pool.length; i++) {
+                let u = gameState.units.pool[i];
+                if (!u.active || u.hp <= 0 || u.drawProgress < 0.5) continue;
+                units.push({
+                    team: u.team,
+                    type: u.type || 'melee',
+                    typeIndex: Number.isFinite(Number(u.uType)) ? Number(u.uType) : 0,
+                    name: u.name || u.type || 'unit',
+                    x: Math.max(0, Math.min(CANVAS_WIDTH, u.x)),
+                    hpRatio: u.maxHp ? Math.max(0, Math.min(1, u.hp / u.maxHp)) : 1,
+                    count: 1
+                });
+            }
+            if (units.length <= 28) return units.sort((a, b) => a.x - b.x);
+
+            let groups = new Map();
+            units.forEach(unit => {
+                let bin = Math.round(unit.x / 95);
+                let key = `${unit.team}|${unit.type}|${unit.typeIndex}|${bin}`;
+                let group = groups.get(key);
+                if (!group) {
+                    group = Object.assign({}, unit, { count: 0, hpTotal: 0, xTotal: 0 });
+                    groups.set(key, group);
+                }
+                group.count++;
+                group.hpTotal += unit.hpRatio;
+                group.xTotal += unit.x;
+            });
+            let grouped = Array.from(groups.values()).map(group => {
+                group.x = group.xTotal / group.count;
+                group.hpRatio = group.hpTotal / group.count;
+                delete group.hpTotal;
+                delete group.xTotal;
+                return group;
+            }).sort((a, b) => a.x - b.x);
+
+            if (grouped.length <= 36) return grouped;
+            let sampled = [];
+            let step = grouped.length / 36;
+            for (let i = 0; i < 36; i++) {
+                sampled.push(grouped[Math.min(grouped.length - 1, Math.floor(i * step))]);
+            }
+            return sampled;
+        }
+
+        function drawGemmaContextUnitMarker(g, x, y, marker, color) {
+            drawGemmaContextShape(g, x, y, marker.type, color);
+            g.strokeStyle = '#111827';
+            g.lineWidth = 2;
+            g.beginPath();
+            g.arc(x, y, 15, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * marker.hpRatio);
+            g.stroke();
+            let side = marker.team === 1 ? 'P' : 'G';
+            let label = `${side}${marker.typeIndex} ${marker.type}${marker.count > 1 ? ` x${marker.count}` : ''}`;
+            drawGemmaContextLabel(g, label, x, y + (marker.team === 1 ? -24 : 30), {
+                fill: '#ffffff',
+                color,
+                align: 'center',
+                font: '800 10px system-ui, Arial, sans-serif'
+            });
+        }
+
+        function drawGemmaContextShape(g, x, y, type, color) {
+            g.fillStyle = color;
+            g.strokeStyle = '#111827';
+            g.lineWidth = 2;
+            g.beginPath();
+            if (type === 'ranged') {
+                g.moveTo(x, y - 12);
+                g.lineTo(x + 12, y + 10);
+                g.lineTo(x - 12, y + 10);
+                g.closePath();
+            } else if (type === 'heavy') {
+                g.moveTo(x, y - 14);
+                g.lineTo(x + 14, y);
+                g.lineTo(x, y + 14);
+                g.lineTo(x - 14, y);
+                g.closePath();
+            } else {
+                g.arc(x, y, 12, 0, Math.PI * 2);
+            }
+            g.fill();
+            g.stroke();
+        }
+
+        function drawGemmaContextTurrets(g, x, y, state, color, label) {
+            let count = state.turrets.filter(t => t !== null).length;
+            drawGemmaContextLabel(g, `${label}: ${count}/${state.unlockedSlots}`, x, y, {
+                fill: '#ffffff',
+                color,
+                align: 'center',
+                font: '700 12px system-ui, Arial, sans-serif'
+            });
+        }
+
+        function drawGemmaContextArrow(g, x1, y1, x2, y2, color, label) {
+            g.strokeStyle = color;
+            g.fillStyle = color;
+            g.lineWidth = 3;
+            g.beginPath();
+            g.moveTo(x1, y1);
+            g.lineTo(x2, y2);
+            g.stroke();
+            let angle = Math.atan2(y2 - y1, x2 - x1);
+            g.beginPath();
+            g.moveTo(x2, y2);
+            g.lineTo(x2 - Math.cos(angle - 0.45) * 14, y2 - Math.sin(angle - 0.45) * 14);
+            g.lineTo(x2 - Math.cos(angle + 0.45) * 14, y2 - Math.sin(angle + 0.45) * 14);
+            g.closePath();
+            g.fill();
+            drawGemmaContextLabel(g, label, (x1 + x2) / 2, y1 - 10, {
+                fill: '#ffffff',
+                color,
+                align: 'center',
+                font: '800 11px system-ui, Arial, sans-serif'
+            });
+        }
+
+        function drawGemmaContextVertical(g, x, y1, y2, color, label, side, dashed = false) {
+            g.save();
+            g.strokeStyle = color;
+            g.lineWidth = dashed ? 3 : 2;
+            if (dashed) g.setLineDash([8, 5]);
+            g.beginPath();
+            g.moveTo(x, y1);
+            g.lineTo(x, y2);
+            g.stroke();
+            g.restore();
+            drawGemmaContextLabel(g, label, x + (side === 'left' ? -4 : 4), y1 - 8, {
+                fill: '#ffffff',
+                color,
+                align: side === 'left' ? 'right' : 'left',
+                font: '800 10px system-ui, Arial, sans-serif'
+            });
+        }
+
+        function drawGemmaContextLabel(g, text, x, y, opts = {}) {
+            let font = opts.font || '700 11px system-ui, Arial, sans-serif';
+            let align = opts.align || 'center';
+            g.save();
+            g.font = font;
+            g.textAlign = align;
+            g.textBaseline = 'middle';
+            let metrics = g.measureText(text);
+            let w = metrics.width + 10;
+            let h = 18;
+            let bx = align === 'center' ? x - w / 2 : (align === 'right' ? x - w : x);
+            drawGemmaContextRoundRect(g, bx, y - h / 2, w, h, 4, opts.fill || '#ffffff', opts.stroke || 'rgba(17, 24, 39, 0.12)', 1);
+            g.fillStyle = opts.color || '#111827';
+            g.fillText(text, x, y);
+            g.restore();
+        }
+
+        function drawGemmaContextRoundRect(g, x, y, w, h, r, fill, stroke, lineWidth = 1) {
+            g.beginPath();
+            g.moveTo(x + r, y);
+            g.lineTo(x + w - r, y);
+            g.quadraticCurveTo(x + w, y, x + w, y + r);
+            g.lineTo(x + w, y + h - r);
+            g.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+            g.lineTo(x + r, y + h);
+            g.quadraticCurveTo(x, y + h, x, y + h - r);
+            g.lineTo(x, y + r);
+            g.quadraticCurveTo(x, y, x + r, y);
+            g.closePath();
+            if (fill) {
+                g.fillStyle = fill;
+                g.fill();
+            }
+            if (stroke) {
+                g.strokeStyle = stroke;
+                g.lineWidth = lineWidth;
+                g.stroke();
+            }
+        }
+
         // --- LOCAL GEMMA BRIDGE ---
         const NativeGemma = {
             available: false,
             status: { state: 'browser', modelName: 'Local fallback', progress: 0, totalRamGb: 0 },
             pending: {},
+            queuedUserComment: null,
             lastRequestAt: -999,
             init() {
                 this.available = !!window.LocalGemmaAndroid;
@@ -1618,6 +2314,12 @@
                 } catch (e) {
                     this.updateStatus({ state: 'error', modelName: 'Android Gemma', message: 'Bridge unavailable' });
                 }
+            },
+            log(event, details = {}) {
+                if (!this.available || !window.LocalGemmaAndroid || typeof window.LocalGemmaAndroid.logDirectorEvent !== 'function') return;
+                try {
+                    window.LocalGemmaAndroid.logDirectorEvent(String(event || 'event'), JSON.stringify(details || {}));
+                } catch (e) { }
             },
             updateStatus(next) {
                 this.status = Object.assign({}, this.status, next || {});
@@ -1687,7 +2389,16 @@
                     DirectorPanel.addSystem('Android could not start the Gemma download.');
                 }
             },
-            requestTurn(reason, extraMessage = '') {
+            queueRecentUserComment(lineId, message) {
+                let clean = normalizeGemmaRecentUserMessage(message, 120);
+                if (!clean) return;
+                this.queuedUserComment = {
+                    lineId: String(lineId || ''),
+                    text: clean,
+                    queuedAt: Date.now()
+                };
+            },
+            requestTurn(reason, extraMessage = '', options = {}) {
                 if (!this.available || !gameState.running || gameState.paused) return false;
                 if (!['ready', 'installed'].includes(this.status.state)) return false;
                 if (this.status.state === 'installed') {
@@ -1695,16 +2406,72 @@
                     this.updateStatus(Object.assign({}, this.status, { state: 'loading' }));
                     return false;
                 }
-                if (this.status.busy || globalTime - this.lastRequestAt < 18) return false;
+                let minGap = reason === 'player_chat' ? 4 : 18;
+                if (this.status.busy || globalTime - this.lastRequestAt < minGap) return false;
 
                 let snapshot = AIDirector.snapshot();
+                let enemyAgeData = AGES[gameState.enemy.age];
+                let agreements = DirectorMemory.data.agreements || {};
+                let nextUpgradeCosts = {};
+                ['dmg', 'hp', 'econ'].forEach(type => {
+                    let level = Math.max(0, Math.min(9, gameState.enemy.upgrades[type] || 0));
+                    nextUpgradeCosts[type] = gameState.enemy.upgrades[type] >= 10 ? null : UPGRADE_COSTS[level];
+                });
+                let enemyGold = Math.floor(gameState.enemy.gold);
+                let affordableUnits = enemyAgeData.units
+                    .map((unit, idx) => ({ typeIndex: idx, name: unit.name, type: unit.type, cost: unit.cost }))
+                    .filter(unit => enemyGold >= unit.cost && !(agreements.meleeOnly && unit.type === 'ranged'));
+                let affordableUpgrades = ['dmg', 'hp', 'econ'].filter(type => gameState.enemy.upgrades[type] < 10 && enemyGold >= nextUpgradeCosts[type]);
+                let openTurretSlots = gameState.enemy.turrets.filter((slot, idx) => slot === null && idx < gameState.enemy.unlockedSlots).length;
+                let affordableTurrets = (!agreements.noTurrets && openTurretSlots > 0)
+                    ? enemyAgeData.turrets.map((turret, idx) => ({ typeIndex: idx, cost: turret.cost })).filter(turret => enemyGold >= turret.cost)
+                    : [];
+                let affordableTools = [];
+                if (affordableUnits.length) affordableTools.push('spawn_unit');
+                if (affordableUpgrades.length) affordableTools.push('buy_upgrade');
+                if (affordableTurrets.length || (!agreements.noTurrets && gameState.enemy.unlockedSlots < 4 && enemyGold >= gameState.enemy.unlockedSlots * 500)) affordableTools.push('build_turret');
+                if (!agreements.noSpecials && gameState.enemy.specialTimer <= 0 && !gameState.specialActive) affordableTools.push('use_special');
+                affordableTools.push('none');
+                let cleanExtraMessage = normalizeGemmaRecentUserMessage(extraMessage, 120);
+                let requestedUserLineId = options && options.userLineId ? String(options.userLineId) : '';
+                let relayComment = null;
+                if (reason === 'player_chat' && cleanExtraMessage) {
+                    relayComment = {
+                        lineId: requestedUserLineId || (this.queuedUserComment ? this.queuedUserComment.lineId : ''),
+                        text: cleanExtraMessage,
+                        source: 'player_chat'
+                    };
+                } else if (this.queuedUserComment && this.queuedUserComment.text) {
+                    relayComment = {
+                        lineId: this.queuedUserComment.lineId,
+                        text: this.queuedUserComment.text,
+                        source: 'queued_recent_player_line'
+                    };
+                }
+
+                let contextImageDataUrl = captureGemmaContextImage(snapshot, relayComment ? relayComment.text : '');
                 let requestId = `g${Date.now()}_${Math.floor(Math.random() * 10000)}`;
                 let payload = {
                     version: RELEASE_VERSION,
                     reason,
-                    extraMessage,
+                    extraMessage: cleanExtraMessage,
+                    turnInstruction: reason === 'player_chat'
+                        ? 'Answer extraMessage directly in say before choosing an action. Keep it in character and do not ignore the player.'
+                        : 'Comment on the current battle state without repeating recent lines.',
+                    visualContext: {
+                        contextImageAttached: !!contextImageDataUrl,
+                        imageType: 'annotated tactical map, not raw sketch art',
+                        perspective: 'You are Gemma, the red enemy on the right side of the image.',
+                        ownershipHint: 'Blue markers and the left base are the player/user. Red markers and the right base are your Gemma enemy side.',
+                        recentUserMessage: relayComment ? relayComment.text : '',
+                        recentUserMessageIncludedInImage: !!relayComment,
+                        useImageFor: contextImageDataUrl
+                            ? 'Read the labels first. The image labels explain front lines, hit lines, danger zone, unit sides, unit types, and troop clusters. Trust JSON for exact numbers and legal actions.'
+                            : 'No image is attached in this build. Use JSON snapshot, lane metrics, memory, and age/theme fields for context.'
+                    },
                     difficulty: currentDifficulty,
                     memory: DirectorMemory.data,
+                    gemmaMemory: GemmaMemory.buildContext(snapshot, reason),
                     snapshot: {
                         time: Math.round(globalTime),
                         player: {
@@ -1725,8 +2492,44 @@
                             threatCount: snapshot.threatCount,
                             heavyThreat: snapshot.heavyThreat,
                             closestThreatDist: Math.floor(snapshot.closestThreatDist),
-                            pressure: snapshot.pressure
+                            pressure: snapshot.pressure,
+                            playerFrontX: snapshot.playerFrontX,
+                            enemyFrontX: snapshot.enemyFrontX,
+                            frontGap: snapshot.frontGap,
+                            lanePressure: Math.round(snapshot.lanePressure)
                         }
+                    },
+                    enemyChoices: {
+                        unitOptions: enemyAgeData.units.map((unit, idx) => ({
+                            typeIndex: idx,
+                            name: unit.name,
+                            type: unit.type,
+                            cost: unit.cost
+                        })),
+                        turretCosts: enemyAgeData.turrets.map(turret => turret.cost),
+                        upgradeLevels: Object.assign({}, gameState.enemy.upgrades),
+                        nextUpgradeCosts,
+                        affordableUnits,
+                        affordableUpgrades,
+                        affordableTurrets,
+                        affordableTools,
+                        openTurretSlots,
+                        canBuyTurretSlot: gameState.enemy.unlockedSlots < 4,
+                        specialReady: gameState.enemy.specialTimer <= 0 && !gameState.specialActive
+                    },
+                    constraints: {
+                        oneActionOnly: true,
+                        jsonOnly: true,
+                        validTools: ['spawn_unit', 'buy_upgrade', 'build_turret', 'use_special', 'none'],
+                        chooseOnlyAffordableTools: affordableTools,
+                        validTypeIndexes: [0, 1, 2],
+                        validUpgrades: ['dmg', 'hp', 'econ'],
+                        noSpecials: !!agreements.noSpecials,
+                        noTurrets: !!agreements.noTurrets,
+                        meleeOnly: !!agreements.meleeOnly,
+                        pressurePlan: agreements.pressure || 'balanced',
+                        mercyAllowsBaseDefense: snapshot.enemyHpRatio < 0.5 || snapshot.threatCount > 0,
+                        avoidRepeatedOpeners: true
                     },
                     schema: {
                         say: 'short in-character message',
@@ -1736,39 +2539,87 @@
                             typeIndex: '0,1,2 for unit or turret',
                             upgrade: 'dmg|hp|econ',
                             reason: 'short reason'
+                        },
+                        memoryPatch: {
+                            summary: 'optional <=700 chars bounded memory for next turn',
+                            playerProfile: 'optional <=240 chars stable player preference',
+                            doNotRepeat: 'optional array of short recent phrases to avoid',
+                            openLoops: 'optional array of unresolved player requests or threats',
+                            tone: 'optional short style guidance',
+                            suggestions: 'optional array of 1-3 short player command suggestions'
                         }
                     }
                 };
+                let payloadJson = JSON.stringify(payload);
 
-                this.pending[requestId] = payload;
+                this.pending[requestId] = {
+                    payload,
+                    reason,
+                    userLineId: relayComment ? relayComment.lineId : '',
+                    relayedUserMessage: relayComment ? relayComment.text : ''
+                };
                 this.lastRequestAt = globalTime;
                 this.status.busy = true;
                 this.updateStatus(this.status);
+                this.log('request.pre_send', {
+                    requestId,
+                    reason,
+                    gameTime: Math.round(globalTime),
+                    payloadChars: payloadJson.length,
+                    difficulty: currentDifficulty,
+                    memorySummaryChars: GemmaMemory.data ? GemmaMemory.data.summary.length : 0,
+                    contextImageChars: contextImageDataUrl ? contextImageDataUrl.length : 0
+                });
                 try {
-                    window.LocalGemmaAndroid.generateDirectorTurn(requestId, JSON.stringify(payload));
+                    if (contextImageDataUrl && typeof window.LocalGemmaAndroid.generateDirectorTurnWithImage === 'function') {
+                        window.LocalGemmaAndroid.generateDirectorTurnWithImage(requestId, payloadJson, contextImageDataUrl);
+                    } else {
+                        window.LocalGemmaAndroid.generateDirectorTurn(requestId, payloadJson);
+                    }
+                    if (relayComment && relayComment.lineId) {
+                        DirectorPanel.markPlayerLineSeen(relayComment.lineId, requestId);
+                    }
+                    if (relayComment && this.queuedUserComment) {
+                        let sameLine = relayComment.lineId && relayComment.lineId === this.queuedUserComment.lineId;
+                        let sameText = relayComment.text === this.queuedUserComment.text;
+                        if (sameLine || sameText) this.queuedUserComment = null;
+                    }
                     return true;
                 } catch (e) {
                     delete this.pending[requestId];
                     this.status.busy = false;
                     this.updateStatus(this.status);
+                    this.log('request.bridge_error', { requestId, message: String(e && e.message ? e.message : e) });
                     return false;
                 }
             },
             receive(requestId, rawText) {
+                let pendingMeta = this.pending[requestId] || null;
                 delete this.pending[requestId];
                 this.status.busy = false;
                 this.refresh();
                 let parsed = parseGemmaJson(rawText);
                 if (!parsed) {
-                    DirectorPanel.addModel(String(rawText || ''));
+                    this.log('response.parse_failed', { requestId, rawText: String(rawText || '') });
+                    DirectorPanel.addModelRaw(String(rawText || '').trim() || '<<empty model response>>');
                     return;
                 }
-                applyGemmaDirectorTurn(parsed);
+                if (parsed._recovered) {
+                    delete parsed._recovered;
+                    this.log('response.parse_recovered', { requestId, turn: parsed });
+                }
+                this.log('response.parsed', {
+                    requestId,
+                    turn: parsed,
+                    reason: pendingMeta && pendingMeta.reason ? pendingMeta.reason : ''
+                });
+                applyGemmaDirectorTurn(parsed, requestId);
             },
             error(requestId, message) {
                 delete this.pending[requestId];
                 this.status.busy = false;
                 this.updateStatus(Object.assign({}, this.status, { state: this.status.state === 'ready' ? 'ready' : 'error', message }));
+                this.log('request.error', { requestId, message: String(message || '') });
                 DirectorPanel.addSystem(`Local Gemma could not answer: ${message}`);
             }
         };
@@ -1784,13 +2635,266 @@
 
         function parseGemmaJson(rawText) {
             let text = String(rawText || '').trim();
-            let first = text.indexOf('{');
-            let last = text.lastIndexOf('}');
-            if (first === -1 || last <= first) return null;
-            try { return JSON.parse(text.slice(first, last + 1)); } catch (e) { return null; }
+            if (!text) return null;
+
+            let candidates = buildGemmaJsonCandidates(text);
+            for (let i = 0; i < candidates.length; i++) {
+                let parsed = tryParseGemmaCandidate(candidates[i]);
+                if (parsed) return parsed;
+            }
+
+            return recoverGemmaTurnFromText(text);
         }
 
-        function applyGemmaDirectorTurn(turn) {
+        function buildGemmaJsonCandidates(text) {
+            let cleaned = String(text || '').trim();
+            cleaned = cleaned.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+
+            let seeds = [cleaned];
+            let balanced = extractBalancedJsonObject(cleaned);
+            if (balanced) seeds.push(balanced);
+            let first = cleaned.indexOf('{');
+            if (first !== -1) {
+                let fromFirst = cleaned.slice(first).trim();
+                seeds.push(fromFirst);
+                let last = fromFirst.lastIndexOf('}');
+                if (last > 0) seeds.push(fromFirst.slice(0, last + 1));
+            }
+
+            let unique = [];
+            let seen = Object.create(null);
+            for (let i = 0; i < seeds.length; i++) {
+                let seed = String(seeds[i] || '').replace(/\u0000/g, '').trim();
+                if (!seed || seen[seed]) continue;
+                seen[seed] = true;
+                unique.push(seed);
+
+                let repaired = repairJsonLikeText(seed);
+                if (repaired && !seen[repaired]) {
+                    seen[repaired] = true;
+                    unique.push(repaired);
+                }
+            }
+            return unique;
+        }
+
+        function repairJsonLikeText(text) {
+            let repaired = String(text || '').trim();
+            if (!repaired) return '';
+
+            // Fix common local-model artifacts like ," ,"memoryPatch" and dangling commas/quotes.
+            repaired = repaired.replace(/,\s*"\s*,\s*"/g, ',"');
+            repaired = repaired.replace(/"\s*(NotRepeat|notRepeat|NoRepeat)"\s*:/g, '"doNotRepeat":');
+            repaired = repaired.replace(/"\s*(memPatch|memory_patch)"\s*:/g, '"memoryPatch":');
+            repaired = repaired.replace(/,\s*"(?=\s*[}\]])/g, '');
+            repaired = repaired.replace(/,\s*([}\]])/g, '$1');
+            repaired = balanceJsonBrackets(repaired);
+            return repaired.trim();
+        }
+
+        function extractBalancedJsonObject(text) {
+            let source = String(text || '');
+            let start = source.indexOf('{');
+            if (start === -1) return '';
+
+            let depth = 0;
+            let inString = false;
+            let escaped = false;
+            for (let i = start; i < source.length; i++) {
+                let ch = source[i];
+                if (inString) {
+                    if (escaped) escaped = false;
+                    else if (ch === '\\') escaped = true;
+                    else if (ch === '"') inString = false;
+                    continue;
+                }
+                if (ch === '"') {
+                    inString = true;
+                    continue;
+                }
+                if (ch === '{') depth++;
+                else if (ch === '}') {
+                    depth--;
+                    if (depth === 0) return source.slice(start, i + 1).trim();
+                }
+            }
+            return source.slice(start).trim();
+        }
+
+        function balanceJsonBrackets(text) {
+            let out = String(text || '');
+            let stack = [];
+            let inString = false;
+            let escaped = false;
+
+            for (let i = 0; i < out.length; i++) {
+                let ch = out[i];
+                if (inString) {
+                    if (escaped) escaped = false;
+                    else if (ch === '\\') escaped = true;
+                    else if (ch === '"') inString = false;
+                    continue;
+                }
+                if (ch === '"') {
+                    inString = true;
+                    continue;
+                }
+                if (ch === '{' || ch === '[') stack.push(ch);
+                else if (ch === '}' && stack[stack.length - 1] === '{') stack.pop();
+                else if (ch === ']' && stack[stack.length - 1] === '[') stack.pop();
+            }
+
+            while (stack.length > 0) {
+                out += stack.pop() === '{' ? '}' : ']';
+            }
+            return out;
+        }
+
+        function tryParseGemmaCandidate(candidate) {
+            if (!candidate) return null;
+            try {
+                let parsed = JSON.parse(candidate);
+                if (!parsed || typeof parsed !== 'object') return null;
+                return normalizeGemmaTurnObject(parsed);
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function cleanGemmaText(value, maxLen = 220) {
+            return String(value || '').replace(/\s+/g, ' ').trim().slice(0, maxLen);
+        }
+
+        function normalizeGemmaList(value, maxItems = 6, maxLen = 120) {
+            return (Array.isArray(value) ? value : [])
+                .map(item => cleanGemmaText(item, maxLen))
+                .filter(Boolean)
+                .slice(0, maxItems);
+        }
+
+        function normalizeGemmaMemoryPatch(patch) {
+            if (!patch || typeof patch !== 'object') return null;
+            let out = {};
+
+            let summary = cleanGemmaText(patch.summary, 700);
+            if (summary) out.summary = summary;
+
+            let profile = cleanGemmaText(patch.playerProfile, 240);
+            if (profile) out.playerProfile = profile;
+
+            let tone = cleanGemmaText(patch.tone, 120);
+            if (tone) out.tone = tone;
+
+            let doNotRepeatSource = patch.doNotRepeat || patch.notRepeat || patch.NotRepeat || patch.noRepeat || patch.avoidSay;
+            let doNotRepeat = normalizeGemmaList(doNotRepeatSource, 8, 80);
+            if (doNotRepeat.length) out.doNotRepeat = doNotRepeat;
+
+            let openLoops = normalizeGemmaList(patch.openLoops, 5, 120);
+            if (openLoops.length) out.openLoops = openLoops;
+
+            let suggestions = normalizeGemmaList(patch.suggestions, 3, 48);
+            if (suggestions.length) out.suggestions = suggestions;
+
+            return Object.keys(out).length ? out : null;
+        }
+
+        function normalizeGemmaTurnObject(parsed) {
+            if (!parsed || typeof parsed !== 'object') return null;
+            let raw = (parsed.turn && typeof parsed.turn === 'object') ? parsed.turn : parsed;
+            if (!raw || typeof raw !== 'object') return null;
+
+            let turn = {};
+            let say = cleanGemmaText(raw.say, 240);
+            if (say) turn.say = say;
+
+            let pressure = cleanGemmaText(raw.pressure, 16).toLowerCase();
+            if (['rush', 'balanced', 'mercy'].includes(pressure)) turn.pressure = pressure;
+
+            let actionRaw = raw.action && typeof raw.action === 'object' ? raw.action : null;
+            if (actionRaw) {
+                let action = {};
+                let tool = cleanGemmaText(actionRaw.tool, 24);
+                if (['spawn_unit', 'buy_upgrade', 'build_turret', 'use_special', 'none'].includes(tool)) {
+                    action.tool = tool;
+                }
+                let typeIndex = Number(actionRaw.typeIndex);
+                if (Number.isFinite(typeIndex)) action.typeIndex = Math.max(0, Math.min(2, Math.round(typeIndex)));
+                let upgrade = cleanGemmaText(actionRaw.upgrade, 12).toLowerCase();
+                if (['dmg', 'hp', 'econ'].includes(upgrade)) action.upgrade = upgrade;
+                let reason = cleanGemmaText(actionRaw.reason, 96);
+                if (reason) action.reason = reason;
+                if (Object.keys(action).length > 0) {
+                    if (!action.tool) action.tool = 'none';
+                    turn.action = action;
+                }
+            }
+
+            let patch = normalizeGemmaMemoryPatch(raw.memoryPatch || raw.memory || raw.turnMemory);
+            if (patch) turn.memoryPatch = patch;
+
+            if (!turn.say && !turn.action) return null;
+            if (!turn.say) turn.say = 'I am adjusting the plan.';
+            return turn;
+        }
+
+        function recoverGemmaTurnFromText(text) {
+            let say = extractJsonStringField(text, 'say');
+            let pressure = extractJsonStringField(text, 'pressure');
+            let tool = extractJsonStringField(text, 'tool');
+            let reason = extractJsonStringField(text, 'reason');
+            let upgrade = extractJsonStringField(text, 'upgrade');
+            let typeIndex = extractJsonNumberField(text, 'typeIndex');
+
+            let turn = {};
+            if (say) turn.say = say;
+            if (['rush', 'balanced', 'mercy'].includes(pressure)) turn.pressure = pressure;
+
+            if (tool || reason || upgrade || typeIndex !== null) {
+                turn.action = {};
+                if (['spawn_unit', 'buy_upgrade', 'build_turret', 'use_special', 'none'].includes(tool)) {
+                    turn.action.tool = tool;
+                }
+                if (Number.isFinite(typeIndex)) turn.action.typeIndex = typeIndex;
+                if (upgrade) turn.action.upgrade = upgrade;
+                if (reason) turn.action.reason = reason;
+                if (!turn.action.tool) turn.action.tool = 'none';
+            }
+
+            if (!turn.say && !turn.action) return null;
+            if (!turn.say) turn.say = 'I am adjusting the plan.';
+            let normalized = normalizeGemmaTurnObject(turn);
+            if (!normalized) return null;
+            normalized._recovered = true;
+            return normalized;
+        }
+
+        function extractJsonStringField(text, key) {
+            let escapedKey = String(key || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            let match = String(text || '').match(new RegExp('"' + escapedKey + '"\\s*:\\s*"((?:\\\\.|[^"\\\\])*)"', 'i'));
+            if (!match) return '';
+            return decodeJsonLikeString(match[1]).trim();
+        }
+
+        function extractJsonNumberField(text, key) {
+            let escapedKey = String(key || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            let match = String(text || '').match(new RegExp('"' + escapedKey + '"\\s*:\\s*(-?\\d+|null)', 'i'));
+            if (!match) return null;
+            if (String(match[1]).toLowerCase() === 'null') return null;
+            let value = Number(match[1]);
+            return Number.isFinite(value) ? value : null;
+        }
+
+        function decodeJsonLikeString(value) {
+            return String(value || '')
+                .replace(/\\u([0-9a-fA-F]{4})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+                .replace(/\\n/g, ' ')
+                .replace(/\\r/g, ' ')
+                .replace(/\\t/g, ' ')
+                .replace(/\\"/g, '"')
+                .replace(/\\\\/g, '\\');
+        }
+
+        function applyGemmaDirectorTurn(turn, requestId = '') {
             if (turn.pressure && ['rush', 'balanced', 'mercy'].includes(turn.pressure)) {
                 DirectorMemory.setPressure(turn.pressure);
                 DirectorPanel.renderMemory();
@@ -1798,10 +2902,22 @@
 
             let action = turn.action || {};
             let reason = action.reason || 'Gemma plan';
-            if (action.tool === 'spawn_unit') AIDirector.trySpawnUnit(Math.max(0, Math.min(2, Number(action.typeIndex) || 0)), reason);
-            else if (action.tool === 'buy_upgrade') AIDirector.tryUpgrade(['dmg', 'hp', 'econ'].includes(action.upgrade) ? action.upgrade : 'econ', reason);
-            else if (action.tool === 'build_turret') AIDirector.tryBuildTurret(reason);
-            else if (action.tool === 'use_special') AIDirector.trySpecial(reason);
+            let requestedTool = action.tool || 'none';
+            let applied = false;
+            if (requestedTool === 'spawn_unit') applied = AIDirector.trySpawnUnit(Math.max(0, Math.min(2, Number(action.typeIndex) || 0)), reason);
+            else if (requestedTool === 'buy_upgrade') applied = AIDirector.tryUpgrade(['dmg', 'hp', 'econ'].includes(action.upgrade) ? action.upgrade : 'econ', reason);
+            else if (requestedTool === 'build_turret') applied = AIDirector.tryBuildTurret(reason);
+            else if (requestedTool === 'use_special') applied = AIDirector.trySpecial(reason);
+
+            NativeGemma.log('action.result', {
+                requestId,
+                requestedTool,
+                applied,
+                pressure: turn.pressure || null,
+                action
+            });
+            GemmaMemory.recordModel(turn, { requestId, requestedTool, applied });
+            if (!applied && requestedTool !== 'none') DirectorPanel.addSystem('model move unavailable');
 
             if (turn.say) DirectorPanel.addModel(turn.say);
         }
@@ -1818,6 +2934,8 @@
             aiWriteTimeout: null,
             playerWriteTimeout: null,
             systemWriteTimeout: null,
+            playerLineSeq: 0,
+            currentPlayerLine: null,
             init() {
                 ['commander-hud', 'ai-hud', 'director-log', 'director-tool-log', 'director-input', 'director-memory', 'player-last-line', 'btn-pause'].forEach(id => {
                     this.els[id] = document.getElementById(id);
@@ -1826,6 +2944,7 @@
             },
             start(diffKey) {
                 if (!this.els['ai-hud']) return;
+                GemmaMemory.start(diffKey);
                 this.els['ai-hud'].classList.remove('hidden');
                 if (this.els['director-log']) this.els['director-log'].innerHTML = '';
                 if (this.els['director-tool-log']) this.els['director-tool-log'].innerHTML = '';
@@ -1833,6 +2952,8 @@
                     this.els['player-last-line'].innerHTML = '';
                     this.els['player-last-line'].classList.add('hidden');
                 }
+                this.playerLineSeq = 0;
+                this.currentPlayerLine = null;
                 this.renderMemory();
                 NativeGemma.refresh();
 
@@ -1843,15 +2964,107 @@
             add(role, text, tool = false) {
                 if (!text) return;
                 if (role === 'player') {
-                    this.writeLatest(this.els['player-last-line'], this.normalizeLine(text, 120), 'player-last-text', 'player');
-                    return;
+                    return this.addPlayerLine(text);
                 }
                 this.addSystem(text);
             },
+            addPlayerLine(text) {
+                let message = this.normalizeLine(text, 120);
+                if (!message) return '';
+                this.playerLineSeq++;
+                let line = {
+                    id: `pl${Date.now()}_${this.playerLineSeq}`,
+                    text: message,
+                    seen: false,
+                    requestId: ''
+                };
+                this.currentPlayerLine = line;
+                this.renderPlayerLine(line);
+                return line.id;
+            },
+            renderPlayerLine(line) {
+                let host = this.els['player-last-line'];
+                if (!host || !line) return;
+                host.classList.remove('hidden');
+                clearTimeout(this.playerWriteTimeout);
+
+                let render = () => {
+                    host.innerHTML = '';
+                    let row = document.createElement('div');
+                    row.className = 'player-last-text is-writing';
+                    row.setAttribute('data-player-line-id', line.id);
+
+                    let seen = document.createElement('span');
+                    seen.className = `player-last-seen ${line.seen ? 'is-seen' : 'is-pending'}`;
+                    seen.innerText = line.seen ? 'seen' : 'pending';
+
+                    let text = document.createElement('span');
+                    text.className = 'player-last-message';
+                    text.innerText = line.text;
+
+                    row.appendChild(seen);
+                    row.appendChild(text);
+                    host.appendChild(row);
+                };
+
+                let current = host.firstElementChild;
+                if (current) {
+                    current.classList.remove('is-writing');
+                    current.classList.add('is-erasing');
+                    this.playerWriteTimeout = setTimeout(render, 190);
+                } else {
+                    render();
+                }
+            },
+            markPlayerLineSeen(lineId, requestId = '') {
+                if (!lineId || !this.currentPlayerLine || this.currentPlayerLine.id !== lineId) return;
+                if (requestId && this.currentPlayerLine.requestId === requestId && this.currentPlayerLine.seen) return;
+
+                this.currentPlayerLine.seen = true;
+                if (requestId) this.currentPlayerLine.requestId = requestId;
+
+                let host = this.els['player-last-line'];
+                let row = host ? host.firstElementChild : null;
+                if (row && row.getAttribute('data-player-line-id') === lineId) {
+                    let badge = row.querySelector('.player-last-seen');
+                    if (badge) {
+                        badge.classList.remove('is-pending');
+                        badge.classList.add('is-seen');
+                        badge.innerText = 'seen';
+                    }
+                    return;
+                }
+                this.renderPlayerLine(this.currentPlayerLine);
+            },
             addModel(text) {
-                let message = this.normalizeLine(text, 220);
+                let message = this.normalizeLine(this.sanitizeModelLine(text), 220);
                 if (!message) return;
                 this.writeLatest(this.els['director-log'], message, 'director-msg', 'ai');
+            },
+            addModelRaw(text) {
+                let message = this.normalizeRawModelLine(text, 1400);
+                if (!message) return;
+                this.writeLatest(this.els['director-log'], message, 'director-msg', 'ai');
+            },
+            sanitizeModelLine(text) {
+                let raw = String(text || '').trim();
+                if (!raw) return '';
+                if (!this.looksLikeModelJsonLeak(raw)) return raw;
+                let recovered = recoverGemmaTurnFromText(raw);
+                if (recovered && recovered.say) return recovered.say;
+                return 'I am reworking that move.';
+            },
+            looksLikeModelJsonLeak(text) {
+                let sample = String(text || '').trim();
+                if (!sample) return false;
+                if (/^[\[{]/.test(sample)) return true;
+                return /"say"\s*:|"action"\s*:|"memoryPatch"\s*:|"pressure"\s*:/.test(sample);
+            },
+            normalizeRawModelLine(text, maxLen = 1400) {
+                let raw = String(text || '').replace(/\u0000/g, '').trim();
+                if (!raw) return '';
+                if (raw.length <= maxLen) return raw;
+                return `${raw.slice(0, maxLen)} ...[truncated ${raw.length - maxLen} chars]`;
             },
             normalizeLine(text, maxLen = 220) {
                 return String(text || '').replace(/\s+/g, ' ').trim().slice(0, maxLen);
@@ -1910,13 +3123,16 @@
             handlePlayerText(raw) {
                 let message = String(raw || '').trim();
                 if (!message) return;
-                this.add('player', message);
+                let playerLineId = this.add('player', message);
+                NativeGemma.queueRecentUserComment(playerLineId, message);
+                GemmaMemory.recordPlayer(message);
 
                 let text = message.toLowerCase();
                 let replies = [];
 
                 if (/\bforget\b|clear memory|reset memory/.test(text)) {
                     DirectorMemory.clear();
+                    GemmaMemory.clearAll();
                     AIDirector.restraintUntil = 0;
                     replies.push('Fresh page. I dropped the saved pacts and notes.');
                 }
@@ -1975,8 +3191,9 @@
                 }
 
                 this.renderMemory();
+                GemmaMemory.recordSystem(`Local director replied: ${replies.join(' ')}`);
                 setTimeout(() => this.add('ai', replies.join(' ')), 400);
-                NativeGemma.requestTurn('player_chat', message);
+                NativeGemma.requestTurn('player_chat', message, { userLineId: playerLineId });
             }
         };
 
@@ -2082,6 +3299,9 @@
                     playerUnits, enemyUnits, threatCount, heavyThreat,
                     closestThreatDist: Number.isFinite(closestThreatDist) ? closestThreatDist : 9999,
                     lanePressure: playerFront - (CANVAS_WIDTH - enemyFront),
+                    playerFrontX: Math.round(playerFront),
+                    enemyFrontX: Math.round(enemyFront),
+                    frontGap: Math.max(0, Math.round(enemyFront - playerFront)),
                     playerHpRatio: player.hp / player.maxHp,
                     enemyHpRatio: ai.hp / ai.maxHp,
                     enemyGold: ai.gold,
@@ -2092,15 +3312,20 @@
             maybeMilestoneChat(snapshot) {
                 if (gameState.player.age !== this.lastPlayerAge) {
                     this.lastPlayerAge = gameState.player.age;
-                    DirectorPanel.add('ai', `You reached ${AGES[gameState.player.age].name}. I am updating the counter-plan.`);
+                    let line = `You reached ${AGES[gameState.player.age].name}. I am updating the counter-plan.`;
+                    DirectorPanel.add('ai', line);
+                    GemmaMemory.recordSystem(line);
                 }
                 if (gameState.enemy.age !== this.lastEnemyAge) {
                     this.lastEnemyAge = gameState.enemy.age;
                     DirectorPanel.showAction('evolve_enemy', AGES[gameState.enemy.age].name);
+                    GemmaMemory.recordSystem(`Enemy evolved to ${AGES[gameState.enemy.age].name}.`);
                 }
                 if (snapshot.enemyHpRatio < 0.25 && !this.lowHpWarned) {
                     this.lowHpWarned = true;
-                    DirectorPanel.add('ai', 'My base is down to the margin. Expect defensive spending.');
+                    let line = 'My base is down to the margin. Expect defensive spending.';
+                    DirectorPanel.add('ai', line);
+                    GemmaMemory.recordSystem(line);
                 }
             },
             comment(snapshot) {
@@ -2240,6 +3465,9 @@
             reportTool(name, reason, force = false) {
                 if (force || globalTime - this.lastActionNoticeAt > 1.8) {
                     DirectorPanel.showAction(name, reason);
+                    if (force || /special|evolve|age/i.test(name)) {
+                        GemmaMemory.recordSystem(`Fallback action ${name}: ${reason}`);
+                    }
                     this.lastActionNoticeAt = globalTime;
                 }
             }
@@ -2357,6 +3585,7 @@
             TooltipManager.init();
             StorageManager.init();
             DirectorMemory.init();
+            GemmaMemory.init();
             DirectorPanel.init();
             NativeGemma.init();
 
@@ -3109,8 +4338,10 @@
                 if (won) {
                     StorageManager.saveWin(currentDifficulty);
                     DirectorPanel.add('ai', 'That page is yours. I saved the difficulty medal.');
+                    GemmaMemory.recordSystem(`Match ended: player won ${currentDifficulty} at ${Math.round(globalTime)}s.`);
                 } else {
                     DirectorPanel.add('ai', 'I took this page. The pacts and memory remain for the rematch.');
+                    GemmaMemory.recordSystem(`Match ended: Gemma director won ${currentDifficulty} at ${Math.round(globalTime)}s.`);
                 }
             }
         }
