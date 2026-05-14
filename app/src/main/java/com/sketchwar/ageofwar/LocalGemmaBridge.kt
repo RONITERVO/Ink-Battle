@@ -5,6 +5,7 @@ import android.app.ActivityManager
 import android.app.DownloadManager
 import android.content.Context
 import android.net.Uri
+import android.util.Base64
 import android.util.Log
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
@@ -30,6 +31,7 @@ class LocalGemmaBridge(
         const val LOG_TAG = "AgeOfWarGemma"
         const val LOG_CHUNK_SIZE = 3_000
         const val MAX_PROMPT_PAYLOAD_CHARS = 12_000
+        const val MAX_SCREENSHOT_BYTES = 700_000
     }
 
     private data class ModelSpec(
@@ -148,6 +150,11 @@ class LocalGemmaBridge(
 
     @JavascriptInterface
     fun generateDirectorTurn(requestId: String, payloadJson: String) {
+        generateDirectorTurnWithImage(requestId, payloadJson, null)
+    }
+
+    @JavascriptInterface
+    fun generateDirectorTurnWithImage(requestId: String, payloadJson: String, screenshotDataUrl: String?) {
         if (busy || memoryBusy) {
             logLine("request.rejected busy requestId=$requestId")
             postError(requestId, "Gemma is still thinking")
@@ -165,6 +172,7 @@ class LocalGemmaBridge(
         val startedAt = System.currentTimeMillis()
         logLine("request.start requestId=$requestId payloadChars=${payloadJson.length}")
         logLong("request.payload requestId=$requestId", payloadJson)
+        val screenshotBytes = decodeScreenshotDataUrl(requestId, screenshotDataUrl)
         postStatus("ready")
         executor.execute {
             var turnConversation: Conversation? = null
@@ -172,7 +180,15 @@ class LocalGemmaBridge(
                 val prompt = buildPrompt(payloadJson)
                 logLong("request.prompt requestId=$requestId", prompt)
                 turnConversation = loaded.createConversation(conversationConfig())
-                val responseMsg = turnConversation.sendMessage(prompt)
+                val contents = if (screenshotBytes != null) {
+                    Contents.of(
+                        com.google.ai.edge.litertlm.Content.Text(prompt),
+                        com.google.ai.edge.litertlm.Content.ImageBytes(screenshotBytes)
+                    )
+                } else {
+                    Contents.of(prompt)
+                }
+                val responseMsg = turnConversation.sendMessage(contents)
                 val response = responseMsg.contents.contents.filterIsInstance<com.google.ai.edge.litertlm.Content.Text>().joinToString("") { it.text }
                 busy = false
                 val elapsedMs = System.currentTimeMillis() - startedAt
@@ -368,6 +384,8 @@ class LocalGemmaBridge(
         You play the enemy side, but you are also an entertaining opponent who can honor pacts.
         Each request is stateless: use only the current payload, snapshot, persistent pacts, and gemmaMemory.
         gemmaMemory contains a compact match summary, recent player/model turns, action outcomes, and repetition guards.
+        When an image is attached, it is a live gameplay screenshot. You are Gemma, the enemy director on the red base health bar side. The opposing/player troops and base are the user's side.
+        Use the image for visual lane context, troop clustering, front-line pressure, base danger, and age/theme cues. Use JSON for exact numbers and legal actions.
         Never ask for network access.
         Output one compact JSON object only. No markdown, no code fences, no explanations outside JSON.
         {"say":"short taunt or agreement","pressure":"rush|balanced|mercy|null","action":{"tool":"spawn_unit|buy_upgrade|build_turret|use_special|none","typeIndex":0,"upgrade":"econ","reason":"short reason"}}
@@ -420,6 +438,31 @@ class LocalGemmaBridge(
             "Compact this Age of War Gemma director memory for the next mobile prompt and generate concise player input suggestions. Return raw JSON only, with no markdown fences. Do not copy doNotRepeat phrases into summary.\n%s",
             trimmed
         )
+    }
+
+    private fun decodeScreenshotDataUrl(requestId: String, dataUrl: String?): ByteArray? {
+        if (dataUrl.isNullOrBlank()) {
+            logLine("request.screenshot requestId=$requestId absent")
+            return null
+        }
+        val comma = dataUrl.indexOf(',')
+        if (comma <= 0 || !dataUrl.startsWith("data:image/")) {
+            logLine("request.screenshot requestId=$requestId invalid_data_url chars=${dataUrl.length}")
+            return null
+        }
+        return try {
+            val bytes = Base64.decode(dataUrl.substring(comma + 1), Base64.DEFAULT)
+            if (bytes.size > MAX_SCREENSHOT_BYTES) {
+                logLine("request.screenshot requestId=$requestId too_large bytes=${bytes.size} max=$MAX_SCREENSHOT_BYTES")
+                null
+            } else {
+                logLine("request.screenshot requestId=$requestId bytes=${bytes.size} mime=${dataUrl.substring(5, comma).take(40)}")
+                bytes
+            }
+        } catch (t: Throwable) {
+            logError("request.screenshot_decode_error requestId=$requestId", t)
+            null
+        }
     }
 
     private fun closeEngine() {

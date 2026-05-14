@@ -1193,7 +1193,7 @@
 
     <script>
         /**
-         * AGE OF WAR - SKETCHBOOK EDITION v1.0.5 (Gemma 4 compactor suggestions)
+         * AGE OF WAR - SKETCHBOOK EDITION v1.0.6 (Gemma 4 visual context)
          * Fully Audited & Expanded: 
          * - Fixed Timestep Game Loop (1/60s step deterministic collision & physics)
          * - Codex Director AI styled as an immersive legal-pad slider
@@ -1206,7 +1206,7 @@
         // Context without {alpha: false} or desynchronized to ensure perfect blending of CSS and Canvas
         const canvas = document.getElementById('game-canvas');
         const ctx = canvas.getContext('2d');
-        const RELEASE_VERSION = '1.0.5';
+        const RELEASE_VERSION = '1.0.6';
         const CANVAS_WIDTH = 1280;
         const CANVAS_HEIGHT = 720;
         const GROUND_Y = 600;
@@ -1927,6 +1927,24 @@
             }
         };
 
+        function captureGemmaGameplayScreenshot() {
+            if (!canvas || !gameState || !gameState.running) return null;
+            try {
+                let shot = document.createElement('canvas');
+                shot.width = 640;
+                shot.height = 360;
+                let shotCtx = shot.getContext('2d', { alpha: false });
+                if (!shotCtx) return null;
+                shotCtx.fillStyle = '#f8f1dc';
+                shotCtx.fillRect(0, 0, shot.width, shot.height);
+                shotCtx.drawImage(canvas, 0, 0, shot.width, shot.height);
+                return shot.toDataURL('image/jpeg', 0.72);
+            } catch (e) {
+                NativeGemma.log('screenshot.capture_failed', { message: String(e && e.message ? e.message : e) });
+                return null;
+            }
+        }
+
         // --- LOCAL GEMMA BRIDGE ---
         const NativeGemma = {
             available: false,
@@ -2057,6 +2075,7 @@
                 if (affordableTurrets.length || (!agreements.noTurrets && gameState.enemy.unlockedSlots < 4 && enemyGold >= gameState.enemy.unlockedSlots * 500)) affordableTools.push('build_turret');
                 if (!agreements.noSpecials && gameState.enemy.specialTimer <= 0 && !gameState.specialActive) affordableTools.push('use_special');
                 affordableTools.push('none');
+                let screenshotDataUrl = captureGemmaGameplayScreenshot();
                 let requestId = `g${Date.now()}_${Math.floor(Math.random() * 10000)}`;
                 let payload = {
                     version: RELEASE_VERSION,
@@ -2065,6 +2084,12 @@
                     turnInstruction: reason === 'player_chat'
                         ? 'Answer extraMessage directly in say before choosing an action. Keep it in character and do not ignore the player.'
                         : 'Comment on the current battle state without repeating recent lines.',
+                    visualContext: {
+                        screenshotAttached: !!screenshotDataUrl,
+                        perspective: 'You are Gemma, the enemy director controlling the red base health bar side.',
+                        ownershipHint: 'Treat the red enemy base/health-bar side as your side. The player/user owns the opposing troops and base.',
+                        useImageFor: 'Read visible lane pressure, front-line position, clustered troops, base danger, and age/theme cues. Trust JSON for exact numbers.'
+                    },
                     difficulty: currentDifficulty,
                     memory: DirectorMemory.data,
                     gemmaMemory: GemmaMemory.buildContext(snapshot, reason),
@@ -2146,10 +2171,15 @@
                     gameTime: Math.round(globalTime),
                     payloadChars: payloadJson.length,
                     difficulty: currentDifficulty,
-                    memorySummaryChars: GemmaMemory.data ? GemmaMemory.data.summary.length : 0
+                    memorySummaryChars: GemmaMemory.data ? GemmaMemory.data.summary.length : 0,
+                    screenshotChars: screenshotDataUrl ? screenshotDataUrl.length : 0
                 });
                 try {
-                    window.LocalGemmaAndroid.generateDirectorTurn(requestId, payloadJson);
+                    if (screenshotDataUrl && typeof window.LocalGemmaAndroid.generateDirectorTurnWithImage === 'function') {
+                        window.LocalGemmaAndroid.generateDirectorTurnWithImage(requestId, payloadJson, screenshotDataUrl);
+                    } else {
+                        window.LocalGemmaAndroid.generateDirectorTurn(requestId, payloadJson);
+                    }
                     return true;
                 } catch (e) {
                     delete this.pending[requestId];
