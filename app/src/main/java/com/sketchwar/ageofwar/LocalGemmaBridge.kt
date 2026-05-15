@@ -20,7 +20,6 @@ import com.google.ai.edge.litertlm.LogSeverity
 import com.google.ai.edge.litertlm.Message
 import com.google.ai.edge.litertlm.MessageCallback
 import java.io.File
-import java.util.Locale
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -284,25 +283,12 @@ class LocalGemmaBridge(
                 val doctrine = sendRoleplayPhase(requestId, conversation, "doctrine", Contents.of(doctrinePrompt))
                 noteConversationMessages(2)
 
-                val actionPromptWithDoctrine = String.format(
-                    Locale.US,
-                    "%s\n\nYour doctrine word this turn was: %s. Pick an immediate action that fits that doctrine unless your base is in danger.",
-                    actionPrompt,
-                    doctrine.take(80)
-                )
-                logLong("request.prompt.action requestId=$requestId", actionPromptWithDoctrine)
-                val action = sendRoleplayPhase(requestId, conversation, "action", Contents.of(actionPromptWithDoctrine))
+                logLong("request.prompt.action requestId=$requestId", actionPrompt)
+                val action = sendRoleplayPhase(requestId, conversation, "action", Contents.of(actionPrompt))
                 noteConversationMessages(2)
 
-                val summaryPromptWithAction = String.format(
-                    Locale.US,
-                    "%s\n\nYour doctrine word this turn was: %s\nYour action word this turn was: %s",
-                    summaryPrompt,
-                    doctrine.take(80),
-                    action.take(80)
-                )
-                logLong("request.prompt.summary requestId=$requestId", summaryPromptWithAction)
-                val summary = sendRoleplayPhase(requestId, conversation, "summary", Contents.of(summaryPromptWithAction))
+                logLong("request.prompt.summary requestId=$requestId", summaryPrompt)
+                val summary = sendRoleplayPhase(requestId, conversation, "summary", Contents.of(summaryPrompt))
                 noteConversationMessages(2)
 
                 val elapsedMs = System.currentTimeMillis() - startedAt

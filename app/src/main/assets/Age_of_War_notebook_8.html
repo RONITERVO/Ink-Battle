@@ -1913,24 +1913,7 @@
             },
             compactSummary(snapshot, reason, latestPlayerMessage = '') {
                 if (!this.data) this.init();
-                let turns = this.data.recentTurns.slice(-4)
-                    .map(turn => `${turn.role}: ${turn.text}${turn.action ? ` (${turn.action})` : ''}`)
-                    .join(' | ');
-                let pacts = DirectorMemory.tags().join(', ');
-                let latest = this.cleanLine(latestPlayerMessage, 160);
-                let doctrine = this.data.doctrine || 'balanced';
-                let lane = snapshot
-                    ? `time ${Math.round(globalTime)}s, ${this.ageLine()}, player units ${snapshot.playerUnits}, Gemma units ${snapshot.enemyUnits}, threats near Gemma base ${snapshot.threatCount}, pressure ${snapshot.pressure || 'balanced'}, doctrine ${doctrine}`
-                    : this.ageLine();
-                return this.cleanLine([
-                    this.data.summary,
-                    `Current Gemma doctrine: ${doctrine}.`,
-                    `Pacts/notes: ${pacts}.`,
-                    turns ? `Recent turns: ${turns}.` : '',
-                    latest ? `Latest player: ${latest}.` : '',
-                    `Current lane: ${lane}.`,
-                    reason ? `Request reason: ${reason}.` : ''
-                ].filter(Boolean).join(' '), 900);
+                return this.cleanLine(this.data.summary || 'No previous summary yet.', 900);
             },
             applyMemoryPatch(patch) {
                 if (!patch || typeof patch !== 'object') return false;
@@ -2433,18 +2416,21 @@
             ].join('\n');
             let actionPrompt = [
                 'Your turn please. Based on the state of the game you just described from your perspective, what is your play against me in this situation?',
-                `Reply with only one word from these exact options: ${optionTokens}.`,
+                'Use the battle status and the doctrine you just chose, but answer with an action option word, not a doctrine word or tool name.',
+                `Reply with only one word from these exact action options: ${optionTokens}.`,
                 'Option meanings:',
                 optionLines,
-                'Pick only legal and affordable choices. If unsure or if a pact blocks the move, reply none. No sentence, no JSON.'
+                'Pick only legal and affordable choices. If your intended move is not listed, reply none. No sentence, no JSON.'
             ].join('\n');
             let summaryPrompt = [
-                'Create the compact summary for the next turn. This is the only model memory I will keep.',
-                'Blend the previous compact summary with this current turn. Keep stable facts about who the player/user is, their preferences, important pacts, and the running battle story.',
-                'Replace stale tactical details with the current battle state, current chat/request, your visible reply, your chosen doctrine, and your chosen action.',
+                'Write the compact summary text for the next turn. This exact text will be the only model memory I keep.',
+                'Blend the previous compact summary with this current chat turn and the battlefield status you just described.',
+                'Keep stable facts about who the player/user is, their preferences, important pacts, and the running battle story.',
+                'Replace stale tactical details with the current battle state, current player request, your visible reply, the doctrine word you chose, and the action option word you chose.',
+                'If your action answer was not one of the listed action option words, remember the action as none.',
                 `Previous compact summary to blend from: ${previousSummary}`,
                 latestPlayer ? `Current player chat/request: ${latestPlayer}` : 'Current player chat/request: none this turn.',
-                'Keep it under 90 words. Do not use JSON or markdown.'
+                'Return only the summary text under 80 words. Do not add labels, JSON, markdown, or bullets.'
             ].join('\n');
             return {
                 sessionId: (GemmaMemory.data && GemmaMemory.data.matchId) || `m${Date.now()}`,

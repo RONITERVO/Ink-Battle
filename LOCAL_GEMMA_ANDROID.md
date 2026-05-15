@@ -8,7 +8,7 @@ The app now uses a no-backend architecture for the AI opponent:
 - LiteRT-LM loads the model locally and runs a no-system-prompt roleplay sequence made entirely of user turns.
 - The LiteRT-LM engine is process-scoped and survives Activity/WebView recreation; each roleplay sequence uses one bounded conversation, then closes it after the action word and compact summary are complete.
 - The JavaScript game validates every returned doctrine and action before applying them.
-- Gemma turns use bounded application-managed memory: the JavaScript prompt asks Gemma to blend the previous compact summary with current chat, player identity/preferences, pacts, and live state.
+- Gemma turns use bounded application-managed memory: the saved compact summary is reused as Gemma wrote it, while the next summary turn asks Gemma to blend that summary with the fresh chat turn and image-derived battle state.
 - Gemma director turns also receive a labeled tactical context image when available. The JavaScript app redraws the live lane as a self-contained diagram with Gemma's red/right-side identity, base ownership, attack directions, hit lines, front lines, danger zones, unit markers, counts, and a legend. The native bridge configures LiteRT-LM `visionBackend` and sends the image through a short-lived cache JPEG using `Content.ImageFile`.
 - Gemma never has to author JSON. It speaks battlefield status, visible opponent chat, one doctrine word, one action word, and a compact summary in separate turns. Native code wraps the completed strings for the WebView.
 - The selected doctrine persists between Gemma turns and steers the deterministic fast AI spending loop. Supported doctrines are `balanced`, `rush`, `tech`, `turtle`, `counter`, `bait`, `allin`, and `stall`.
@@ -86,12 +86,7 @@ Long values are split into numbered chunks between `BEGIN` and `END` lines so th
 - No prompt/game-state upload for inference.
 - No arbitrary code execution from the model.
 - Model output for doctrine is parsed as one lower-case word and constrained to supported doctrine tokens.
-- Model output for actions is parsed as one lower-case word and constrained to known tools:
-  - `spawn_unit`
-  - `buy_upgrade`
-  - `build_turret`
-  - `use_special`
-  - `none`
+- Model output for actions is parsed as one lower-case word and constrained to the current legal action tokens, for example `unit0`, `unit1`, `dmg`, `turret`, `special`, or `none`.
 - Existing player pacts still gate model-requested actions.
 
 ## Sources Used
