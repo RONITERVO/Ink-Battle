@@ -6,13 +6,14 @@ The app now uses a no-backend architecture for the AI opponent:
 - On Android, the WebView exposes `LocalGemmaAndroid` through `LocalGemmaBridge.kt`.
 - After user consent, Android `DownloadManager` downloads a `.litertlm` Gemma 4 model into the app's external files directory.
 - LiteRT-LM loads the model locally and runs a no-system-prompt roleplay sequence made entirely of user turns.
-- The LiteRT-LM engine is process-scoped and survives Activity/WebView recreation; each roleplay sequence uses one bounded conversation, then closes it after the action word and compact summary are complete.
+- The LiteRT-LM engine is process-scoped and survives Activity/WebView recreation; each roleplay sequence uses one bounded conversation, then closes it after the order word and compact summary are complete.
 - The JavaScript game validates every returned doctrine and action before applying them.
 - Gemma turns use bounded application-managed memory: the saved compact summary is reused as Gemma wrote it, while the next summary turn asks Gemma to blend that summary with the fresh chat turn and image-derived battle state.
 - Gemma director turns also receive a labeled tactical context image when available. The JavaScript app redraws the live lane as a self-contained diagram with Gemma's red/right-side identity, base ownership, attack directions, hit lines, front lines, danger zones, unit markers, counts, and a legend. The native bridge configures LiteRT-LM `visionBackend` and sends the image through a short-lived cache JPEG using `Content.ImageFile`.
-- Gemma never has to author JSON. It speaks battlefield status, visible opponent chat, one doctrine word, one action word, and a compact summary in separate turns. Native code wraps the completed strings for the WebView.
+- Gemma never has to author JSON. It speaks battlefield status, visible opponent chat, one doctrine word, one delayed-safe order word, and a compact summary in separate turns. Native code wraps the completed strings for the WebView.
 - The selected doctrine persists between Gemma turns and steers the deterministic fast AI spending loop. Supported doctrines are `balanced`, `rush`, `tech`, `turtle`, `counter`, `bait`, `allin`, and `stall`.
-- Deterministic memory hygiene records high-signal fallback events, but never replaces visible Gemma speech.
+- Gemma's order word is not applied as a stale purchase. It temporarily biases the live engine toward robust orders such as `press`, `defend`, `counter`, `tech`, `swarm`, `heavy`, `hold`, `fortify`, or `special`.
+- The deterministic engine remains a complete offline opponent when Gemma is unavailable, using live lane pressure, army composition, pacts, difficulty, and its own adaptive order selection.
 
 ## Model Choice
 
@@ -39,7 +40,7 @@ Configured downloads:
   - GPU first, CPU fallback.
   - No-system `ConversationConfig()` for Gemma 4 default behavior.
   - Multiturn roleplay prompts with explicit red/right-side Gemma ownership and tactical-map label guidance.
-  - Streaming phase callbacks for battlefield status, visible reply, doctrine word, action word, and compact memory summary.
+  - Streaming phase callbacks for battlefield status, visible reply, doctrine word, order word, and compact memory summary.
   - LiteRT-LM `visionBackend` setup and short-lived `ImageFile` context images for Android image input stability.
   - Chunked `AgeOfWarGemma` logcat diagnostics for exact request payloads, prompts, raw responses, parse failures, and action results.
 - `app/src/main/java/com/sketchwar/ageofwar/MainActivity.java`
@@ -57,8 +58,8 @@ Configured downloads:
 3. Player taps `Get Gemma`.
 4. App asks for confirmation before the multi-GB download.
 5. Fallback AI continues playing during download and model loading.
-6. Once ready, Gemma periodically produces high-level director turns through battlefield, reply, doctrine, action, and summary phases.
-7. The visible reply is shown in the opponent chat, and the tool line shows the exact one-word doctrine and action choices. Click the reply's `...` marker to reveal streamed opponent thoughts in a rolling one-line strip.
+6. Once ready, Gemma periodically produces high-level director turns through battlefield, reply, doctrine, order, and summary phases.
+7. The visible reply is shown in the opponent chat, and the tool line shows the exact one-word doctrine and temporary order choices. Click the reply's `...` marker to reveal streamed opponent thoughts in a rolling one-line strip.
 
 ## Gemma Diagnostics
 
@@ -86,8 +87,8 @@ Long values are split into numbered chunks between `BEGIN` and `END` lines so th
 - No prompt/game-state upload for inference.
 - No arbitrary code execution from the model.
 - Model output for doctrine is parsed as one lower-case word and constrained to supported doctrine tokens.
-- Model output for actions is parsed as one lower-case word and constrained to the current legal action tokens, for example `unit0`, `unit1`, `dmg`, `turret`, `special`, or `none`.
-- Existing player pacts still gate model-requested actions.
+- Model output for temporary orders is parsed as one lower-case word and constrained to the current order tokens, for example `press`, `defend`, `counter`, `tech`, `swarm`, `heavy`, `fortify`, `special`, or `none`.
+- Existing player pacts still gate Gemma orders and all realtime engine spending.
 
 ## Sources Used
 

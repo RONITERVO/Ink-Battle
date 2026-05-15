@@ -1355,26 +1355,26 @@
             'normal': {
                 name: "Normal", color: "hsl(var(--diff-normal))",
                 hpMult: 1.0, dmgMult: 1.0, econMult: 1.0, xpMult: 1.0,
-                baseGold: 175, baseHpMult: 1.0, thinkRate: 2.5,
-                aiAggression: 0.2 // Spends slower, saves up
+                baseGold: 175, baseHpMult: 1.0, thinkRate: 1.8,
+                aiAggression: 0.35
             },
             'hard': {
                 name: "Hard", color: "hsl(var(--diff-hard))",
                 hpMult: 1.2, dmgMult: 1.1, econMult: 1.4, xpMult: 1.2,
-                baseGold: 250, baseHpMult: 1.2, thinkRate: 1.5,
-                aiAggression: 0.5
+                baseGold: 250, baseHpMult: 1.2, thinkRate: 1.15,
+                aiAggression: 0.58
             },
             'harder': {
                 name: "Harder", color: "hsl(var(--diff-harder))",
                 hpMult: 1.5, dmgMult: 1.3, econMult: 2.0, xpMult: 1.5,
-                baseGold: 500, baseHpMult: 1.5, thinkRate: 0.8,
-                aiAggression: 0.8 // Actively upgrades, pushes aggressively
+                baseGold: 500, baseHpMult: 1.5, thinkRate: 0.65,
+                aiAggression: 0.82
             },
             'impossible': {
                 name: "Impossible", color: "hsl(var(--diff-impossible))",
                 hpMult: 2.0, dmgMult: 1.5, econMult: 4.0, xpMult: 2.5,
-                baseGold: 1500, baseHpMult: 2.0, thinkRate: 0.3,
-                aiAggression: 1.0 // Unrelenting unit spam, maxes economy ASAP
+                baseGold: 1500, baseHpMult: 2.0, thinkRate: 0.28,
+                aiAggression: 1.0
             }
         };
 
@@ -1884,7 +1884,7 @@
                 let action = outcome || {};
                 let tool = action.requestedTool || choice.tool || 'none';
                 let token = this.cleanLine(choice.token || (result && result.actionWord) || tool, 40);
-                let reason = this.cleanLine(choice.reason || `Gemma chose ${token || tool}`, 90);
+                let reason = this.cleanLine(choice.reason || `Gemma chose order ${token || tool}`, 90);
                 this.data.turnCount = (this.data.turnCount || 0) + 1;
                 this.data.doctrine = doctrine;
                 this.data.openLoops = this.data.openLoops.filter(loop => !String(loop).startsWith('Answer player:'));
@@ -1905,7 +1905,7 @@
                     doctrine
                 });
                 this.data.actionLedger = this.data.actionLedger.slice(-this.maxActions);
-                this.recordEvent(`Gemma doctrine ${doctrine}, action ${action.applied ? 'applied' : 'blocked'} ${token || tool}${reason ? ` because ${reason}` : ''}`);
+                this.recordEvent(`Gemma doctrine ${doctrine}, order ${action.applied ? 'applied' : 'ignored'} ${token || tool}${reason ? ` because ${reason}` : ''}`);
                 if (summary) this.data.summary = this.cleanLine(summary, 900);
                 else this.updateLocalDigest('roleplay_turn');
                 this.save();
@@ -2083,6 +2083,7 @@
                 `Front gap ${snapshot.frontGap} px`,
                 `Pressure pact: ${snapshot.pressure || 'balanced'}`,
                 `Gemma doctrine: ${snapshot.doctrine || 'balanced'}`,
+                `Engine order: ${snapshot.engineOrder || 'adaptive'}`,
                 `Lane pressure ${Math.round(snapshot.lanePressure)}`
             ];
             g.fillStyle = '#111827';
@@ -2316,46 +2317,72 @@
         }
 
         function buildGemmaActionChoices(ctx) {
-            let choices = [];
-            (ctx.affordableUnits || []).forEach(unit => {
+            let agreements = (ctx && ctx.agreements) || {};
+            let choices = [
+                {
+                    token: 'press',
+                    order: 'press',
+                    label: 'temporary order: pressure the lane with live legal spending',
+                    reason: 'Gemma ordered lane pressure'
+                },
+                {
+                    token: 'defend',
+                    order: 'defend',
+                    label: 'temporary order: stabilize the Gemma base first',
+                    reason: 'Gemma ordered defense'
+                },
+                {
+                    token: 'counter',
+                    order: 'counter',
+                    label: 'temporary order: adapt unit mix to the player army',
+                    reason: 'Gemma ordered counterplay'
+                },
+                {
+                    token: 'tech',
+                    order: 'tech',
+                    label: 'temporary order: favor economy, upgrades, and age timing when safe',
+                    reason: 'Gemma ordered tech timing'
+                },
+                {
+                    token: 'swarm',
+                    order: 'swarm',
+                    label: 'temporary order: spend on cheap bodies and constant contact',
+                    reason: 'Gemma ordered swarm pressure'
+                },
+                {
+                    token: 'heavy',
+                    order: 'heavy',
+                    label: 'temporary order: save for and spend on power units',
+                    reason: 'Gemma ordered heavy timing'
+                },
+                {
+                    token: 'hold',
+                    order: 'hold',
+                    label: 'temporary order: spend only to answer danger, otherwise wait',
+                    reason: 'Gemma ordered a hold'
+                }
+            ];
+            if (!agreements.noTurrets) {
                 choices.push({
-                    token: `unit${unit.typeIndex}`,
-                    tool: 'spawn_unit',
-                    typeIndex: unit.typeIndex,
-                    label: `spawn ${unit.name} (${unit.type}, ${unit.cost} gold)`,
-                    reason: `spawn ${unit.name}`
-                });
-            });
-            (ctx.affordableUpgrades || []).forEach(type => {
-                choices.push({
-                    token: type,
-                    tool: 'buy_upgrade',
-                    upgrade: type,
-                    label: `buy ${type} upgrade`,
-                    reason: `upgrade ${type}`
-                });
-            });
-            if ((ctx.affordableTurrets || []).length || ctx.canBuyTurretSlot) {
-                choices.push({
-                    token: 'turret',
-                    tool: 'build_turret',
-                    label: ctx.openTurretSlots > 0 ? 'build best affordable turret' : 'unlock next turret slot',
-                    reason: ctx.openTurretSlots > 0 ? 'base defense turret' : 'open turret slot'
+                    token: 'fortify',
+                    order: 'fortify',
+                    label: 'temporary order: base hp and turrets when useful',
+                    reason: 'Gemma ordered fortification'
                 });
             }
-            if (ctx.specialReady) {
+            if (!agreements.noSpecials) {
                 choices.push({
                     token: 'special',
-                    tool: 'use_special',
-                    label: 'use age special',
-                    reason: 'special timing'
+                    order: 'special',
+                    label: 'temporary order: look for a live special-ability timing',
+                    reason: 'Gemma ordered special timing'
                 });
             }
             choices.push({
                 token: 'none',
-                tool: 'none',
-                label: 'take no model-directed action',
-                reason: 'hold position'
+                order: 'none',
+                label: 'no override; let the realtime engine continue its own plan',
+                reason: 'Gemma left the engine plan unchanged'
             });
             let seen = Object.create(null);
             return choices.filter(choice => {
@@ -2396,8 +2423,9 @@
                 'The image itself explains sides, attack directions, bases, hit lines, front lines, danger zone, unit markers, HP, gold, unit counts, and pressure. Read its labels first.',
                 `Current ages for orientation: you are red Gemma in ${enemyAgeData.name}; the blue player is in ${playerAgeData.name}.`,
                 `Current Gemma battle doctrine before your next choice: ${currentDoctrine}.`,
+                `Current realtime engine order before your next choice: ${snapshot.engineOrder || 'adaptive'}.`,
                 `Current pacts and notes: ${DirectorMemory.tags().join(', ')}.`,
-                'Act as war general for your side. Describe from your perspective the most detailed current war status you can, based on the image labels. Do not choose an action yet. Do not use JSON.'
+                'Act as war general for your side. Describe from your perspective the most detailed current war status you can, based on the image labels. The realtime engine is already fighting while you think, so do not choose an order yet. Do not use JSON.'
             ].join('\n\n');
             let opinionPrompt = [
                 '--- COMPACT SUMMARY OF PREVIOUS CHAT ---',
@@ -2415,19 +2443,20 @@
                 'Respect player pacts. If the player asked for mercy, do not choose allin or rush unless your base is seriously threatened. No sentence, no JSON.'
             ].join('\n');
             let actionPrompt = [
-                'Your turn please. Based on the state of the game you just described from your perspective, what is your play against me in this situation?',
-                'Use the battle status and the doctrine you just chose, but answer with an action option word, not a doctrine word or tool name.',
-                `Reply with only one word from these exact action options: ${optionTokens}.`,
-                'Option meanings:',
+                'Your turn please. Because your answer can arrive about one minute late, do not choose a single purchase or click.',
+                'Choose one temporary high-level battle order for the realtime AI engine. The engine will interpret it against the live game state when this answer arrives.',
+                'Use the battle status and the doctrine you just chose, but answer with an order option word, not a doctrine word or tool name.',
+                `Reply with only one word from these exact order options: ${optionTokens}.`,
+                'Order meanings:',
                 optionLines,
-                'Pick only legal and affordable choices. If your intended move is not listed, reply none. No sentence, no JSON.'
+                'If your intended order is not listed or a pact blocks it, reply none. No sentence, no JSON.'
             ].join('\n');
             let summaryPrompt = [
                 'Write the compact summary text for the next turn. This exact text will be the only model memory I keep.',
                 'Blend the previous compact summary with this current chat turn and the battlefield status you just described.',
                 'Keep stable facts about who the player/user is, their preferences, important pacts, and the running battle story.',
-                'Replace stale tactical details with the current battle state, current player request, your visible reply, the doctrine word you chose, and the action option word you chose.',
-                'If your action answer was not one of the listed action option words, remember the action as none.',
+                'Replace stale tactical details with the current battle state, current player request, your visible reply, the doctrine word you chose, and the temporary order word you chose.',
+                'If your order answer was not one of the listed order option words, remember the order as none.',
                 `Previous compact summary to blend from: ${previousSummary}`,
                 latestPlayer ? `Current player chat/request: ${latestPlayer}` : 'Current player chat/request: none this turn.',
                 'Return only the summary text under 80 words. Do not add labels, JSON, markdown, or bullets.'
@@ -2645,7 +2674,9 @@
                     affordableTurrets,
                     openTurretSlots,
                     canBuyTurretSlot,
-                    specialReady
+                    specialReady,
+                    agreements,
+                    snapshot
                 });
                 let doctrineChoices = buildGemmaDoctrineChoices();
                 let roleplay = buildGemmaRoleplayPrompts({
@@ -3053,18 +3084,9 @@
             let payload = pendingMeta && pendingMeta.payload ? pendingMeta.payload : {};
             let doctrine = selectGemmaDoctrineChoice(result && result.doctrineWord, payload.doctrineChoices || []);
             let choice = selectGemmaActionChoice(result && result.actionWord, payload.actionChoices || []);
-            let action = {
-                tool: choice.tool || 'none',
-                typeIndex: Number.isFinite(Number(choice.typeIndex)) ? Number(choice.typeIndex) : 0,
-                upgrade: choice.upgrade || '',
-                reason: choice.reason || `Gemma chose ${choice.token || 'none'}`
-            };
-            let requestedTool = action.tool || 'none';
-            let applied = false;
-            if (requestedTool === 'spawn_unit') applied = AIDirector.trySpawnUnit(Math.max(0, Math.min(2, Number(action.typeIndex) || 0)), action.reason);
-            else if (requestedTool === 'buy_upgrade') applied = AIDirector.tryUpgrade(['dmg', 'hp', 'econ'].includes(action.upgrade) ? action.upgrade : 'econ', action.reason);
-            else if (requestedTool === 'build_turret') applied = AIDirector.tryBuildTurret(action.reason);
-            else if (requestedTool === 'use_special') applied = AIDirector.trySpecial(action.reason);
+            let orderToken = choice.order || choice.token || 'none';
+            let applied = AIDirector.acceptGemmaOrder(choice, doctrine.token || 'balanced', requestId);
+            let requestedTool = applied ? `order:${orderToken}` : 'none';
 
             NativeGemma.log('action.roleplay_result', {
                 requestId,
@@ -3072,13 +3094,15 @@
                 selectedDoctrine: doctrine.token || 'balanced',
                 actionWord: result && result.actionWord ? result.actionWord : '',
                 selectedToken: choice.token || '',
+                orderToken,
+                orderUntil: applied ? Math.round(AIDirector.gemmaOrderUntil) : 0,
                 requestedTool,
                 applied
             });
             GemmaMemory.recordRoleplay(result || {}, choice, doctrine, { requestId, requestedTool, applied });
             DirectorPanel.finishModelThoughts(requestId, result && result.reply ? result.reply : 'I am watching the line and holding my next move.');
             DirectorPanel.renderMemory();
-            DirectorPanel.addSystem(`doctrine: ${doctrine.token || 'balanced'} | choice: ${choice.token || 'none'}${!applied && requestedTool !== 'none' ? ' blocked' : ''}`);
+            DirectorPanel.addSystem(`doctrine: ${doctrine.token || 'balanced'} | order: ${orderToken || 'none'}${applied ? '' : ' (engine kept live plan)'}`);
         }
 
         window.onLocalGemmaStatus = (json) => {
@@ -3292,7 +3316,7 @@
                 if (done) entry.done[phase] = true;
                 if (phase === 'opinion' && clean) entry.visible = this.normalizeLine(clean, 220);
                 else if (!entry.phases.opinion && phase === 'battlefield' && clean) entry.visible = 'reading the lane...';
-                else if (!entry.phases.opinion && phase === 'action' && clean) entry.visible = 'choosing a move...';
+                else if (!entry.phases.opinion && phase === 'action' && clean) entry.visible = 'choosing an order...';
                 this.renderThoughtEntry(entry);
             },
             finishModelThoughts(requestId, visibleText) {
@@ -3328,7 +3352,7 @@
                     battlefield: 'status',
                     opinion: 'reply',
                     doctrine: 'doctrine',
-                    action: 'move',
+                    action: 'order',
                     summary: 'memory',
                     error: 'error'
                 };
@@ -3395,7 +3419,8 @@
             showAction(toolName, reason) {
                 let name = String(toolName || '').toLowerCase();
                 let label = 'move';
-                if (name.includes('spawn') || name.includes('unit')) label = 'unit';
+                if (name.includes('order')) label = 'order';
+                else if (name.includes('spawn') || name.includes('unit')) label = 'unit';
                 else if (name.includes('upgrade') || name.includes('econ') || name.includes('dmg') || name.includes('hp')) label = 'upgrade';
                 else if (name.includes('turret') || name.includes('slot')) label = 'fort';
                 else if (name.includes('evolve') || name.includes('age')) label = 'age';
@@ -3410,6 +3435,7 @@
                 host.innerHTML = '';
                 let tags = [];
                 if (GemmaMemory.data && GemmaMemory.data.doctrine) tags.push(`doctrine: ${GemmaMemory.data.doctrine}`);
+                if (typeof AIDirector !== 'undefined' && AIDirector.activeOrderFromState) tags.push(`order: ${AIDirector.activeOrderFromState()}`);
                 tags = tags.concat(DirectorMemory.tags());
                 tags.forEach(tag => {
                     let chip = document.createElement('span');
@@ -3529,6 +3555,13 @@
             lastPlayerAge: 0,
             lastEnemyAge: 0,
             lastActionNoticeAt: -99,
+            lastPlanNoticeAt: -99,
+            gemmaOrder: 'none',
+            gemmaOrderUntil: 0,
+            gemmaOrderReason: '',
+            localOrder: 'balanced',
+            localOrderUntil: 0,
+            lastCommentKey: '',
             start(diffKey) {
                 this.actionTimer = 0.8;
                 this.chatTimer = 3.5;
@@ -3537,6 +3570,13 @@
                 this.lastPlayerAge = 0;
                 this.lastEnemyAge = 0;
                 this.lastActionNoticeAt = -99;
+                this.lastPlanNoticeAt = -99;
+                this.gemmaOrder = 'none';
+                this.gemmaOrderUntil = 0;
+                this.gemmaOrderReason = '';
+                this.localOrder = 'balanced';
+                this.localOrderUntil = 0;
+                this.lastCommentKey = '';
                 this.lowHpWarned = false;
                 DirectorPanel.start(diffKey);
             },
@@ -3548,6 +3588,8 @@
                 this.chatTimer -= dt;
                 this.gemmaTimer -= dt;
                 let snapshot = this.snapshot();
+                this.updateLocalOrder(snapshot);
+                snapshot.engineOrder = this.activeOrderFromState();
                 this.maybeMilestoneChat(snapshot);
 
                 if (this.actionTimer <= 0) {
@@ -3565,6 +3607,75 @@
             },
             setRestraint(seconds) {
                 this.restraintUntil = Math.max(this.restraintUntil, globalTime + seconds);
+            },
+            normalizeOrder(value) {
+                let clean = String(value || '').toLowerCase().replace(/[^a-z]/g, '').trim();
+                let valid = ['press', 'defend', 'counter', 'tech', 'swarm', 'heavy', 'hold', 'fortify', 'special', 'none', 'balanced'];
+                return valid.includes(clean) ? clean : 'none';
+            },
+            activeOrderFromState() {
+                if (this.gemmaOrder && this.gemmaOrder !== 'none' && globalTime < this.gemmaOrderUntil) return this.gemmaOrder;
+                return this.localOrder || 'balanced';
+            },
+            acceptGemmaOrder(choice, doctrineToken, requestId = '') {
+                let order = this.normalizeOrder(choice && (choice.order || choice.token));
+                if (order === 'balanced') order = 'none';
+                if (order === 'none') {
+                    this.gemmaOrder = 'none';
+                    this.gemmaOrderUntil = 0;
+                    this.gemmaOrderReason = '';
+                    return false;
+                }
+                this.gemmaOrder = order;
+                this.gemmaOrderReason = choice.reason || `Gemma order ${order}`;
+                this.gemmaOrderUntil = globalTime + this.orderDuration(order);
+                this.localOrder = order;
+                this.localOrderUntil = Math.max(this.localOrderUntil, globalTime + 8);
+                this.actionTimer = Math.min(this.actionTimer, 0.15);
+                this.reportTool(`order:${order}`, this.gemmaOrderReason, true);
+                GemmaMemory.recordSystem(`Gemma order ${order} under ${doctrineToken || 'balanced'} doctrine.`);
+                return true;
+            },
+            orderDuration(order) {
+                return {
+                    press: 52,
+                    defend: 42,
+                    counter: 48,
+                    tech: 60,
+                    swarm: 42,
+                    heavy: 55,
+                    hold: 32,
+                    fortify: 50,
+                    special: 36
+                }[order] || 45;
+            },
+            updateLocalOrder(snapshot) {
+                if (globalTime < this.localOrderUntil) return;
+                let next = this.pickLocalOrder(snapshot);
+                let changed = next !== this.localOrder;
+                this.localOrder = next;
+                this.localOrderUntil = globalTime + 6 + Math.random() * 7;
+                if (changed) DirectorPanel.renderMemory();
+            },
+            pickLocalOrder(snapshot) {
+                let ai = gameState.enemy;
+                let pressure = (DirectorMemory.data.agreements || {}).pressure || 'balanced';
+                let doctrine = this.effectiveDoctrine(snapshot);
+                if (snapshot.restrained && snapshot.threatCount < 2) return 'tech';
+                if (pressure === 'mercy' && snapshot.playerHpRatio < 0.5 && snapshot.threatCount < 3) return 'hold';
+                if (snapshot.threatCount >= 5 || snapshot.enemyHpRatio < 0.32) return 'defend';
+                if (snapshot.heavyThreat || snapshot.playerRanged > snapshot.enemyRanged + 1 || snapshot.playerUnits > snapshot.enemyUnits + 2) return 'counter';
+                if (ai.age < gameState.player.age && snapshot.threatCount < 3) return 'tech';
+                if (snapshot.enemyXpRatio > 0.82 && snapshot.threatCount < 3) return 'tech';
+                if (snapshot.playerHpRatio < 0.34 && pressure !== 'mercy') return 'press';
+                if (snapshot.frontGap > 620 && snapshot.enemyUnits >= snapshot.playerUnits + 1 && pressure !== 'mercy') return 'press';
+                if (snapshot.enemyGold >= AGES[ai.age].units[2].cost * 1.15 && snapshot.threatCount < 3) return 'heavy';
+                if (ai.upgrades.econ < Math.min(10, 2 + Math.floor(currentConfig.aiAggression * 5)) && snapshot.threatCount < 2) return 'tech';
+                if (doctrine === 'turtle' || doctrine === 'stall') return 'fortify';
+                if (doctrine === 'counter' || doctrine === 'bait') return 'counter';
+                if (doctrine === 'tech') return 'tech';
+                if (doctrine === 'allin' || doctrine === 'rush') return Math.random() < 0.45 ? 'swarm' : 'press';
+                return Math.random() < 0.5 ? 'press' : 'counter';
             },
             doctrine() {
                 return (GemmaMemory.data && GemmaMemory.data.doctrine) || 'balanced';
@@ -3592,13 +3703,27 @@
                     bait: 1.22,
                     stall: 1.35
                 }[doctrine] || 1;
+                let order = this.activeOrderFromState();
+                let orderFactor = {
+                    swarm: 0.58,
+                    defend: 0.62,
+                    counter: 0.68,
+                    press: 0.72,
+                    special: 0.78,
+                    fortify: 0.88,
+                    heavy: 0.96,
+                    tech: 1.08,
+                    hold: 1.25
+                }[order] || 1;
                 let difficultyFactor = 1 - (currentConfig.aiAggression * 0.12);
-                return Math.max(0.25, (currentConfig.thinkRate * pressureFactor * doctrineFactor * difficultyFactor) + Math.random() * 0.45);
+                return Math.max(0.22, (currentConfig.thinkRate * pressureFactor * doctrineFactor * orderFactor * difficultyFactor) + Math.random() * 0.35);
             },
             snapshot() {
                 let ai = gameState.enemy;
                 let player = gameState.player;
                 let playerUnits = 0, enemyUnits = 0, threatCount = 0;
+                let playerMelee = 0, playerRanged = 0, playerHeavy = 0;
+                let enemyMelee = 0, enemyRanged = 0, enemyHeavy = 0;
                 let heavyThreat = false, closestThreatDist = Infinity;
                 let playerFront = BASE_WIDTH, enemyFront = CANVAS_WIDTH - BASE_WIDTH;
 
@@ -3607,6 +3732,9 @@
                     if (!u.active || u.hp <= 0 || u.drawProgress < 0.5) continue;
                     if (u.team === 1) {
                         playerUnits++;
+                        if (u.type === 'ranged') playerRanged++;
+                        else if (u.type === 'heavy') playerHeavy++;
+                        else playerMelee++;
                         playerFront = Math.max(playerFront, u.x);
                         let dist = (CANVAS_WIDTH - BASE_WIDTH) - u.x;
                         if (dist < closestThreatDist) closestThreatDist = dist;
@@ -3614,12 +3742,18 @@
                         if (dist < 620 && u.type === 'heavy') heavyThreat = true;
                     } else {
                         enemyUnits++;
+                        if (u.type === 'ranged') enemyRanged++;
+                        else if (u.type === 'heavy') enemyHeavy++;
+                        else enemyMelee++;
                         enemyFront = Math.min(enemyFront, u.x);
                     }
                 }
+                let evolveNeed = AGES[ai.age] && AGES[ai.age].evolveXP ? AGES[ai.age].evolveXP : 1;
 
                 return {
                     playerUnits, enemyUnits, threatCount, heavyThreat,
+                    playerMelee, playerRanged, playerHeavy,
+                    enemyMelee, enemyRanged, enemyHeavy,
                     closestThreatDist: Number.isFinite(closestThreatDist) ? closestThreatDist : 9999,
                     lanePressure: playerFront - (CANVAS_WIDTH - enemyFront),
                     playerFrontX: Math.round(playerFront),
@@ -3628,8 +3762,14 @@
                     playerHpRatio: player.hp / player.maxHp,
                     enemyHpRatio: ai.hp / ai.maxHp,
                     enemyGold: ai.gold,
+                    playerGold: player.gold,
+                    enemyAge: ai.age,
+                    playerAge: player.age,
+                    enemyXpRatio: ai.age >= AGES.length - 1 ? 1 : Math.max(0, Math.min(1, ai.xp / evolveNeed)),
                     pressure: DirectorMemory.data.agreements.pressure,
                     doctrine: this.doctrine(),
+                    engineOrder: this.activeOrderFromState(),
+                    gemmaOrderActive: this.gemmaOrder !== 'none' && globalTime < this.gemmaOrderUntil,
                     restrained: globalTime < this.restraintUntil
                 };
             },
@@ -3656,6 +3796,24 @@
             comment(snapshot) {
                 if (NativeGemma.ownsVisibleChat()) return;
                 let a = DirectorMemory.data.agreements;
+                let order = this.activeOrderFromState();
+                let orderLines = {
+                    press: ['I am keeping the lane busy; quiet gold is wasted pressure.', 'Your front is too far out. I am forcing contact.'],
+                    defend: ['You are close enough that I have to stabilize before I swing back.', 'Base first, counterpush second. I am buying time.'],
+                    counter: ['I am reading your unit mix and changing the answer, not just spamming.', 'That composition has a weakness. I am moving into the counter.'],
+                    tech: ['I can afford a slower minute, so I am turning it into economy and age timing.', 'You gave me room; I am converting it into tech.'],
+                    swarm: ['I am not waiting for a perfect unit. I am filling the lane now.', 'Cheap bodies first; the timing matters more than elegance.'],
+                    heavy: ['I am holding enough gold for a heavier hit.', 'The next swing is being banked, not missed.'],
+                    hold: ['I am not spending into a bad trade unless you force me.', 'I am letting the position breathe until there is a better punish.'],
+                    fortify: ['I am turning the right side into a harder target.', 'You will have to pay for every step near my base.'],
+                    special: ['I am watching for the special timing, not wasting it early.', 'If you stack too tightly, I have the clear ready.']
+                };
+                let lines = orderLines[order] || [];
+                if (lines.length && this.lastCommentKey !== order) {
+                    this.lastCommentKey = order;
+                    DirectorPanel.add('ai', lines[Math.floor(Math.random() * lines.length)]);
+                    return;
+                }
                 if (snapshot.restrained) {
                     DirectorPanel.add('ai', 'Truce timer is still active. I am using the quiet turns for upgrades.');
                 } else if (a.noSpecials || a.noTurrets || a.meleeOnly) {
@@ -3672,7 +3830,10 @@
             },
             chooseAction(snapshot) {
                 if (this.tryEvolve()) return;
+                this.updateLocalOrder(snapshot);
+                snapshot.engineOrder = this.activeOrderFromState();
                 let doctrine = this.effectiveDoctrine(snapshot);
+                let order = snapshot.engineOrder || 'balanced';
 
                 if (snapshot.restrained && snapshot.threatCount < 2) {
                     if (this.tryUpgrade('econ', 'truce economy')) return;
@@ -3680,10 +3841,8 @@
                     return;
                 }
 
-                if ((snapshot.threatCount >= 5 || snapshot.heavyThreat) && this.trySpecial('clear the pressure wave')) return;
-                if (snapshot.threatCount > 0 && this.tryBuildTurret('base defense')) return;
-                if (snapshot.enemyHpRatio < 0.45 && this.tryUpgrade('hp', 'stabilize base')) return;
-
+                if (this.tryEmergencyAction(snapshot)) return;
+                if (this.tryOrderAction(order, snapshot)) return;
                 if (this.tryDoctrineAction(doctrine, snapshot)) return;
 
                 let ai = gameState.enemy;
@@ -3710,6 +3869,109 @@
                 if (ai.gold >= ageData.units[2].cost * (1.4 - currentConfig.aiAggression * 0.4) && this.trySpawnUnit(2, 'timed power unit')) return;
                 if (snapshot.enemyUnits < Math.max(2, Math.floor(snapshot.playerUnits * 0.9)) && this.trySpawnUnit(1, 'match your army count')) return;
                 if ((currentConfig.aiAggression > 0.45 || ai.gold > ageData.units[0].cost * 5) && this.trySpawnUnit(0, 'keep lane presence')) return;
+            },
+            tryEmergencyAction(snapshot) {
+                if ((snapshot.threatCount >= 6 || (snapshot.heavyThreat && snapshot.threatCount >= 2)) && this.trySpecial('emergency clear')) return true;
+                if (snapshot.threatCount >= 3 && this.tryBuildTurret('live base defense')) return true;
+                if (snapshot.enemyHpRatio < 0.45 && this.tryUpgrade('hp', 'live base stabilize')) return true;
+                if (snapshot.threatCount >= 2 && snapshot.enemyUnits < snapshot.playerUnits && this.tryCounterUnit(snapshot, 'live counter near base')) return true;
+                return false;
+            },
+            tryOrderAction(order, snapshot) {
+                let ai = gameState.enemy;
+                let ageData = AGES[ai.age];
+                if (!ageData) return false;
+
+                if (order === 'defend') {
+                    if (snapshot.threatCount >= 3 && this.trySpecial('order defend clear')) return true;
+                    if (this.tryBuildTurret('order defend turret')) return true;
+                    if (this.tryUpgrade('hp', 'order defend hp')) return true;
+                    if (this.tryCounterUnit(snapshot, 'order defend counter')) return true;
+                    if (this.trySpawnUnit(0, 'order defend blocker')) return true;
+                    return false;
+                }
+
+                if (order === 'fortify') {
+                    if (this.tryBuildTurret('order fortify turret')) return true;
+                    if (this.tryUpgrade('hp', 'order fortify hp')) return true;
+                    if (snapshot.threatCount < 2 && this.tryUpgrade('econ', 'order fortify income')) return true;
+                    if (snapshot.enemyUnits < snapshot.playerUnits + 1 && this.trySpawnUnit(1, 'order fortify cover')) return true;
+                    return false;
+                }
+
+                if (order === 'counter') {
+                    if (this.tryCounterUnit(snapshot, 'order counter unit mix')) return true;
+                    if (this.tryUpgrade('dmg', 'order counter damage')) return true;
+                    return false;
+                }
+
+                if (order === 'tech') {
+                    let ecoTarget = Math.min(10, 3 + Math.floor(currentConfig.aiAggression * 5));
+                    if (snapshot.threatCount < 3 && ai.upgrades.econ < ecoTarget && this.tryUpgrade('econ', 'order tech economy')) return true;
+                    if (snapshot.threatCount < 2 && this.tryUpgrade('dmg', 'order tech damage')) return true;
+                    if (snapshot.enemyUnits < Math.max(1, Math.floor(snapshot.playerUnits * 0.7)) && this.trySpawnUnit(1, 'order tech screen')) return true;
+                    return this.holdAction('order tech patience');
+                }
+
+                if (order === 'press') {
+                    if (snapshot.playerHpRatio < 0.35 && this.trySpawnUnit(2, 'order press finisher')) return true;
+                    if (this.tryPressureUnit(snapshot, 'order press')) return true;
+                    if (this.tryUpgrade('dmg', 'order press damage')) return true;
+                    return false;
+                }
+
+                if (order === 'swarm') {
+                    if (this.trySpawnUnit(0, 'order swarm body')) return true;
+                    if (this.trySpawnUnit(1, 'order swarm ranged')) return true;
+                    if (this.tryUpgrade('dmg', 'order swarm damage')) return true;
+                    return false;
+                }
+
+                if (order === 'heavy') {
+                    if (this.trySpawnUnit(2, 'order heavy power unit')) return true;
+                    if (snapshot.threatCount > 0 && this.tryCounterUnit(snapshot, 'order heavy safety screen')) return true;
+                    if (snapshot.enemyUnits < Math.max(1, snapshot.playerUnits) && this.trySpawnUnit(0, 'order heavy cheap screen')) return true;
+                    return this.holdAction('saving for heavy unit');
+                }
+
+                if (order === 'special') {
+                    if ((snapshot.threatCount >= 2 || snapshot.playerUnits >= 3 || snapshot.playerHpRatio < 0.55) && this.trySpecial('order special timing')) return true;
+                    if (snapshot.threatCount >= 1 && this.tryBuildTurret('order special setup defense')) return true;
+                    if (this.tryPressureUnit(snapshot, 'order special setup pressure')) return true;
+                    return false;
+                }
+
+                if (order === 'hold') {
+                    if (snapshot.threatCount >= 2 && this.tryCounterUnit(snapshot, 'order hold necessary answer')) return true;
+                    if (snapshot.threatCount < 2 && this.tryUpgrade('econ', 'order hold quiet economy')) return true;
+                    return this.holdAction('holding for better trade');
+                }
+
+                return false;
+            },
+            tryPressureUnit(snapshot, reason) {
+                if (snapshot.threatCount < 4 && snapshot.enemyGold >= AGES[gameState.enemy.age].units[2].cost && this.trySpawnUnit(2, `${reason} heavy`)) return true;
+                if (snapshot.playerRanged > snapshot.playerMelee && this.trySpawnUnit(2, `${reason} crush ranged`)) return true;
+                if (this.trySpawnUnit(1, `${reason} support`)) return true;
+                if (this.trySpawnUnit(0, `${reason} filler`)) return true;
+                return false;
+            },
+            tryCounterUnit(snapshot, reason) {
+                if (snapshot.heavyThreat && this.trySpawnUnit(1, `${reason} anti-heavy range`)) return true;
+                if (snapshot.playerRanged > snapshot.playerMelee && this.trySpawnUnit(2, `${reason} punish ranged`)) return true;
+                if (snapshot.playerHeavy > 0 && this.trySpawnUnit(1, `${reason} kite heavy`)) return true;
+                if (snapshot.playerUnits > snapshot.enemyUnits + 1 && this.trySpawnUnit(1, `${reason} match count`)) return true;
+                if (snapshot.playerUnits > snapshot.enemyUnits && this.trySpawnUnit(0, `${reason} cheap body`)) return true;
+                if (this.trySpawnUnit(1, `${reason} default cover`)) return true;
+                if (this.trySpawnUnit(0, `${reason} default blocker`)) return true;
+                return false;
+            },
+            holdAction(reason) {
+                if (globalTime - this.lastPlanNoticeAt > 5) {
+                    this.reportTool('hold', reason);
+                    this.lastPlanNoticeAt = globalTime;
+                }
+                return true;
             },
             tryDoctrineAction(doctrine, snapshot) {
                 let ai = gameState.enemy;
