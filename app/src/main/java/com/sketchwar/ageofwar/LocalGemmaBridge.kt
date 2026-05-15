@@ -37,7 +37,7 @@ class LocalGemmaBridge(
         const val MAX_PROMPT_PAYLOAD_CHARS = 12_000
         const val MAX_ROLEPLAY_PROMPT_CHARS = 3_800
         const val MAX_CONVERSATION_MESSAGES = 12
-        const val ROLEPLAY_TURN_MESSAGE_BUDGET = 8
+        const val ROLEPLAY_TURN_MESSAGE_BUDGET = 10
         const val ROLEPLAY_PHASE_TIMEOUT_SECONDS = 90L
         const val MAX_CONTEXT_IMAGE_BYTES = 700_000
         const val ENABLE_IMAGE_INPUT = true
@@ -259,6 +259,7 @@ class LocalGemmaBridge(
 
                 val battlefieldPrompt = promptField(roleplay, "battlefieldPrompt", fallbackBattlefieldPrompt(payloadJson))
                 val opinionPrompt = promptField(roleplay, "opinionPrompt", fallbackOpinionPrompt())
+                val doctrinePrompt = promptField(roleplay, "doctrinePrompt", fallbackDoctrinePrompt())
                 val actionPrompt = promptField(roleplay, "actionPrompt", fallbackActionPrompt())
                 val summaryPrompt = promptField(roleplay, "summaryPrompt", fallbackSummaryPrompt())
 
@@ -279,11 +280,27 @@ class LocalGemmaBridge(
                 val opinion = sendRoleplayPhase(requestId, conversation, "opinion", Contents.of(opinionPrompt))
                 noteConversationMessages(2)
 
-                logLong("request.prompt.action requestId=$requestId", actionPrompt)
-                val action = sendRoleplayPhase(requestId, conversation, "action", Contents.of(actionPrompt))
+                logLong("request.prompt.doctrine requestId=$requestId", doctrinePrompt)
+                val doctrine = sendRoleplayPhase(requestId, conversation, "doctrine", Contents.of(doctrinePrompt))
                 noteConversationMessages(2)
 
-                val summaryPromptWithAction = String.format(Locale.US, "%s\n\nYour action word this turn was: %s", summaryPrompt, action.take(80))
+                val actionPromptWithDoctrine = String.format(
+                    Locale.US,
+                    "%s\n\nYour doctrine word this turn was: %s. Pick an immediate action that fits that doctrine unless your base is in danger.",
+                    actionPrompt,
+                    doctrine.take(80)
+                )
+                logLong("request.prompt.action requestId=$requestId", actionPromptWithDoctrine)
+                val action = sendRoleplayPhase(requestId, conversation, "action", Contents.of(actionPromptWithDoctrine))
+                noteConversationMessages(2)
+
+                val summaryPromptWithAction = String.format(
+                    Locale.US,
+                    "%s\n\nYour doctrine word this turn was: %s\nYour action word this turn was: %s",
+                    summaryPrompt,
+                    doctrine.take(80),
+                    action.take(80)
+                )
                 logLong("request.prompt.summary requestId=$requestId", summaryPromptWithAction)
                 val summary = sendRoleplayPhase(requestId, conversation, "summary", Contents.of(summaryPromptWithAction))
                 noteConversationMessages(2)
@@ -293,6 +310,7 @@ class LocalGemmaBridge(
                     .put("mode", "roleplay")
                     .put("battlefield", battlefield)
                     .put("reply", opinion)
+                    .put("doctrineWord", doctrine)
                     .put("actionWord", action)
                     .put("summary", summary)
                     .put("elapsedMs", elapsedMs)
@@ -487,11 +505,14 @@ class LocalGemmaBridge(
     private fun fallbackOpinionPrompt(): String =
         "Tell me your opinion of this battle as my opponent. Keep it in character, concise, and do not use JSON."
 
+    private fun fallbackDoctrinePrompt(): String =
+        "Choose your persistent battle doctrine. Reply with only one word: balanced."
+
     private fun fallbackActionPrompt(): String =
         "Your turn please. Reply with only one word: none."
 
     private fun fallbackSummaryPrompt(): String =
-        "Create a compact summary for next turn by blending the previous summary with the current battle, chat, player profile, visible reply, and chosen action. No JSON."
+        "Create a compact summary for next turn by blending the previous summary with the current battle, chat, player identity/preferences, visible reply, doctrine, and chosen action. No JSON."
 
     private fun roleplayConversation(engine: Engine, modelPath: String, sessionId: String, resetChat: Boolean): Conversation {
         var previous: Conversation? = null
