@@ -17,9 +17,14 @@ import com.google.ai.edge.litertlm.Engine
 import com.google.ai.edge.litertlm.EngineConfig
 import com.google.ai.edge.litertlm.ExperimentalApi
 import com.google.ai.edge.litertlm.LogSeverity
+import com.google.ai.edge.litertlm.Message
+import com.google.ai.edge.litertlm.MessageCallback
 import java.io.File
 import java.util.Locale
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicReference
 import org.json.JSONObject
 
 class LocalGemmaBridge(
@@ -30,6 +35,10 @@ class LocalGemmaBridge(
         const val LOG_TAG = "AgeOfWarGemma"
         const val LOG_CHUNK_SIZE = 3_000
         const val MAX_PROMPT_PAYLOAD_CHARS = 12_000
+        const val MAX_ROLEPLAY_PROMPT_CHARS = 3_800
+        const val MAX_CONVERSATION_MESSAGES = 12
+        const val ROLEPLAY_TURN_MESSAGE_BUDGET = 8
+        const val ROLEPLAY_PHASE_TIMEOUT_SECONDS = 90L
         const val MAX_CONTEXT_IMAGE_BYTES = 700_000
         const val ENABLE_IMAGE_INPUT = true
 
@@ -41,6 +50,10 @@ class LocalGemmaBridge(
         @Volatile private var sharedLoadingPath: String? = null
         @Volatile private var sharedBusy: Boolean = false
         @Volatile private var sharedLastError: String? = null
+        @Volatile private var sharedConversation: Conversation? = null
+        @Volatile private var sharedConversationModelPath: String? = null
+        @Volatile private var sharedConversationSession: String? = null
+        @Volatile private var sharedConversationMessages: Int = 0
     }
 
     private data class ModelSpec(
@@ -147,11 +160,19 @@ class LocalGemmaBridge(
         executor.execute {
             var loaded: Engine? = null
             var previous: Engine? = null
+            var previousConversation: Conversation? = null
             try {
                 Engine.setNativeMinLogSeverity(LogSeverity.ERROR)
                 loaded = createEngine(path)
                 synchronized(ENGINE_LOCK) {
                     previous = if (sharedEngine != null && sharedModelPath != path) sharedEngine else null
+                    previousConversation = if (sharedConversation != null && sharedConversationModelPath != path) sharedConversation else null
+                    if (previousConversation != null) {
+                        sharedConversation = null
+                        sharedConversationModelPath = null
+                        sharedConversationSession = null
+                        sharedConversationMessages = 0
+                    }
                     sharedEngine = loaded
                     sharedModelPath = path
                     sharedModelKey = current.key
@@ -160,6 +181,7 @@ class LocalGemmaBridge(
                     sharedLastError = null
                 }
                 closeEngineQuietly(previous)
+                closeConversationQuietly(previousConversation)
                 loaded = null
                 logLine("load.ready model=${current.key} reused=false")
                 postStatus("ready")
@@ -218,27 +240,62 @@ class LocalGemmaBridge(
         logLine("request.start requestId=$requestId payloadChars=${payloadJson.length}")
         logLong("request.payload requestId=$requestId", payloadJson)
         val contextImageBytes = decodeContextImageDataUrl(requestId, contextImageDataUrl)
+        val activeModelPath = path ?: synchronized(ENGINE_LOCK) { sharedModelPath } ?: ""
         postStatus("ready")
         executor.execute {
-            var turnConversation: Conversation? = null
             var contextImageFile: File? = null
             var finalStatus = "ready"
             try {
-                val prompt = buildPrompt(payloadJson)
-                logLong("request.prompt requestId=$requestId", prompt)
-                turnConversation = activeEngine.createConversation(conversationConfig())
-                val contents = if (contextImageBytes != null) {
+                val roleplay = roleplayPayload(payloadJson)
+                val sessionId = roleplay.optString("sessionId", "default").ifBlank { "default" }.take(120)
+                val conversation = roleplayConversation(
+                    activeEngine,
+                    activeModelPath,
+                    sessionId,
+                    roleplay.optBoolean("resetChat", false)
+                )
+
+                val battlefieldPrompt = promptField(roleplay, "battlefieldPrompt", fallbackBattlefieldPrompt(payloadJson))
+                val opinionPrompt = promptField(roleplay, "opinionPrompt", fallbackOpinionPrompt())
+                val actionPrompt = promptField(roleplay, "actionPrompt", fallbackActionPrompt())
+                val summaryPrompt = promptField(roleplay, "summaryPrompt", fallbackSummaryPrompt())
+
+                val battlefieldContents = if (contextImageBytes != null) {
                     contextImageFile = writeContextImageFile(requestId, contextImageBytes)
                     Contents.of(
                         com.google.ai.edge.litertlm.Content.ImageFile(contextImageFile!!.absolutePath),
-                        com.google.ai.edge.litertlm.Content.Text(prompt)
+                        com.google.ai.edge.litertlm.Content.Text(battlefieldPrompt)
                     )
                 } else {
-                    Contents.of(prompt)
+                    Contents.of(battlefieldPrompt)
                 }
-                val responseMsg = turnConversation.sendMessage(contents)
-                val response = responseMsg.contents.contents.filterIsInstance<com.google.ai.edge.litertlm.Content.Text>().joinToString("") { it.text }
+                logLong("request.prompt.battlefield requestId=$requestId", battlefieldPrompt)
+                val battlefield = sendRoleplayPhase(requestId, conversation, "battlefield", battlefieldContents)
+                noteConversationMessages(2)
+
+                logLong("request.prompt.opinion requestId=$requestId", opinionPrompt)
+                val opinion = sendRoleplayPhase(requestId, conversation, "opinion", Contents.of(opinionPrompt))
+                noteConversationMessages(2)
+
+                logLong("request.prompt.action requestId=$requestId", actionPrompt)
+                val action = sendRoleplayPhase(requestId, conversation, "action", Contents.of(actionPrompt))
+                noteConversationMessages(2)
+
+                val summaryPromptWithAction = String.format(Locale.US, "%s\n\nYour action word this turn was: %s", summaryPrompt, action.take(80))
+                logLong("request.prompt.summary requestId=$requestId", summaryPromptWithAction)
+                val summary = sendRoleplayPhase(requestId, conversation, "summary", Contents.of(summaryPromptWithAction))
+                noteConversationMessages(2)
+
                 val elapsedMs = System.currentTimeMillis() - startedAt
+                val response = JSONObject()
+                    .put("mode", "roleplay")
+                    .put("battlefield", battlefield)
+                    .put("reply", opinion)
+                    .put("actionWord", action)
+                    .put("summary", summary)
+                    .put("elapsedMs", elapsedMs)
+                    .put("conversationMessages", synchronized(ENGINE_LOCK) { sharedConversationMessages })
+                    .toString()
                 logLine("response.ready requestId=$requestId responseChars=${response.length} elapsedMs=$elapsedMs")
                 logLong("response.raw requestId=$requestId", response)
                 postResponse(requestId, response)
@@ -250,9 +307,6 @@ class LocalGemmaBridge(
                 postError(requestId, t.message ?: t.javaClass.simpleName)
                 finalStatus = "error"
             } finally {
-                try { turnConversation?.close() } catch (closeFailure: Throwable) {
-                    logError("conversation.close_error requestId=$requestId", closeFailure)
-                }
                 try { contextImageFile?.delete() } catch (_: Throwable) {}
                 synchronized(ENGINE_LOCK) {
                     sharedBusy = false
@@ -383,46 +437,146 @@ class LocalGemmaBridge(
         runJs("window.onLocalGemmaError(${JSONObject.quote(requestId)}, ${JSONObject.quote(message)});")
     }
 
+    private fun postStream(requestId: String, phase: String, text: String, done: Boolean) {
+        runJs(
+            "window.onLocalGemmaStream(${JSONObject.quote(requestId)}, " +
+                "${JSONObject.quote(phase)}, ${JSONObject.quote(text)}, $done);"
+        )
+    }
+
     private fun runJs(script: String) {
         activity.runOnUiThread {
             if (!activity.isFinishing && !activity.isDestroyed) webView.evaluateJavascript(script, null)
         }
     }
 
-    private fun systemPrompt(): String = """
-        You are the local Gemma 4 director for Age of War: Sketchbook Edition.
-        You play the enemy side, but you are also an entertaining opponent who can honor pacts.
-        Each request is stateless: use only the current payload, snapshot, persistent pacts, and gemmaMemory.
-        gemmaMemory contains bounded match memory, recent player/model turns, recent events, action outcomes, and repetition guards.
-        When an image is attached, it is a labeled tactical context map, not raw sketch art. You are Gemma, the red enemy on the right side. The blue left side is the player/user.
-        Read the image labels before interpreting lines: dashed vertical lines are front lines, gray vertical lines are base hit lines, shaded red is Gemma base danger, blue markers are player units, and red markers are your units. Use JSON for exact numbers and legal actions.
-        Never ask for network access.
-        Output one small JSON object only. No markdown, no code fences, no explanations outside JSON.
-        {"say":"short taunt or agreement","pressure":"rush|balanced|mercy|null","action":{"tool":"spawn_unit|buy_upgrade|build_turret|use_special|none","typeIndex":0,"upgrade":"econ","reason":"short reason"},"memoryPatch":{"summary":"optional <=700 chars","playerProfile":"optional <=240 chars","doNotRepeat":["short phrase"],"openLoops":["short fact"],"tone":"short style guidance","suggestions":["<=48 char player command"]}}
-        Valid unit/turret typeIndex values are 0, 1, and 2. Valid upgrades are dmg, hp, econ.
-        Choose only from constraints.chooseOnlyAffordableTools and enemyChoices.affordable* lists. If nothing useful is affordable, use action.tool "none".
-        If reason is player_chat, answer extraMessage directly in say before choosing an action.
-        Do not repeat recent say text or opening phrases listed in gemmaMemory.repetitionGuard.
-        The snapshot age is current truth; if the same age has lasted a while, talk about the current battle state instead of greeting that age again.
-        Use memoryPatch to keep future turns focused when the player says something important, the match phase changes, or your own repeated phrasing needs a guard. Omit memoryPatch if nothing changed.
-        If a useful action is unclear, return action.tool "none".
-        Prefer fair, varied, readable decisions over perfect play.
-    """.trimIndent()
+    private fun conversationConfig(): ConversationConfig = ConversationConfig()
 
-    private fun conversationConfig(): ConversationConfig = ConversationConfig(
-        systemInstruction = Contents.of(systemPrompt())
-    )
+    private fun roleplayPayload(payloadJson: String): JSONObject {
+        return try {
+            val root = JSONObject(payloadJson)
+            root.optJSONObject("roleplay") ?: JSONObject()
+        } catch (t: Throwable) {
+            logError("request.payload_parse_error", t)
+            JSONObject()
+        }
+    }
 
-    private fun buildPrompt(payloadJson: String): String {
+    private fun promptField(roleplay: JSONObject, key: String, fallback: String): String {
+        val value = roleplay.optString(key, "").ifBlank { fallback }
+        val trimmed = value.take(MAX_ROLEPLAY_PROMPT_CHARS)
+        if (value.length > MAX_ROLEPLAY_PROMPT_CHARS) {
+            logLine("request.prompt_truncated key=$key promptChars=${value.length} capped=$MAX_ROLEPLAY_PROMPT_CHARS")
+        }
+        return trimmed
+    }
+
+    private fun fallbackBattlefieldPrompt(payloadJson: String): String {
         val trimmed = payloadJson.take(MAX_PROMPT_PAYLOAD_CHARS)
         if (payloadJson.length > MAX_PROMPT_PAYLOAD_CHARS) {
-            logLine("request.prompt_truncated payloadChars=${payloadJson.length} promptPayloadChars=$MAX_PROMPT_PAYLOAD_CHARS")
+            logLine("request.payload_truncated payloadChars=${payloadJson.length} promptPayloadChars=$MAX_PROMPT_PAYLOAD_CHARS")
         }
-        return String.format(
-            Locale.US,
-            "Choose one high-level enemy director turn for this live match. Return JSON only. Use gemmaMemory for continuity, answer player_chat messages directly, choose only affordable actions, avoid repeating recent lines/actions, and include memoryPatch only when future turns need updated memory.\n%s",
-            trimmed
-        )
+        return "Gemma, you are the red enemy general in this Age of War match. Use this user-provided game state as context, no JSON needed. Describe the battle from your perspective before choosing a move.\n$trimmed"
+    }
+
+    private fun fallbackOpinionPrompt(): String =
+        "Tell me your opinion of this battle as my opponent. Keep it in character, concise, and do not use JSON."
+
+    private fun fallbackActionPrompt(): String =
+        "Your turn please. Reply with only one word: none."
+
+    private fun fallbackSummaryPrompt(): String =
+        "Create a compact summary for next turn. No JSON."
+
+    private fun roleplayConversation(engine: Engine, modelPath: String, sessionId: String, resetChat: Boolean): Conversation {
+        var previous: Conversation? = null
+        synchronized(ENGINE_LOCK) {
+            val needsReset = resetChat ||
+                sharedConversation == null ||
+                sharedConversationModelPath != modelPath ||
+                sharedConversationSession != sessionId ||
+                sharedConversationMessages + ROLEPLAY_TURN_MESSAGE_BUDGET > MAX_CONVERSATION_MESSAGES
+            if (needsReset) {
+                previous = sharedConversation
+                sharedConversation = null
+                sharedConversationModelPath = null
+                sharedConversationSession = null
+                sharedConversationMessages = 0
+            }
+        }
+        closeConversationQuietly(previous)
+
+        synchronized(ENGINE_LOCK) {
+            val existing = sharedConversation
+            if (existing != null && existing.isAlive) return existing
+        }
+
+        val created = engine.createConversation(conversationConfig())
+        synchronized(ENGINE_LOCK) {
+            sharedConversation = created
+            sharedConversationModelPath = modelPath
+            sharedConversationSession = sessionId
+            sharedConversationMessages = 0
+        }
+        logLine("conversation.created session=$sessionId modelPath=${modelPath.takeLast(48)}")
+        return created
+    }
+
+    private fun noteConversationMessages(count: Int) {
+        synchronized(ENGINE_LOCK) {
+            sharedConversationMessages += count
+        }
+    }
+
+    private fun sendRoleplayPhase(
+        requestId: String,
+        conversation: Conversation,
+        phase: String,
+        contents: Contents
+    ): String {
+        val latch = CountDownLatch(1)
+        val latestText = AtomicReference("")
+        val error = AtomicReference<Throwable?>(null)
+        postStream(requestId, phase, "", false)
+        conversation.sendMessageAsync(contents, object : MessageCallback {
+            override fun onMessage(message: Message) {
+                val text = messageText(message)
+                val previous = latestText.get()
+                val next = when {
+                    text.isBlank() -> previous
+                    text.startsWith(previous) -> text
+                    previous.endsWith(text) -> previous
+                    else -> previous + text
+                }
+                latestText.set(next)
+                postStream(requestId, phase, next, false)
+            }
+
+            override fun onDone() {
+                latch.countDown()
+            }
+
+            override fun onError(throwable: Throwable) {
+                error.set(throwable)
+                latch.countDown()
+            }
+        }, emptyMap<String, Any>())
+
+        if (!latch.await(ROLEPLAY_PHASE_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+            try { conversation.cancelProcess() } catch (_: Throwable) {}
+            throw RuntimeException("Gemma timed out during $phase")
+        }
+        error.get()?.let { throw it }
+        val text = latestText.get().trim()
+        postStream(requestId, phase, text, true)
+        logLong("response.phase.$phase requestId=$requestId", text)
+        return text
+    }
+
+    private fun messageText(message: Message): String {
+        return message.contents.contents
+            .filterIsInstance<com.google.ai.edge.litertlm.Content.Text>()
+            .joinToString("") { it.text }
     }
 
     private fun decodeContextImageDataUrl(requestId: String, dataUrl: String?): ByteArray? {
@@ -463,6 +617,10 @@ class LocalGemmaBridge(
 
     private fun closeEngineQuietly(engine: Engine?) {
         try { engine?.close() } catch (_: Throwable) {}
+    }
+
+    private fun closeConversationQuietly(conversation: Conversation?) {
+        try { conversation?.close() } catch (_: Throwable) {}
     }
 
     private fun logLine(message: String) {

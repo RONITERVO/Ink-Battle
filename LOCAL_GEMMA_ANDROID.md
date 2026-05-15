@@ -5,12 +5,12 @@ The app now uses a no-backend architecture for the AI opponent:
 - The game always has the deterministic local Codex Director fallback.
 - On Android, the WebView exposes `LocalGemmaAndroid` through `LocalGemmaBridge.kt`.
 - After user consent, Android `DownloadManager` downloads a `.litertlm` Gemma 4 model into the app's external files directory.
-- LiteRT-LM loads the model locally and returns small JSON director turns.
-- The LiteRT-LM engine is process-scoped and survives Activity/WebView recreation; only short-lived request conversations are closed after each turn.
+- LiteRT-LM loads the model locally and runs a no-system-prompt roleplay sequence made entirely of user turns.
+- The LiteRT-LM engine is process-scoped and survives Activity/WebView recreation; each roleplay sequence reuses one bounded conversation until the 12-message cap would be exceeded.
 - The JavaScript game validates every returned action before applying it.
-- Gemma turns use bounded application-managed memory: each request creates a fresh LiteRT-LM conversation and receives the current summary, recent player/model turns, recent events, action outcomes, and repetition guards.
+- Gemma turns use bounded application-managed memory: the JavaScript prompt includes the current compact summary, player pacts, recent turn notes, and live lane facts as plain user text.
 - Gemma director turns also receive a labeled tactical context image when available. The JavaScript app redraws the live lane as a clear diagram with base ownership, hit lines, front lines, danger zones, unit markers, counts, and a legend. The native bridge configures LiteRT-LM `visionBackend` and sends the image through a short-lived cache JPEG using `Content.ImageFile`.
-- The main Gemma turn may return an optional `memoryPatch` with bounded summary, phrase guards, open loops, tone, and input suggestions. There is no separate post-turn model memory job.
+- Gemma never has to author JSON. It speaks battlefield status, visible opponent chat, one action word, and a compact summary in separate turns. Native code wraps the completed strings for the WebView.
 - Deterministic memory hygiene strips repeated model phrases from summaries and records only high-signal fallback events, but never replaces visible Gemma speech.
 
 ## Model Choice
@@ -36,8 +36,9 @@ Configured downloads:
   - LiteRT-LM engine setup.
   - Process-scoped engine reuse across Activity/WebView recreation.
   - GPU first, CPU fallback.
-  - JSON-only director prompt tuned for bounded Gemma 4 turn memory and optional `memoryPatch`.
-  - Multimodal director prompt with explicit red/right-side Gemma ownership and tactical-map label guidance.
+  - No-system `ConversationConfig()` for Gemma 4 default behavior.
+  - Multiturn roleplay prompts with explicit red/right-side Gemma ownership and tactical-map label guidance.
+  - Streaming phase callbacks for battlefield status, visible reply, action word, and compact memory summary.
   - LiteRT-LM `visionBackend` setup and short-lived `ImageFile` context images for Android image input stability.
   - Chunked `AgeOfWarGemma` logcat diagnostics for exact request payloads, prompts, raw responses, parse failures, and action results.
 - `app/src/main/java/com/sketchwar/ageofwar/MainActivity.java`
@@ -55,8 +56,8 @@ Configured downloads:
 3. Player taps `Get Gemma`.
 4. App asks for confirmation before the multi-GB download.
 5. Fallback AI continues playing during download and model loading.
-6. Once ready, Gemma periodically produces high-level director turns.
-7. If Gemma returns `memoryPatch`, the same turn updates bounded memory and the command input placeholder suggestion.
+6. Once ready, Gemma periodically produces high-level director turns through battlefield, reply, action, and summary phases.
+7. The visible reply is shown in the opponent chat; click its `...` marker to reveal streamed opponent thoughts in a rolling one-line strip.
 
 ## Gemma Diagnostics
 
@@ -70,9 +71,10 @@ Each local model turn logs:
 
 - `request.payload`: exact JSON sent by the WebView bridge.
 - `request.context_image`: attached tactical context image byte count and MIME metadata.
-- `request.prompt`: final prompt passed to LiteRT-LM after the app's prompt cap.
-- `response.raw`: unmodified Gemma text.
-- `js.response.parsed`, `js.response.parse_failed`, and `js.action.result`: JavaScript parse and validation outcomes.
+- `request.prompt.<phase>`: final user-turn prompt passed to LiteRT-LM after the app's prompt cap.
+- `response.phase.<phase>`: unmodified Gemma text for each roleplay phase.
+- `response.raw`: native-created roleplay envelope returned to JavaScript.
+- `js.response.roleplay` and `js.action.roleplay_result`: JavaScript validation outcomes.
 
 Long values are split into numbered chunks between `BEGIN` and `END` lines so they can be reconstructed from logcat.
 
@@ -82,7 +84,7 @@ Long values are split into numbered chunks between `BEGIN` and `END` lines so th
 - No backend.
 - No prompt/game-state upload for inference.
 - No arbitrary code execution from the model.
-- Model output is parsed as JSON and constrained to known tools:
+- Model output for actions is parsed as one lower-case word and constrained to known tools:
   - `spawn_unit`
   - `buy_upgrade`
   - `build_turret`
