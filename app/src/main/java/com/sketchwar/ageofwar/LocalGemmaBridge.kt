@@ -244,16 +244,18 @@ class LocalGemmaBridge(
         postStatus("ready")
         executor.execute {
             var contextImageFile: File? = null
+            var turnConversation: Conversation? = null
             var finalStatus = "ready"
             try {
                 val roleplay = roleplayPayload(payloadJson)
                 val sessionId = roleplay.optString("sessionId", "default").ifBlank { "default" }.take(120)
-                val conversation = roleplayConversation(
+                turnConversation = roleplayConversation(
                     activeEngine,
                     activeModelPath,
                     sessionId,
                     roleplay.optBoolean("resetChat", false)
                 )
+                val conversation = turnConversation!!
 
                 val battlefieldPrompt = promptField(roleplay, "battlefieldPrompt", fallbackBattlefieldPrompt(payloadJson))
                 val opinionPrompt = promptField(roleplay, "opinionPrompt", fallbackOpinionPrompt())
@@ -299,6 +301,8 @@ class LocalGemmaBridge(
                 logLine("response.ready requestId=$requestId responseChars=${response.length} elapsedMs=$elapsedMs")
                 logLong("response.raw requestId=$requestId", response)
                 postResponse(requestId, response)
+                releaseRoleplayConversation(turnConversation)
+                turnConversation = null
             } catch (t: Throwable) {
                 synchronized(ENGINE_LOCK) {
                     sharedLastError = t.message ?: t.javaClass.simpleName
@@ -307,6 +311,7 @@ class LocalGemmaBridge(
                 postError(requestId, t.message ?: t.javaClass.simpleName)
                 finalStatus = "error"
             } finally {
+                if (finalStatus != "ready") releaseRoleplayConversation(turnConversation)
                 try { contextImageFile?.delete() } catch (_: Throwable) {}
                 synchronized(ENGINE_LOCK) {
                     sharedBusy = false
@@ -486,7 +491,7 @@ class LocalGemmaBridge(
         "Your turn please. Reply with only one word: none."
 
     private fun fallbackSummaryPrompt(): String =
-        "Create a compact summary for next turn. No JSON."
+        "Create a compact summary for next turn by blending the previous summary with the current battle, chat, player profile, visible reply, and chosen action. No JSON."
 
     private fun roleplayConversation(engine: Engine, modelPath: String, sessionId: String, resetChat: Boolean): Conversation {
         var previous: Conversation? = null
@@ -526,6 +531,21 @@ class LocalGemmaBridge(
         synchronized(ENGINE_LOCK) {
             sharedConversationMessages += count
         }
+    }
+
+    private fun releaseRoleplayConversation(conversation: Conversation?) {
+        if (conversation == null) return
+        var shouldClose = false
+        synchronized(ENGINE_LOCK) {
+            if (sharedConversation === conversation) {
+                sharedConversation = null
+                sharedConversationModelPath = null
+                sharedConversationSession = null
+                sharedConversationMessages = 0
+                shouldClose = true
+            }
+        }
+        if (shouldClose) closeConversationQuietly(conversation)
     }
 
     private fun sendRoleplayPhase(
