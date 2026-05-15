@@ -2444,6 +2444,7 @@
             ].join('\n');
             let actionPrompt = [
                 'Your turn please. Because your answer can arrive about one minute late, do not choose a single purchase or click.',
+                'I am attaching a fresh tactical image for this order phase when the device can capture one. Compare it to your earlier battlefield status and trust the newer image for changed unit positions.',
                 'Choose one temporary high-level battle order for the realtime AI engine. The engine will interpret it against the live game state when this answer arrives.',
                 'Use the battle status and the doctrine you just chose, but answer with an order option word, not a doctrine word or tool name.',
                 `Reply with only one word from these exact order options: ${optionTokens}.`,
@@ -3111,6 +3112,33 @@
         window.onLocalGemmaStream = (requestId, phase, text, done) => NativeGemma.stream(requestId, phase, text, done);
         window.onLocalGemmaResponse = (requestId, text) => NativeGemma.receive(requestId, text);
         window.onLocalGemmaError = (requestId, message) => NativeGemma.error(requestId, message);
+        window.onLocalGemmaSelectionImageRequest = (requestId) => {
+            let dataUrl = '';
+            try {
+                dataUrl = captureGemmaContextImage(AIDirector.snapshot()) || '';
+                NativeGemma.log('selection_image.provide', {
+                    requestId,
+                    chars: dataUrl.length,
+                    gameTime: Math.round(globalTime),
+                    order: AIDirector.activeOrderFromState ? AIDirector.activeOrderFromState() : ''
+                });
+            } catch (e) {
+                NativeGemma.log('selection_image.provide_failed', {
+                    requestId,
+                    message: String(e && e.message ? e.message : e)
+                });
+            }
+            try {
+                if (window.LocalGemmaAndroid && typeof window.LocalGemmaAndroid.provideSelectionImage === 'function') {
+                    window.LocalGemmaAndroid.provideSelectionImage(String(requestId || ''), dataUrl);
+                }
+            } catch (e) {
+                NativeGemma.log('selection_image.bridge_failed', {
+                    requestId,
+                    message: String(e && e.message ? e.message : e)
+                });
+            }
+        };
 
         // --- DIRECTOR CHAT SURFACE (COMMANDER HUD) ---
         const DirectorPanel = {

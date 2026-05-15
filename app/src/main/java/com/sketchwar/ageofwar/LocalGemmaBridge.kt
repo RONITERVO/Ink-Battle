@@ -20,6 +20,7 @@ import com.google.ai.edge.litertlm.LogSeverity
 import com.google.ai.edge.litertlm.Message
 import com.google.ai.edge.litertlm.MessageCallback
 import java.io.File
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -38,6 +39,7 @@ class LocalGemmaBridge(
         const val MAX_CONVERSATION_MESSAGES = 12
         const val ROLEPLAY_TURN_MESSAGE_BUDGET = 10
         const val ROLEPLAY_PHASE_TIMEOUT_SECONDS = 90L
+        const val SELECTION_IMAGE_TIMEOUT_MS = 2_500L
         const val MAX_CONTEXT_IMAGE_BYTES = 700_000
         const val ENABLE_IMAGE_INPUT = true
 
@@ -64,6 +66,11 @@ class LocalGemmaBridge(
         val minRamGb: Int
     )
 
+    private data class SelectionImageRequest(
+        val latch: CountDownLatch,
+        val dataUrl: AtomicReference<String?>
+    )
+
     private val models = listOf(
         ModelSpec(
             key = "gemma4-e2b",
@@ -87,6 +94,7 @@ class LocalGemmaBridge(
     private val cacheDirPath = activity.applicationContext.cacheDir.absolutePath
     private val prefs = activity.applicationContext.getSharedPreferences("local_gemma_v1", Context.MODE_PRIVATE)
     private val downloadManager = activity.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+    private val pendingSelectionImages = ConcurrentHashMap<String, SelectionImageRequest>()
     private val modelDir: File by lazy {
         File(activity.getExternalFilesDir(null) ?: activity.filesDir, "models").apply { mkdirs() }
     }
@@ -243,6 +251,7 @@ class LocalGemmaBridge(
         postStatus("ready")
         executor.execute {
             var contextImageFile: File? = null
+            var selectionImageFile: File? = null
             var turnConversation: Conversation? = null
             var finalStatus = "ready"
             try {
@@ -263,7 +272,7 @@ class LocalGemmaBridge(
                 val summaryPrompt = promptField(roleplay, "summaryPrompt", fallbackSummaryPrompt())
 
                 val battlefieldContents = if (contextImageBytes != null) {
-                    contextImageFile = writeContextImageFile(requestId, contextImageBytes)
+                    contextImageFile = writeContextImageFile(requestId, contextImageBytes, "context_image_file")
                     Contents.of(
                         com.google.ai.edge.litertlm.Content.ImageFile(contextImageFile!!.absolutePath),
                         com.google.ai.edge.litertlm.Content.Text(battlefieldPrompt)
@@ -283,8 +292,18 @@ class LocalGemmaBridge(
                 val doctrine = sendRoleplayPhase(requestId, conversation, "doctrine", Contents.of(doctrinePrompt))
                 noteConversationMessages(2)
 
+                val selectionImageBytes = requestSelectionImageBytes(requestId)
+                val actionContents = if (selectionImageBytes != null) {
+                    selectionImageFile = writeContextImageFile(requestId, selectionImageBytes, "selection_image_file")
+                    Contents.of(
+                        com.google.ai.edge.litertlm.Content.ImageFile(selectionImageFile!!.absolutePath),
+                        com.google.ai.edge.litertlm.Content.Text(actionPrompt)
+                    )
+                } else {
+                    Contents.of(actionPrompt)
+                }
                 logLong("request.prompt.action requestId=$requestId", actionPrompt)
-                val action = sendRoleplayPhase(requestId, conversation, "action", Contents.of(actionPrompt))
+                val action = sendRoleplayPhase(requestId, conversation, "action", actionContents)
                 noteConversationMessages(2)
 
                 logLong("request.prompt.summary requestId=$requestId", summaryPrompt)
@@ -315,14 +334,27 @@ class LocalGemmaBridge(
                 postError(requestId, t.message ?: t.javaClass.simpleName)
                 finalStatus = "error"
             } finally {
+                pendingSelectionImages.remove(requestId)
                 if (finalStatus != "ready") releaseRoleplayConversation(turnConversation)
                 try { contextImageFile?.delete() } catch (_: Throwable) {}
+                try { selectionImageFile?.delete() } catch (_: Throwable) {}
                 synchronized(ENGINE_LOCK) {
                     sharedBusy = false
                 }
                 postStatus(finalStatus)
             }
         }
+    }
+
+    @JavascriptInterface
+    fun provideSelectionImage(requestId: String, contextImageDataUrl: String?) {
+        val pending = pendingSelectionImages.remove(requestId)
+        if (pending == null) {
+            logLine("request.selection_image_late requestId=$requestId chars=${contextImageDataUrl?.length ?: 0}")
+            return
+        }
+        pending.dataUrl.set(contextImageDataUrl)
+        pending.latch.countDown()
     }
 
     @JavascriptInterface
@@ -606,39 +638,58 @@ class LocalGemmaBridge(
             .joinToString("") { it.text }
     }
 
-    private fun decodeContextImageDataUrl(requestId: String, dataUrl: String?): ByteArray? {
+    private fun requestSelectionImageBytes(requestId: String): ByteArray? {
+        if (!ENABLE_IMAGE_INPUT) return null
+        val pending = SelectionImageRequest(CountDownLatch(1), AtomicReference<String?>(null))
+        pendingSelectionImages[requestId] = pending
+        activity.runOnUiThread {
+            webView.evaluateJavascript(
+                "window.onLocalGemmaSelectionImageRequest && window.onLocalGemmaSelectionImageRequest(${JSONObject.quote(requestId)})",
+                null
+            )
+        }
+        val received = pending.latch.await(SELECTION_IMAGE_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+        pendingSelectionImages.remove(requestId)
+        if (!received) {
+            logLine("request.selection_image requestId=$requestId timeoutMs=$SELECTION_IMAGE_TIMEOUT_MS")
+            return null
+        }
+        return decodeContextImageDataUrl(requestId, pending.dataUrl.get(), "selection_image")
+    }
+
+    private fun decodeContextImageDataUrl(requestId: String, dataUrl: String?, label: String = "context_image"): ByteArray? {
         if (dataUrl.isNullOrBlank()) {
-            logLine("request.context_image requestId=$requestId absent")
+            logLine("request.$label requestId=$requestId absent")
             return null
         }
         if (!ENABLE_IMAGE_INPUT) {
-            logLine("request.context_image requestId=$requestId disabled chars=${dataUrl.length}")
+            logLine("request.$label requestId=$requestId disabled chars=${dataUrl.length}")
             return null
         }
         val comma = dataUrl.indexOf(',')
         if (comma <= 0 || !dataUrl.startsWith("data:image/")) {
-            logLine("request.context_image requestId=$requestId invalid_data_url chars=${dataUrl.length}")
+            logLine("request.$label requestId=$requestId invalid_data_url chars=${dataUrl.length}")
             return null
         }
         return try {
             val bytes = Base64.decode(dataUrl.substring(comma + 1), Base64.DEFAULT)
             if (bytes.size > MAX_CONTEXT_IMAGE_BYTES) {
-                logLine("request.context_image requestId=$requestId too_large bytes=${bytes.size} max=$MAX_CONTEXT_IMAGE_BYTES")
+                logLine("request.$label requestId=$requestId too_large bytes=${bytes.size} max=$MAX_CONTEXT_IMAGE_BYTES")
                 null
             } else {
-                logLine("request.context_image requestId=$requestId bytes=${bytes.size} mime=${dataUrl.substring(5, comma).take(40)}")
+                logLine("request.$label requestId=$requestId bytes=${bytes.size} mime=${dataUrl.substring(5, comma).take(40)}")
                 bytes
             }
         } catch (t: Throwable) {
-            logError("request.context_image_decode_error requestId=$requestId", t)
+            logError("request.${label}_decode_error requestId=$requestId", t)
             null
         }
     }
 
-    private fun writeContextImageFile(requestId: String, bytes: ByteArray): File {
+    private fun writeContextImageFile(requestId: String, bytes: ByteArray, label: String): File {
         val file = File.createTempFile("gemma_image_", ".jpg", File(cacheDirPath))
         file.writeBytes(bytes)
-        logLine("request.context_image_file requestId=$requestId path=${file.absolutePath} bytes=${bytes.size}")
+        logLine("request.$label requestId=$requestId path=${file.absolutePath} bytes=${bytes.size}")
         return file
     }
 

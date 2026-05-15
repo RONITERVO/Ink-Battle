@@ -13,6 +13,7 @@ The app now uses a no-backend architecture for the AI opponent:
 - Gemma never has to author JSON. It speaks battlefield status, visible opponent chat, one doctrine word, one delayed-safe order word, and a compact summary in separate turns. Native code wraps the completed strings for the WebView.
 - The selected doctrine persists between Gemma turns and steers the deterministic fast AI spending loop. Supported doctrines are `balanced`, `rush`, `tech`, `turtle`, `counter`, `bait`, `allin`, and `stall`.
 - Gemma's order word is not applied as a stale purchase. It temporarily biases the live engine toward robust orders such as `press`, `defend`, `counter`, `tech`, `swarm`, `heavy`, `hold`, `fortify`, or `special`.
+- To reduce stale tactical choices, native pauses after the doctrine phase and asks the WebView for a fresh tactical image. When available, that newest image is attached to the order-selection prompt so Gemma can see how the lane changed while it was writing.
 - The deterministic engine remains a complete offline opponent when Gemma is unavailable, using live lane pressure, army composition, pacts, difficulty, and its own adaptive order selection.
 
 ## Model Choice
@@ -41,6 +42,7 @@ Configured downloads:
   - No-system `ConversationConfig()` for Gemma 4 default behavior.
   - Multiturn roleplay prompts with explicit red/right-side Gemma ownership and tactical-map label guidance.
   - Streaming phase callbacks for battlefield status, visible reply, doctrine word, order word, and compact memory summary.
+  - Mid-turn `onLocalGemmaSelectionImageRequest` callback so the order phase can receive the newest battlefield image.
   - LiteRT-LM `visionBackend` setup and short-lived `ImageFile` context images for Android image input stability.
   - Chunked `AgeOfWarGemma` logcat diagnostics for exact request payloads, prompts, raw responses, parse failures, and action results.
 - `app/src/main/java/com/sketchwar/ageofwar/MainActivity.java`
