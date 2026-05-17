@@ -35,6 +35,7 @@ class LocalGemmaBridge(
         const val LOG_CHUNK_SIZE = 3_000
         const val MAX_PROMPT_CHARS = 6_000
         const val MODEL_RESPONSE_TIMEOUT_SECONDS = 90L
+        const val MAX_CHAT_MESSAGES_BEFORE_SUMMARY = 18
         const val MAX_CONTEXT_IMAGE_BYTES = 700_000
         const val ENABLE_IMAGE_INPUT = true
 
@@ -46,6 +47,9 @@ class LocalGemmaBridge(
         @Volatile private var sharedLoadingPath: String? = null
         @Volatile private var sharedBusy: Boolean = false
         @Volatile private var sharedLastError: String? = null
+        @Volatile private var sharedConversation: Conversation? = null
+        @Volatile private var sharedConversationModelPath: String? = null
+        @Volatile private var sharedConversationMessages: Int = 0
     }
 
     private data class ModelSpec(
@@ -152,11 +156,18 @@ class LocalGemmaBridge(
         executor.execute {
             var loaded: Engine? = null
             var previous: Engine? = null
+            var previousConversation: Conversation? = null
             try {
                 Engine.setNativeMinLogSeverity(LogSeverity.ERROR)
                 loaded = createEngine(path)
                 synchronized(ENGINE_LOCK) {
                     previous = if (sharedEngine != null && sharedModelPath != path) sharedEngine else null
+                    previousConversation = if (sharedConversation != null && sharedConversationModelPath != path) sharedConversation else null
+                    if (previousConversation != null) {
+                        sharedConversation = null
+                        sharedConversationModelPath = null
+                        sharedConversationMessages = 0
+                    }
                     sharedEngine = loaded
                     sharedModelPath = path
                     sharedModelKey = current.key
@@ -165,6 +176,7 @@ class LocalGemmaBridge(
                     sharedLastError = null
                 }
                 closeEngineQuietly(previous)
+                closeConversationQuietly(previousConversation)
                 loaded = null
                 logLine("load.ready model=${current.key} reused=false")
                 postStatus("ready")
@@ -220,6 +232,7 @@ class LocalGemmaBridge(
         }
 
         val prompt = cleanPrompt(promptText)
+        val activeModelPath = path ?: synchronized(ENGINE_LOCK) { sharedModelPath } ?: ""
         val startedAt = System.currentTimeMillis()
         logLine("request.start requestId=$requestId promptChars=${prompt.length}")
         logLong("request.prompt.message requestId=$requestId", prompt)
@@ -228,9 +241,10 @@ class LocalGemmaBridge(
         executor.execute {
             var contextImageFile: File? = null
             var conversation: Conversation? = null
+            var closeConversation = false
             var finalStatus = "ready"
             try {
-                conversation = activeEngine.createConversation(conversationConfig())
+                conversation = chatConversation(activeEngine, activeModelPath)
                 val contents = if (contextImageBytes != null) {
                     contextImageFile = writeContextImageFile(requestId, contextImageBytes, "context_image_file")
                     Contents.of(
@@ -241,10 +255,17 @@ class LocalGemmaBridge(
                     Contents.of(prompt)
                 }
                 val response = sendModelPhase(requestId, conversation, "message", contents)
+                noteConversationMessages(2)
                 val elapsedMs = System.currentTimeMillis() - startedAt
                 logLine("response.ready requestId=$requestId responseChars=${response.length} elapsedMs=$elapsedMs")
                 logLong("response.raw requestId=$requestId", response)
                 postResponse(requestId, response)
+                if (shouldSummarizeConversation()) {
+                    val summary = summarizeConversation(requestId, conversation)
+                    if (summary.isNotBlank()) postSummary(requestId, summary)
+                    closeConversation = true
+                    releaseSharedConversation(conversation)
+                }
             } catch (t: Throwable) {
                 synchronized(ENGINE_LOCK) {
                     sharedLastError = t.message ?: t.javaClass.simpleName
@@ -252,8 +273,12 @@ class LocalGemmaBridge(
                 logError("request.error requestId=$requestId", t)
                 postError(requestId, t.message ?: t.javaClass.simpleName)
                 finalStatus = "error"
+                closeConversation = true
             } finally {
-                closeConversationQuietly(conversation)
+                if (closeConversation) {
+                    releaseSharedConversation(conversation)
+                    closeConversationQuietly(conversation)
+                }
                 try { contextImageFile?.delete() } catch (_: Throwable) {}
                 synchronized(ENGINE_LOCK) {
                     sharedBusy = false
@@ -384,6 +409,10 @@ class LocalGemmaBridge(
         runJs("window.onLocalGemmaError(${JSONObject.quote(requestId)}, ${JSONObject.quote(message)});")
     }
 
+    private fun postSummary(requestId: String, summary: String) {
+        runJs("window.onLocalGemmaSummary && window.onLocalGemmaSummary(${JSONObject.quote(requestId)}, ${JSONObject.quote(summary)});")
+    }
+
     private fun postStream(requestId: String, phase: String, text: String, done: Boolean) {
         runJs(
             "window.onLocalGemmaStream(${JSONObject.quote(requestId)}, " +
@@ -398,6 +427,71 @@ class LocalGemmaBridge(
     }
 
     private fun conversationConfig(): ConversationConfig = ConversationConfig()
+
+    private fun chatConversation(engine: Engine, modelPath: String): Conversation {
+        synchronized(ENGINE_LOCK) {
+            val existing = sharedConversation
+            if (existing != null && existing.isAlive && sharedConversationModelPath == modelPath) {
+                logLine("conversation.reuse messages=$sharedConversationMessages")
+                return existing
+            }
+            sharedConversation = null
+            sharedConversationModelPath = null
+            sharedConversationMessages = 0
+        }
+
+        val created = engine.createConversation(conversationConfig())
+        synchronized(ENGINE_LOCK) {
+            sharedConversation = created
+            sharedConversationModelPath = modelPath
+            sharedConversationMessages = 0
+        }
+        logLine("conversation.created modelPath=${modelPath.takeLast(48)}")
+        return created
+    }
+
+    private fun noteConversationMessages(count: Int) {
+        synchronized(ENGINE_LOCK) {
+            sharedConversationMessages += count
+        }
+    }
+
+    private fun shouldSummarizeConversation(): Boolean {
+        return synchronized(ENGINE_LOCK) {
+            sharedConversationMessages >= MAX_CHAT_MESSAGES_BEFORE_SUMMARY
+        }
+    }
+
+    private fun summarizeConversation(requestId: String, conversation: Conversation): String {
+        return try {
+            val prompt = """
+Gemma, before we turn to a fresh page, help me keep the useful continuity from our match.
+
+Please write one compact paragraph under 90 words. Save only things that help our next few turns feel like the same rivalry: what the human player has said or prefers, active table rules, important game events, age/timing facts, and any running promises or grudges.
+
+Do not list emotion words. Do not rate your mood. Do not use JSON, labels, markdown, or bullets.
+            """.trimIndent()
+            logLong("request.prompt.summary requestId=$requestId", prompt)
+            val summary = sendModelPhase(requestId, conversation, "summary", Contents.of(prompt))
+            noteConversationMessages(2)
+            logLong("response.summary requestId=$requestId", summary)
+            summary.take(900)
+        } catch (t: Throwable) {
+            logError("summary.error requestId=$requestId", t)
+            ""
+        }
+    }
+
+    private fun releaseSharedConversation(conversation: Conversation?) {
+        if (conversation == null) return
+        synchronized(ENGINE_LOCK) {
+            if (sharedConversation === conversation) {
+                sharedConversation = null
+                sharedConversationModelPath = null
+                sharedConversationMessages = 0
+            }
+        }
+    }
 
     private fun cleanPrompt(raw: String): String {
         val value = raw.replace('\u0000', ' ').trim()

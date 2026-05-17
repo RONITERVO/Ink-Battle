@@ -29,7 +29,7 @@ Please focus only on release-blocking Android build/package issues:
 Desired result:
 - Debug build installs on a real 6GB+ Android phone.
 - Player can tap Get Gemma, download model, go offline, and still get local model opponent messages.
-- Gemma turns stay stable in long matches because the LiteRT-LM engine is process-scoped, while each request uses one fresh LiteRT-LM conversation plus bounded app-managed memory. The model returns only a visible message and one emotion word; the JavaScript engine owns all tactics.
+- Gemma turns stay stable in long matches because the LiteRT-LM engine is process-scoped, while the bridge reuses one bounded local chat for about nine turns, then asks for a compact continuity summary before starting a fresh chat. The model returns only a visible message and one emotion word; the JavaScript engine owns all tactics.
 - Gemma turns attach a labeled tactical context image when available; prompt context tells Gemma it controls the red/right enemy side and the image labels define hit lines, front lines, danger zones, and unit markers. The native bridge configures `visionBackend` and sends the image via a short-lived `Content.ImageFile`.
 - Release build generates `app/build/outputs/bundle/release/app-release.aab`.
 ```

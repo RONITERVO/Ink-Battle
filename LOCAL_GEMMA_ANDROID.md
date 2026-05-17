@@ -5,7 +5,7 @@ The app uses a no-backend opponent:
 - The JavaScript game owns all tactical decisions and remains fully playable offline without Gemma.
 - On Android, the WebView exposes `LocalGemmaAndroid` through `LocalGemmaBridge.kt`.
 - After user consent, Android `DownloadManager` downloads a `.litertlm` Gemma 4 model into the app's external files directory.
-- LiteRT-LM loads the model locally. Each Gemma turn is one short image+text generation, not a gameplay planner.
+- LiteRT-LM loads the model locally. Gemma stays in the same no-system chat for about nine turns, then the bridge asks for one compact continuity summary and starts a fresh chat.
 - Gemma receives the labeled tactical context image and a compact local memory summary. It is asked to return exactly two lines: a visible opponent message and one emotion word from the randomized emotion vocabulary.
 - The deterministic engine consumes the emotion word as a mood signal only. It never accepts unit, upgrade, turret, special, strategy, or order commands from the model.
 
@@ -26,14 +26,15 @@ Configured downloads:
 - `app/src/main/java/com/sketchwar/ageofwar/LocalGemmaBridge.kt`
   - Model recommendation and install flow.
   - Process-scoped LiteRT-LM engine reuse across Activity/WebView recreation.
-  - One fresh conversation per Gemma turn.
+  - Bounded shared conversation reuse for short-term chat continuity.
   - GPU first, CPU fallback.
   - No-system `ConversationConfig()` for Gemma 4 default behavior.
-  - One prompt cap, one optional `ImageFile`, one streamed `message` phase, and raw text returned to JavaScript.
+  - One prompt cap, one optional `ImageFile`, one streamed `message` phase, raw text returned to JavaScript, and an invisible summary callback before chat reset.
 - `Age_of_War_notebook_8.html`
   - Builds the randomized emotion prompt.
-  - Parses the two-line model answer without JSON repair.
-  - Runs the offline tactical engine with composition, threat, age, economy, turret, and emotion scoring.
+  - Parses the two-line model answer, including suffix/last-word emotion recovery, without JSON repair.
+  - Runs the offline tactical engine with composition, threat, age, economy, turret, macro-plan, timing-bank, and emotion scoring.
+  - Shows the current emotion and removable pact chips between the base health bars.
 
 ## Runtime UX
 
@@ -44,6 +45,7 @@ Configured downloads:
 5. Offline AI continues playing during download, loading, and model thinking.
 6. Once ready, Gemma periodically returns a visible message plus one emotion word.
 7. The emotion word appears as the current mood signal and biases the local engine's timing, risk tolerance, defense, teching, special use, and aggression.
+8. Active agreements are clickable chips; removing one updates the local engine and future Gemma context.
 
 ## Gemma Diagnostics
 
@@ -59,6 +61,7 @@ Each local model turn logs:
 - `request.context_image`: attached tactical context image byte count and MIME metadata.
 - `response.phase.message`: unmodified streamed Gemma text.
 - `response.raw`: raw two-line model response returned to JavaScript.
+- `response.summary`: compact continuity summary used after the bounded chat resets.
 - `js.response.emotion`: JavaScript parse result for reply and emotion.
 
 ## Safety Rules
