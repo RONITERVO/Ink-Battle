@@ -10,6 +10,7 @@ import android.util.Log
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import com.google.ai.edge.litertlm.Backend
+import com.google.ai.edge.litertlm.Content
 import com.google.ai.edge.litertlm.Contents
 import com.google.ai.edge.litertlm.Conversation
 import com.google.ai.edge.litertlm.ConversationConfig
@@ -17,9 +18,13 @@ import com.google.ai.edge.litertlm.Engine
 import com.google.ai.edge.litertlm.EngineConfig
 import com.google.ai.edge.litertlm.ExperimentalApi
 import com.google.ai.edge.litertlm.LogSeverity
+import com.google.ai.edge.litertlm.Message
+import com.google.ai.edge.litertlm.MessageCallback
 import java.io.File
-import java.util.Locale
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicReference
 import org.json.JSONObject
 
 class LocalGemmaBridge(
@@ -29,11 +34,18 @@ class LocalGemmaBridge(
     private companion object {
         const val LOG_TAG = "AgeOfWarGemma"
         const val LOG_CHUNK_SIZE = 3_000
-        const val MAX_PROMPT_PAYLOAD_CHARS = 12_000
+        const val MAX_PROMPT_CHARS = 6_000
+        const val MODEL_RESPONSE_TIMEOUT_SECONDS = 90L
+        const val MAX_CHAT_MESSAGES_BEFORE_RESET = 4
+        const val MAX_CARRYOVER_TEXT_CHARS = 2_000
+        const val MAX_TRANSCRIPT_USER_CHARS = 1_000
+        const val MAX_TRANSCRIPT_MODEL_CHARS = 280
         const val MAX_CONTEXT_IMAGE_BYTES = 700_000
         const val ENABLE_IMAGE_INPUT = true
 
         private val ENGINE_LOCK = Any()
+        private val sharedConversationImageFiles = mutableListOf<File>()
+        private val sharedConversationTextLog = mutableListOf<String>()
         @Volatile private var sharedEngine: Engine? = null
         @Volatile private var sharedModelPath: String? = null
         @Volatile private var sharedModelKey: String? = null
@@ -41,7 +53,19 @@ class LocalGemmaBridge(
         @Volatile private var sharedLoadingPath: String? = null
         @Volatile private var sharedBusy: Boolean = false
         @Volatile private var sharedLastError: String? = null
+        @Volatile private var sharedConversation: Conversation? = null
+        @Volatile private var sharedConversationModelPath: String? = null
+        @Volatile private var sharedConversationMessages: Int = 0
+        @Volatile private var sharedConversationSerial: Long = 0L
+        @Volatile private var sharedConversationTailImageBytes: ByteArray? = null
+        @Volatile private var carryoverText: String = ""
+        @Volatile private var carryoverImageBytes: ByteArray? = null
     }
+
+    private data class Carryover(
+        val text: String,
+        val imageBytes: ByteArray?
+    )
 
     private data class ModelSpec(
         val key: String,
@@ -147,11 +171,22 @@ class LocalGemmaBridge(
         executor.execute {
             var loaded: Engine? = null
             var previous: Engine? = null
+            var previousConversation: Conversation? = null
+            var previousConversationImages: List<File> = emptyList()
             try {
                 Engine.setNativeMinLogSeverity(LogSeverity.ERROR)
                 loaded = createEngine(path)
                 synchronized(ENGINE_LOCK) {
                     previous = if (sharedEngine != null && sharedModelPath != path) sharedEngine else null
+                    previousConversation = if (sharedConversation != null && sharedConversationModelPath != path) sharedConversation else null
+                    if (previousConversation != null) {
+                        sharedConversation = null
+                        sharedConversationModelPath = null
+                        sharedConversationMessages = 0
+                        previousConversationImages = drainConversationImagesLocked()
+                        clearConversationTextLocked()
+                        clearCarryoverLocked()
+                    }
                     sharedEngine = loaded
                     sharedModelPath = path
                     sharedModelKey = current.key
@@ -159,6 +194,8 @@ class LocalGemmaBridge(
                     sharedLoadingPath = null
                     sharedLastError = null
                 }
+                closeConversationQuietly(previousConversation)
+                deleteFilesQuietly(previousConversationImages)
                 closeEngineQuietly(previous)
                 loaded = null
                 logLine("load.ready model=${current.key} reused=false")
@@ -180,12 +217,12 @@ class LocalGemmaBridge(
     }
 
     @JavascriptInterface
-    fun generateDirectorTurn(requestId: String, payloadJson: String) {
-        generateDirectorTurnWithImage(requestId, payloadJson, null)
+    fun generateDirectorTurn(requestId: String, promptText: String) {
+        generateDirectorTurnWithImage(requestId, promptText, null)
     }
 
     @JavascriptInterface
-    fun generateDirectorTurnWithImage(requestId: String, payloadJson: String, contextImageDataUrl: String?) {
+    fun generateDirectorTurnWithImage(requestId: String, promptText: String, contextImageDataUrl: String?) {
         val path = prefs.getString("modelPath", null)
         var busyNow = false
         var loaded: Engine? = null
@@ -208,40 +245,60 @@ class LocalGemmaBridge(
         }
         val activeEngine = loaded
         if (activeEngine == null) {
-            logLine("request.rejected loading requestId=$requestId payloadChars=${payloadJson.length}")
+            logLine("request.rejected loading requestId=$requestId promptChars=${promptText.length}")
             loadModel()
             postError(requestId, "Gemma is loading")
             return
         }
 
+        val prompt = cleanPrompt(promptText)
+        val activeModelPath = path ?: synchronized(ENGINE_LOCK) { sharedModelPath } ?: ""
         val startedAt = System.currentTimeMillis()
-        logLine("request.start requestId=$requestId payloadChars=${payloadJson.length}")
-        logLong("request.payload requestId=$requestId", payloadJson)
+        logLine("request.start requestId=$requestId promptChars=${prompt.length}")
         val contextImageBytes = decodeContextImageDataUrl(requestId, contextImageDataUrl)
         postStatus("ready")
         executor.execute {
-            var turnConversation: Conversation? = null
             var contextImageFile: File? = null
+            var carryoverImageFile: File? = null
+            var conversation: Conversation? = null
+            var closeConversation = false
             var finalStatus = "ready"
             try {
-                val prompt = buildPrompt(payloadJson)
-                logLong("request.prompt requestId=$requestId", prompt)
-                turnConversation = activeEngine.createConversation(conversationConfig())
-                val contents = if (contextImageBytes != null) {
-                    contextImageFile = writeContextImageFile(requestId, contextImageBytes)
-                    Contents.of(
-                        com.google.ai.edge.litertlm.Content.ImageFile(contextImageFile!!.absolutePath),
-                        com.google.ai.edge.litertlm.Content.Text(prompt)
+                conversation = chatConversation(activeEngine, activeModelPath)
+                val carryover = takeCarryoverForOpeningConversation(conversation)
+                val modelPrompt = promptWithCarryover(prompt, carryover)
+                logLong("request.prompt.message requestId=$requestId", modelPrompt)
+                if (carryover != null) {
+                    logLine(
+                        "conversation.carryover_applied requestId=$requestId " +
+                            "textChars=${carryover.text.length} imageBytes=${carryover.imageBytes?.size ?: 0}"
                     )
-                } else {
-                    Contents.of(prompt)
                 }
-                val responseMsg = turnConversation.sendMessage(contents)
-                val response = responseMsg.contents.contents.filterIsInstance<com.google.ai.edge.litertlm.Content.Text>().joinToString("") { it.text }
+
+                if (carryover?.imageBytes != null) {
+                    carryoverImageFile = writeContextImageFile(requestId, carryover.imageBytes, "carryover_image_file")
+                    retainConversationImageFile(conversation, carryoverImageFile!!)
+                }
+                if (contextImageBytes != null) {
+                    contextImageFile = writeContextImageFile(requestId, contextImageBytes, "context_image_file")
+                    retainConversationImageFile(conversation, contextImageFile!!)
+                }
+                noteConversationTailImage(contextImageBytes)
+                val contents = contentsForPrompt(modelPrompt, carryoverImageFile, contextImageFile)
+                val response = sendModelPhase(requestId, conversation, "message", contents)
+                noteConversationMessages(2)
+                noteConversationText(prompt, response)
                 val elapsedMs = System.currentTimeMillis() - startedAt
                 logLine("response.ready requestId=$requestId responseChars=${response.length} elapsedMs=$elapsedMs")
                 logLong("response.raw requestId=$requestId", response)
                 postResponse(requestId, response)
+                if (response.isBlank()) {
+                    closeConversation = true
+                    logLine("conversation.reset_after_empty_response requestId=$requestId messages=${conversationMessageCount()} images=${conversationImageCount()}")
+                } else if (shouldResetConversation()) {
+                    closeConversation = true
+                    logLine("conversation.reset_after_two_turns requestId=$requestId messages=${conversationMessageCount()} images=${conversationImageCount()}")
+                }
             } catch (t: Throwable) {
                 synchronized(ENGINE_LOCK) {
                     sharedLastError = t.message ?: t.javaClass.simpleName
@@ -249,11 +306,17 @@ class LocalGemmaBridge(
                 logError("request.error requestId=$requestId", t)
                 postError(requestId, t.message ?: t.javaClass.simpleName)
                 finalStatus = "error"
+                closeConversation = true
             } finally {
-                try { turnConversation?.close() } catch (closeFailure: Throwable) {
-                    logError("conversation.close_error requestId=$requestId", closeFailure)
+                if (closeConversation) {
+                    val imagesToDelete = releaseSharedConversation(conversation)
+                    closeConversationQuietly(conversation)
+                    deleteFilesQuietly(imagesToDelete)
+                } else if (contextImageFile != null && !isConversationImageRetained(contextImageFile)) {
+                    try { contextImageFile?.delete() } catch (_: Throwable) {}
+                } else if (carryoverImageFile != null && !isConversationImageRetained(carryoverImageFile)) {
+                    try { carryoverImageFile?.delete() } catch (_: Throwable) {}
                 }
-                try { contextImageFile?.delete() } catch (_: Throwable) {}
                 synchronized(ENGINE_LOCK) {
                     sharedBusy = false
                 }
@@ -368,6 +431,8 @@ class LocalGemmaBridge(
             .put("progress", progress)
             .put("busy", busy)
             .put("message", message)
+            .put("conversationMessages", synchronized(ENGINE_LOCK) { sharedConversationMessages })
+            .put("conversationSerial", synchronized(ENGINE_LOCK) { sharedConversationSerial })
     }
 
     private fun postStatus(forcedState: String? = null) {
@@ -383,86 +448,330 @@ class LocalGemmaBridge(
         runJs("window.onLocalGemmaError(${JSONObject.quote(requestId)}, ${JSONObject.quote(message)});")
     }
 
+    private fun postStream(requestId: String, phase: String, text: String, done: Boolean) {
+        runJs(
+            "window.onLocalGemmaStream(${JSONObject.quote(requestId)}, " +
+                "${JSONObject.quote(phase)}, ${JSONObject.quote(text)}, $done);"
+        )
+    }
+
     private fun runJs(script: String) {
         activity.runOnUiThread {
             if (!activity.isFinishing && !activity.isDestroyed) webView.evaluateJavascript(script, null)
         }
     }
 
-    private fun systemPrompt(): String = """
-        You are the local Gemma 4 director for Age of War: Sketchbook Edition.
-        You play the enemy side, but you are also an entertaining opponent who can honor pacts.
-        Each request is stateless: use only the current payload, snapshot, persistent pacts, and gemmaMemory.
-        gemmaMemory contains bounded match memory, recent player/model turns, recent events, action outcomes, and repetition guards.
-        When an image is attached, it is a labeled tactical context map, not raw sketch art. You are Gemma, the red enemy on the right side. The blue left side is the player/user.
-        Read the image labels before interpreting lines: dashed vertical lines are front lines, gray vertical lines are base hit lines, shaded red is Gemma base danger, blue markers are player units, and red markers are your units. Use JSON for exact numbers and legal actions.
-        Never ask for network access.
-        Output one small JSON object only. No markdown, no code fences, no explanations outside JSON.
-        {"say":"short taunt or agreement","pressure":"rush|balanced|mercy|null","action":{"tool":"spawn_unit|buy_upgrade|build_turret|use_special|none","typeIndex":0,"upgrade":"econ","reason":"short reason"},"memoryPatch":{"summary":"optional <=700 chars","playerProfile":"optional <=240 chars","doNotRepeat":["short phrase"],"openLoops":["short fact"],"tone":"short style guidance","suggestions":["<=48 char player command"]}}
-        Valid unit/turret typeIndex values are 0, 1, and 2. Valid upgrades are dmg, hp, econ.
-        Choose only from constraints.chooseOnlyAffordableTools and enemyChoices.affordable* lists. If nothing useful is affordable, use action.tool "none".
-        If reason is player_chat, answer extraMessage directly in say before choosing an action.
-        Do not repeat recent say text or opening phrases listed in gemmaMemory.repetitionGuard.
-        The snapshot age is current truth; if the same age has lasted a while, talk about the current battle state instead of greeting that age again.
-        Use memoryPatch to keep future turns focused when the player says something important, the match phase changes, or your own repeated phrasing needs a guard. Omit memoryPatch if nothing changed.
-        If a useful action is unclear, return action.tool "none".
-        Prefer fair, varied, readable decisions over perfect play.
-    """.trimIndent()
+    private fun conversationConfig(): ConversationConfig = ConversationConfig()
 
-    private fun conversationConfig(): ConversationConfig = ConversationConfig(
-        systemInstruction = Contents.of(systemPrompt())
-    )
-
-    private fun buildPrompt(payloadJson: String): String {
-        val trimmed = payloadJson.take(MAX_PROMPT_PAYLOAD_CHARS)
-        if (payloadJson.length > MAX_PROMPT_PAYLOAD_CHARS) {
-            logLine("request.prompt_truncated payloadChars=${payloadJson.length} promptPayloadChars=$MAX_PROMPT_PAYLOAD_CHARS")
+    private fun chatConversation(engine: Engine, modelPath: String): Conversation {
+        var stale: Conversation? = null
+        var staleImages: List<File> = emptyList()
+        synchronized(ENGINE_LOCK) {
+            val existing = sharedConversation
+            if (existing != null && existing.isAlive && sharedConversationModelPath == modelPath) {
+                logLine("conversation.reuse messages=$sharedConversationMessages images=${sharedConversationImageFiles.size}")
+                return existing
+            }
+            stale = existing
+            if (stale != null) staleImages = drainConversationImagesLocked()
+            sharedConversation = null
+            sharedConversationModelPath = null
+            sharedConversationMessages = 0
         }
-        return String.format(
-            Locale.US,
-            "Choose one high-level enemy director turn for this live match. Return JSON only. Use gemmaMemory for continuity, answer player_chat messages directly, choose only affordable actions, avoid repeating recent lines/actions, and include memoryPatch only when future turns need updated memory.\n%s",
-            trimmed
-        )
+        closeConversationQuietly(stale)
+        deleteFilesQuietly(staleImages)
+
+        val created = engine.createConversation(conversationConfig())
+        synchronized(ENGINE_LOCK) {
+            sharedConversation = created
+            sharedConversationModelPath = modelPath
+            sharedConversationMessages = 0
+            sharedConversationSerial += 1L
+        }
+        logLine("conversation.created serial=$sharedConversationSerial modelPath=${modelPath.takeLast(48)}")
+        return created
     }
 
-    private fun decodeContextImageDataUrl(requestId: String, dataUrl: String?): ByteArray? {
+    private fun retainConversationImageFile(conversation: Conversation?, file: File) {
+        synchronized(ENGINE_LOCK) {
+            if (conversation != null && sharedConversation === conversation) {
+                sharedConversationImageFiles.add(file)
+                logLine("conversation.image_retained count=${sharedConversationImageFiles.size} file=${file.name}")
+            }
+        }
+    }
+
+    private fun isConversationImageRetained(file: File): Boolean {
+        return synchronized(ENGINE_LOCK) {
+            sharedConversationImageFiles.any { it.absolutePath == file.absolutePath }
+        }
+    }
+
+    private fun noteConversationMessages(count: Int) {
+        synchronized(ENGINE_LOCK) {
+            sharedConversationMessages += count
+        }
+    }
+
+    private fun noteConversationTailImage(bytes: ByteArray?) {
+        if (bytes == null) return
+        synchronized(ENGINE_LOCK) {
+            sharedConversationTailImageBytes = bytes
+        }
+    }
+
+    private fun noteConversationText(prompt: String, response: String) {
+        val userText = transcriptUserText(prompt)
+        val modelText = response.replace('\u0000', ' ').replace(Regex("\\s+"), " ").trim()
+            .take(MAX_TRANSCRIPT_MODEL_CHARS)
+        synchronized(ENGINE_LOCK) {
+            if (userText.isNotBlank()) sharedConversationTextLog.add("Player turn text:\n$userText")
+            sharedConversationTextLog.add(
+                if (modelText.isBlank()) "Gemma reply text:\n(empty)"
+                else "Gemma reply text:\n$modelText"
+            )
+            pruneConversationTextLocked()
+        }
+    }
+
+    private fun shouldResetConversation(): Boolean {
+        return synchronized(ENGINE_LOCK) {
+            sharedConversationMessages >= MAX_CHAT_MESSAGES_BEFORE_RESET
+        }
+    }
+
+    private fun conversationMessageCount(): Int {
+        return synchronized(ENGINE_LOCK) { sharedConversationMessages }
+    }
+
+    private fun conversationImageCount(): Int {
+        return synchronized(ENGINE_LOCK) { sharedConversationImageFiles.size }
+    }
+
+    private fun releaseSharedConversation(conversation: Conversation?): List<File> {
+        if (conversation == null) return emptyList()
+        synchronized(ENGINE_LOCK) {
+            if (sharedConversation === conversation) {
+                prepareCarryoverLocked()
+                sharedConversation = null
+                sharedConversationModelPath = null
+                sharedConversationMessages = 0
+                sharedConversationTailImageBytes = null
+                clearConversationTextLocked()
+                return drainConversationImagesLocked()
+            }
+        }
+        return emptyList()
+    }
+
+    private fun drainConversationImagesLocked(): List<File> {
+        val images = sharedConversationImageFiles.toList()
+        sharedConversationImageFiles.clear()
+        return images
+    }
+
+    private fun cleanPrompt(raw: String): String {
+        val value = raw.replace('\u0000', ' ').trim()
+        val fallback = "You are Gemma, the red enemy general. Reply in exactly two lines: a short message to the player, then one emotion word."
+        val prompt = if (value.isBlank()) fallback else value
+        if (prompt.length > MAX_PROMPT_CHARS) {
+            logLine("request.prompt_truncated promptChars=${prompt.length} capped=$MAX_PROMPT_CHARS")
+        }
+        return prompt.take(MAX_PROMPT_CHARS)
+    }
+
+    private fun takeCarryoverForOpeningConversation(conversation: Conversation?): Carryover? {
+        synchronized(ENGINE_LOCK) {
+            if (conversation == null || sharedConversation !== conversation || sharedConversationMessages != 0) {
+                return null
+            }
+            val text = carryoverText
+            val image = carryoverImageBytes
+            if (text.isBlank() && image == null) return null
+            carryoverText = ""
+            carryoverImageBytes = null
+            return Carryover(text, image)
+        }
+    }
+
+    private fun promptWithCarryover(prompt: String, carryover: Carryover?): String {
+        if (carryover == null || carryover.text.isBlank()) return prompt
+        val combined = """
+We just turned to a new page. Here is the exact text from the last page of our chat.
+
+${carryover.text}
+
+The last map image from that page is attached too. Keep playing from here.
+
+$prompt
+        """.trimIndent()
+        return if (combined.length <= MAX_PROMPT_CHARS) {
+            combined
+        } else {
+            val budget = (MAX_PROMPT_CHARS - prompt.length - 160).coerceAtLeast(0)
+            val clippedCarryover = carryover.text.takeLast(budget)
+            """
+We just turned to a new page. Here is the exact text from the last page of our chat.
+
+$clippedCarryover
+
+The last map image from that page is attached too. Keep playing from here.
+
+$prompt
+            """.trimIndent().take(MAX_PROMPT_CHARS)
+        }
+    }
+
+    private fun contentsForPrompt(prompt: String, carryoverImageFile: File?, contextImageFile: File?): Contents {
+        return when {
+            carryoverImageFile != null && contextImageFile != null -> Contents.of(
+                Content.ImageFile(carryoverImageFile.absolutePath),
+                Content.ImageFile(contextImageFile.absolutePath),
+                Content.Text(prompt)
+            )
+            carryoverImageFile != null -> Contents.of(
+                Content.ImageFile(carryoverImageFile.absolutePath),
+                Content.Text(prompt)
+            )
+            contextImageFile != null -> Contents.of(
+                Content.ImageFile(contextImageFile.absolutePath),
+                Content.Text(prompt)
+            )
+            else -> Contents.of(prompt)
+        }
+    }
+
+    private fun transcriptUserText(prompt: String): String {
+        return prompt
+            .substringBefore("Second line: one exact emotion word from this shuffled list")
+            .replace('\u0000', ' ')
+            .replace(Regex("\\s+"), " ")
+            .trim()
+            .take(MAX_TRANSCRIPT_USER_CHARS)
+    }
+
+    private fun prepareCarryoverLocked() {
+        carryoverText = sharedConversationTextLog.joinToString("\n\n")
+            .trim()
+            .takeLast(MAX_CARRYOVER_TEXT_CHARS)
+        carryoverImageBytes = sharedConversationTailImageBytes
+        logLine("conversation.carryover_saved textChars=${carryoverText.length} imageBytes=${carryoverImageBytes?.size ?: 0}")
+    }
+
+    private fun pruneConversationTextLocked() {
+        while (sharedConversationTextLog.joinToString("\n\n").length > MAX_CARRYOVER_TEXT_CHARS && sharedConversationTextLog.size > 1) {
+            sharedConversationTextLog.removeAt(0)
+        }
+    }
+
+    private fun clearConversationTextLocked() {
+        sharedConversationTextLog.clear()
+    }
+
+    private fun clearCarryoverLocked() {
+        carryoverText = ""
+        carryoverImageBytes = null
+    }
+
+    private fun sendModelPhase(
+        requestId: String,
+        conversation: Conversation,
+        phase: String,
+        contents: Contents
+    ): String {
+        val latch = CountDownLatch(1)
+        val latestText = AtomicReference("")
+        val error = AtomicReference<Throwable?>(null)
+        postStream(requestId, phase, "", false)
+        conversation.sendMessageAsync(contents, object : MessageCallback {
+            override fun onMessage(message: Message) {
+                val text = messageText(message)
+                val previous = latestText.get()
+                val next = when {
+                    text.isBlank() -> previous
+                    text.startsWith(previous) -> text
+                    previous.endsWith(text) -> previous
+                    else -> previous + text
+                }
+                latestText.set(next)
+                postStream(requestId, phase, next, false)
+            }
+
+            override fun onDone() {
+                latch.countDown()
+            }
+
+            override fun onError(throwable: Throwable) {
+                error.set(throwable)
+                latch.countDown()
+            }
+        }, emptyMap<String, Any>())
+
+        if (!latch.await(MODEL_RESPONSE_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+            try { conversation.cancelProcess() } catch (_: Throwable) {}
+            throw RuntimeException("Gemma timed out during $phase")
+        }
+        error.get()?.let { throw it }
+        val text = latestText.get().trim()
+        postStream(requestId, phase, text, true)
+        logLong("response.phase.$phase requestId=$requestId", text)
+        return text
+    }
+
+    private fun messageText(message: Message): String {
+        return message.contents.contents
+            .filterIsInstance<com.google.ai.edge.litertlm.Content.Text>()
+            .joinToString("") { it.text }
+    }
+
+    private fun decodeContextImageDataUrl(requestId: String, dataUrl: String?, label: String = "context_image"): ByteArray? {
         if (dataUrl.isNullOrBlank()) {
-            logLine("request.context_image requestId=$requestId absent")
+            logLine("request.$label requestId=$requestId absent")
             return null
         }
         if (!ENABLE_IMAGE_INPUT) {
-            logLine("request.context_image requestId=$requestId disabled chars=${dataUrl.length}")
+            logLine("request.$label requestId=$requestId disabled chars=${dataUrl.length}")
             return null
         }
         val comma = dataUrl.indexOf(',')
         if (comma <= 0 || !dataUrl.startsWith("data:image/")) {
-            logLine("request.context_image requestId=$requestId invalid_data_url chars=${dataUrl.length}")
+            logLine("request.$label requestId=$requestId invalid_data_url chars=${dataUrl.length}")
             return null
         }
         return try {
             val bytes = Base64.decode(dataUrl.substring(comma + 1), Base64.DEFAULT)
             if (bytes.size > MAX_CONTEXT_IMAGE_BYTES) {
-                logLine("request.context_image requestId=$requestId too_large bytes=${bytes.size} max=$MAX_CONTEXT_IMAGE_BYTES")
+                logLine("request.$label requestId=$requestId too_large bytes=${bytes.size} max=$MAX_CONTEXT_IMAGE_BYTES")
                 null
             } else {
-                logLine("request.context_image requestId=$requestId bytes=${bytes.size} mime=${dataUrl.substring(5, comma).take(40)}")
+                logLine("request.$label requestId=$requestId bytes=${bytes.size} mime=${dataUrl.substring(5, comma).take(40)}")
                 bytes
             }
         } catch (t: Throwable) {
-            logError("request.context_image_decode_error requestId=$requestId", t)
+            logError("request.${label}_decode_error requestId=$requestId", t)
             null
         }
     }
 
-    private fun writeContextImageFile(requestId: String, bytes: ByteArray): File {
+    private fun writeContextImageFile(requestId: String, bytes: ByteArray, label: String): File {
         val file = File.createTempFile("gemma_image_", ".jpg", File(cacheDirPath))
         file.writeBytes(bytes)
-        logLine("request.context_image_file requestId=$requestId path=${file.absolutePath} bytes=${bytes.size}")
+        logLine("request.$label requestId=$requestId path=${file.absolutePath} bytes=${bytes.size}")
         return file
     }
 
     private fun closeEngineQuietly(engine: Engine?) {
         try { engine?.close() } catch (_: Throwable) {}
+    }
+
+    private fun closeConversationQuietly(conversation: Conversation?) {
+        try { conversation?.close() } catch (_: Throwable) {}
+    }
+
+    private fun deleteFilesQuietly(files: List<File>) {
+        for (file in files) {
+            try { file.delete() } catch (_: Throwable) {}
+        }
     }
 
     private fun logLine(message: String) {
@@ -493,6 +802,17 @@ class LocalGemmaBridge(
     }
 
     override fun close() {
+        val conversation: Conversation?
+        val images: List<File>
+        synchronized(ENGINE_LOCK) {
+            conversation = sharedConversation
+            sharedConversation = null
+            sharedConversationModelPath = null
+            sharedConversationMessages = 0
+            images = drainConversationImagesLocked()
+        }
+        closeConversationQuietly(conversation)
+        deleteFilesQuietly(images)
         executor.shutdown()
     }
 }

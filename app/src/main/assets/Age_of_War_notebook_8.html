@@ -505,6 +505,75 @@
             pointer-events: none;
         }
 
+        #director-center-status {
+            flex: 1 1 auto;
+            max-width: 34vw;
+            min-height: 5vmin;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.35vmin;
+            pointer-events: auto;
+            color: hsl(var(--pencil));
+            font-family: 'Patrick Hand', 'Comic Sans MS', 'Segoe Print', cursive;
+            text-align: center;
+        }
+
+        #emotion-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.35rem;
+            min-height: 2.1vmin;
+            max-width: 100%;
+            padding: 0.08rem 0.45rem;
+            color: hsl(var(--pencil));
+            background: hsl(var(--background) / 0.62);
+            border: 1px dashed hsl(var(--pencil-light) / 0.58);
+            border-radius: 999px;
+            font-size: 1.6vmin;
+            font-weight: bold;
+            line-height: 1;
+            white-space: nowrap;
+        }
+
+        .emotion-icon {
+            font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+            font-size: 1.2vmin;
+            line-height: 1;
+        }
+
+        #agreement-strip {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 0.25rem;
+            max-height: 5.4vmin;
+            overflow: hidden;
+        }
+
+        .agreement-chip {
+            border: 1px dashed hsl(var(--pencil-light) / 0.58);
+            border-radius: 999px;
+            background: hsl(var(--card) / 0.76);
+            color: hsl(var(--muted-foreground));
+            font: inherit;
+            font-size: 1.28vmin;
+            line-height: 1;
+            padding: 0.08rem 0.38rem;
+            cursor: pointer;
+            white-space: nowrap;
+            max-width: 12rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .agreement-chip:hover {
+            color: hsl(var(--destructive));
+            border-color: hsl(var(--destructive) / 0.55);
+            background: hsl(var(--background) / 0.86);
+        }
+
         .hp-wrapper {
             position: relative;
             width: 100%;
@@ -749,7 +818,92 @@
             overflow: hidden;
         }
 
-        #director-tool-log {
+        .director-msg.has-thoughts {
+            display: block;
+            overflow: visible;
+            cursor: pointer;
+            -webkit-line-clamp: unset;
+            text-align: right;
+        }
+
+        .director-msg-main {
+            display: flex;
+            justify-content: flex-end;
+            align-items: baseline;
+            gap: 0.35rem;
+            min-width: 0;
+        }
+
+        .director-msg-text {
+            min-width: 0;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            word-break: break-word;
+        }
+
+        .director-thought-toggle {
+            flex: 0 0 auto;
+            border: 1px dashed hsl(var(--pencil-light) / 0.58);
+            background: hsl(var(--background) / 0.5);
+            color: hsl(var(--pencil-light));
+            font-family: 'Patrick Hand', 'Comic Sans MS', 'Segoe Print', cursive;
+            font-size: 1.35vmin;
+            line-height: 1;
+            padding: 0 0.25rem 0.08rem;
+            cursor: pointer;
+        }
+
+        .director-msg.has-thoughts.thoughts-open .director-thought-toggle {
+            color: hsl(var(--accent));
+            border-color: hsl(var(--accent) / 0.58);
+        }
+
+        .director-thought-panel {
+            max-height: 0;
+            margin-top: 0;
+            overflow: hidden;
+            border-top: 1px dashed transparent;
+            opacity: 0;
+            transition: max-height 0.2s ease, opacity 0.2s ease, margin-top 0.2s ease;
+        }
+
+        .director-msg.has-thoughts.thoughts-open .director-thought-panel {
+            max-height: 3.4vmin;
+            margin-top: 0.25vmin;
+            border-color: hsl(var(--pencil-light) / 0.5);
+            opacity: 1;
+        }
+
+        .director-thought-viewport {
+            width: 100%;
+            overflow: hidden;
+            white-space: nowrap;
+        }
+
+        .director-thought-track {
+            display: inline-block;
+            min-width: 100%;
+            color: hsl(var(--muted-foreground) / 0.9);
+            font-family: 'Patrick Hand', 'Comic Sans MS', 'Segoe Print', cursive;
+            font-size: 1.45vmin;
+            line-height: 1.12;
+            white-space: nowrap;
+            animation: thoughtRoll 18s linear infinite;
+        }
+
+        @keyframes thoughtRoll {
+            0% {
+                transform: translateX(18%);
+            }
+
+            100% {
+                transform: translateX(-100%);
+            }
+        }
+
+        #director-signal-log {
             min-height: 2.35vmin;
             max-height: 2.35vmin;
             display: flex;
@@ -760,7 +914,7 @@
             margin-top: 0.25vmin;
         }
 
-        .director-tool-msg {
+        .director-signal-msg {
             max-width: 100%;
             color: hsl(var(--muted-foreground) / 0.86);
             font-family: 'Patrick Hand', 'Comic Sans MS', 'Segoe Print', cursive;
@@ -989,6 +1143,10 @@
                 gap: 0.5vmin;
             }
 
+            #director-center-status {
+                max-width: 28vw;
+            }
+
             .director-writing {
                 padding-left: 0.15vmin;
                 padding-right: 0.15vmin;
@@ -1003,7 +1161,7 @@
                 min-height: 5vmin;
             }
 
-            #director-tool-log {
+            #director-signal-log {
                 min-height: 2.5vmin;
                 max-height: 2.5vmin;
             }
@@ -1011,6 +1169,10 @@
 
         @media (max-height: 460px) {
             #director-memory {
+                display: none;
+            }
+
+            #agreement-strip {
                 display: none;
             }
         }
@@ -1158,6 +1320,11 @@
                         </form>
                     </div>
 
+                    <div id="director-center-status" class="hidden">
+                        <div id="emotion-badge" title="Gemma emotion"><span class="emotion-icon">◇</span><span id="emotion-word">Centered</span></div>
+                        <div id="agreement-strip"></div>
+                    </div>
+
                     <div class="commander-col ai-col hidden" id="ai-hud">
                         <div class="hp-wrapper sketchy-border-thin">
                             <div class="hp-fill" id="enemy-hp-fill"></div>
@@ -1166,7 +1333,7 @@
                         <div class="director-writing ai-writing">
                             <div id="director-memory"></div>
                             <div id="director-log"></div>
-                            <div id="director-tool-log"></div>
+                            <div id="director-signal-log"></div>
                             <div id="gemma-card" class="hidden">
                                 <span id="gemma-status"></span>
                                 <button id="btn-gemma-install" onclick="installLocalGemma()">Get</button>
@@ -1270,26 +1437,26 @@
             'normal': {
                 name: "Normal", color: "hsl(var(--diff-normal))",
                 hpMult: 1.0, dmgMult: 1.0, econMult: 1.0, xpMult: 1.0,
-                baseGold: 175, baseHpMult: 1.0, thinkRate: 2.5,
-                aiAggression: 0.2 // Spends slower, saves up
+                baseGold: 175, baseHpMult: 1.0, thinkRate: 1.8,
+                aiAggression: 0.35
             },
             'hard': {
                 name: "Hard", color: "hsl(var(--diff-hard))",
                 hpMult: 1.2, dmgMult: 1.1, econMult: 1.4, xpMult: 1.2,
-                baseGold: 250, baseHpMult: 1.2, thinkRate: 1.5,
-                aiAggression: 0.5
+                baseGold: 250, baseHpMult: 1.2, thinkRate: 1.15,
+                aiAggression: 0.58
             },
             'harder': {
                 name: "Harder", color: "hsl(var(--diff-harder))",
                 hpMult: 1.5, dmgMult: 1.3, econMult: 2.0, xpMult: 1.5,
-                baseGold: 500, baseHpMult: 1.5, thinkRate: 0.8,
-                aiAggression: 0.8 // Actively upgrades, pushes aggressively
+                baseGold: 500, baseHpMult: 1.5, thinkRate: 0.65,
+                aiAggression: 0.82
             },
             'impossible': {
                 name: "Impossible", color: "hsl(var(--diff-impossible))",
                 hpMult: 2.0, dmgMult: 1.5, econMult: 4.0, xpMult: 2.5,
-                baseGold: 1500, baseHpMult: 2.0, thinkRate: 0.3,
-                aiAggression: 1.0 // Unrelenting unit spam, maxes economy ASAP
+                baseGold: 1500, baseHpMult: 2.0, thinkRate: 0.28,
+                aiAggression: 1.0
             }
         };
 
@@ -1352,6 +1519,11 @@
                 this.data.agreements.pressure = value;
                 this.save();
             },
+            clearAgreement(key) {
+                if (key === 'pressure') this.data.agreements.pressure = 'balanced';
+                else if (Object.prototype.hasOwnProperty.call(this.data.agreements, key)) this.data.agreements[key] = false;
+                this.save();
+            },
             addNote(note) {
                 let clean = String(note || '').trim().slice(0, 90);
                 if (!clean) return;
@@ -1360,12 +1532,33 @@
                 this.data.notes = this.data.notes.slice(-8);
                 this.save();
             },
+            removeNote(index) {
+                let idx = Math.max(0, Math.floor(Number(index) || 0));
+                if (idx >= this.data.notes.length) return;
+                this.data.notes.splice(idx, 1);
+                this.save();
+            },
             clear() {
                 this.data = {
                     notes: [],
                     agreements: { noSpecials: false, noTurrets: false, meleeOnly: false, pressure: 'balanced' }
                 };
                 this.save();
+            },
+            agreementItems() {
+                let a = this.data.agreements;
+                let items = [];
+                if (a.pressure && a.pressure !== 'balanced') items.push({ key: 'pressure', label: `pressure: ${a.pressure}` });
+                if (a.noSpecials) items.push({ key: 'noSpecials', label: 'no specials' });
+                if (a.noTurrets) items.push({ key: 'noTurrets', label: 'no turrets' });
+                if (a.meleeOnly) items.push({ key: 'meleeOnly', label: 'melee only' });
+                this.data.notes.forEach((note, index) => items.push({ key: `note:${index}`, label: `note: ${note}` }));
+                return items;
+            },
+            inputAgreementTags() {
+                let items = this.agreementItems().map(item => item.label);
+                if (!items.length && this.data.agreements.pressure === 'balanced') items.push('balanced pressure');
+                return items;
             },
             tags() {
                 let a = this.data.agreements;
@@ -1630,10 +1823,10 @@
             }
         };
 
-        // --- GEMMA TURN MEMORY AND VISION CONTEXT ---
+        // --- GEMMA EMOTION MEMORY AND VISION CONTEXT ---
         const GemmaMemory = {
             key: 'aow_sketch_gemma_memory_v1',
-            version: 2,
+            version: 6,
             maxRecentTurns: 6,
             maxActions: 10,
             maxEvents: 12,
@@ -1653,14 +1846,11 @@
                     version: this.version,
                     matchId: '',
                     difficulty: diffKey || 'normal',
-                    summary: 'No active match yet.',
-                    playerProfile: '',
-                    tone: 'varied, concise, competitive but fair',
-                    doNotRepeat: [],
+                    emotion: 'Centered',
+                    emotionHistory: [],
                     openLoops: [],
                     recentTurns: [],
                     actionLedger: [],
-                    suggestions: [],
                     eventLog: [],
                     turnCount: 0
                 };
@@ -1670,14 +1860,13 @@
                 let data = this.freshData(diffKey);
                 if (!raw || typeof raw !== 'object') return data;
                 data.matchId = this.cleanLine(raw.matchId, 80);
-                data.summary = this.cleanLine(raw.summary || data.summary, 700);
-                data.playerProfile = this.cleanLine(raw.playerProfile, 240);
-                data.tone = this.cleanLine(raw.tone || data.tone, 120) || data.tone;
-                data.doNotRepeat = this.normalizeList(raw.doNotRepeat, 8, 80);
+                data.emotion = normalizeGemmaEmotionWord(raw.emotion || data.emotion);
+                data.emotionHistory = this.normalizeList(raw.emotionHistory, 8, 40)
+                    .map(word => normalizeGemmaEmotionWord(word))
+                    .filter(Boolean);
                 data.openLoops = this.normalizeList(raw.openLoops, 5, 120);
                 data.recentTurns = this.normalizeTurnList(raw.recentTurns);
                 data.actionLedger = this.normalizeActionList(raw.actionLedger);
-                data.suggestions = this.normalizeSuggestions(raw.suggestions);
                 data.eventLog = this.normalizeList(raw.eventLog, this.maxEvents, 180);
                 data.turnCount = Number.isFinite(Number(raw.turnCount)) ? Math.max(0, Number(raw.turnCount)) : 0;
                 return data;
@@ -1701,28 +1890,23 @@
             normalizeActionList(value) {
                 return (Array.isArray(value) ? value : []).map(action => ({
                     time: Math.round(Number(action && action.time) || 0),
-                    tool: this.cleanLine(action && action.tool, 40) || 'none',
+                    signal: this.cleanLine(action && action.signal, 40) || 'none',
                     applied: !!(action && action.applied),
                     reason: this.cleanLine(action && action.reason, 90),
                     say: this.cleanLine(action && action.say, 120)
                 })).slice(-this.maxActions);
             },
             start(diffKey) {
-                let previous = this.data || this.freshData(diffKey);
                 this.data = this.freshData(diffKey);
                 this.data.matchId = `m${Date.now()}_${Math.floor(Math.random() * 10000)}`;
-                this.data.playerProfile = this.cleanLine(previous.playerProfile || '', 240);
-                this.data.tone = this.cleanLine(previous.tone || this.data.tone, 120) || this.data.tone;
-                this.data.summary = `${(DIFFICULTY_SETTINGS[diffKey] || {}).name || diffKey} match opened in Stone Age. Track current ages from snapshot; avoid repeating first-contact age greetings.`;
-                this.data.suggestions = ['rush me', 'go easy', 'no specials'];
                 this.save();
                 this.updateInputSuggestion();
             },
             clearAll() {
                 this.data = this.freshData(currentDifficulty);
                 this.data.matchId = `m${Date.now()}_${Math.floor(Math.random() * 10000)}`;
-                this.data.summary = 'Player cleared Gemma turn memory for this match.';
-                this.data.suggestions = ['rush me', 'truce for 20 seconds', 'forget'];
+                this.data.emotion = 'Centered';
+                this.data.emotionHistory = [];
                 this.save();
                 this.updateInputSuggestion();
             },
@@ -1739,11 +1923,7 @@
             pushTurn(entry) {
                 if (!this.data) this.init();
                 this.data.recentTurns.push(entry);
-                while (this.data.recentTurns.length > this.maxRecentTurns) {
-                    let old = this.data.recentTurns.shift();
-                    if (!old || !old.text) continue;
-                    if (old.role === 'model') this.rememberDoNotRepeat(old.text);
-                }
+                while (this.data.recentTurns.length > this.maxRecentTurns) this.data.recentTurns.shift();
             },
             recordEvent(line) {
                 if (!this.data) this.init();
@@ -1760,7 +1940,6 @@
                 this.data.openLoops.push(`Answer player: ${clean}`);
                 this.data.openLoops = this.data.openLoops.slice(-5);
                 this.recordEvent(`Player said: ${clean}`);
-                this.updateLocalDigest('player_message');
                 this.save();
             },
             recordSystem(text) {
@@ -1769,212 +1948,148 @@
                 this.recordEvent(clean);
                 this.save();
             },
-            recordModel(turn, outcome) {
-                let say = this.cleanLine(turn && turn.say ? turn.say : '', 180);
+            recordEmotion(result, outcome) {
+                if (!this.data) this.init();
+                let say = this.cleanLine(result && result.reply ? result.reply : '', 180);
                 let action = outcome || {};
-                let tool = action.requestedTool || ((turn && turn.action && turn.action.tool) || 'none');
-                let reason = this.cleanLine((turn && turn.action && turn.action.reason) || '', 90);
+                let emotion = normalizeGemmaEmotionWord((result && result.emotion) || action.emotion || this.data.emotion || 'Centered');
                 this.data.turnCount = (this.data.turnCount || 0) + 1;
-                if (say) this.rememberDoNotRepeat(say);
+                this.data.emotion = emotion;
+                this.data.emotionHistory.push(emotion);
+                this.data.emotionHistory = this.data.emotionHistory.slice(-8);
                 this.data.openLoops = this.data.openLoops.filter(loop => !String(loop).startsWith('Answer player:'));
                 this.pushTurn({
                     role: 'model',
                     time: Math.round(globalTime),
                     ages: this.ageLine(),
-                    text: say || '(no line)',
-                    action: `${tool}:${action.applied ? 'applied' : 'blocked'}`,
-                    reason
+                    text: say || '(no visible reply)',
+                    action: `emotion:${emotion}`,
+                    reason: action.reason || 'Gemma emotional state'
                 });
                 this.data.actionLedger.push({
                     time: Math.round(globalTime),
-                    tool,
-                    applied: !!action.applied,
-                    reason,
-                    say
+                    signal: `emotion:${emotion}`,
+                    applied: true,
+                    reason: action.reason || 'Gemma emotional state',
+                    say,
+                    emotion
                 });
                 this.data.actionLedger = this.data.actionLedger.slice(-this.maxActions);
-                this.recordEvent(`Gemma ${action.applied ? 'applied' : 'could not apply'} ${tool}${reason ? ` because ${reason}` : ''}`);
-                let patch = turn && (turn.memoryPatch || turn.memory || turn.turnMemory);
-                if (!this.applyMemoryPatch(patch)) this.updateLocalDigest('model_turn');
                 this.save();
                 this.updateInputSuggestion();
-            },
-            rememberDoNotRepeat(text) {
-                let clean = this.cleanLine(text, 120);
-                if (!clean) return;
-                this.data.doNotRepeat = this.data.doNotRepeat.filter(line => line.toLowerCase() !== clean.toLowerCase());
-                this.data.doNotRepeat.push(clean);
-                if (/let'?s see/i.test(clean)) this.data.doNotRepeat.push("Let's see");
-                if (/stalemate/i.test(clean)) this.data.doNotRepeat.push('break this stalemate');
-                this.data.doNotRepeat = this.data.doNotRepeat.slice(-8);
-            },
-            buildContext(snapshot, reason) {
-                if (!this.data) this.init();
-                return {
-                    protocol: 'GemmaTurnMemory/v1',
-                    summary: this.data.summary,
-                    playerProfile: this.data.playerProfile,
-                    tone: this.data.tone,
-                    recentTurns: this.data.recentTurns.slice(-this.maxRecentTurns),
-                    recentActions: this.data.actionLedger.slice(-8),
-                    openLoops: this.data.openLoops.slice(-5),
-                    suggestions: this.data.suggestions.slice(0, 3),
-                    recentEvents: this.data.eventLog.slice(-this.maxEvents),
-                    repetitionGuard: this.repetitionGuard(snapshot),
-                    memoryPatchInstruction: 'Return memoryPatch with concise summary/playerProfile/tone/doNotRepeat/openLoops/suggestions when future turns need updated memory.',
-                    reason
-                };
-            },
-            repetitionGuard(snapshot) {
-                let avoidSay = this.data.doNotRepeat.slice(-6);
-                if (globalTime > 45) {
-                    avoidSay.push("Let's see what you've got");
-                    avoidSay.push('little Stone Age');
-                    avoidSay.push('Time to make a move');
-                }
-                let phaseHint = 'Use the current snapshot; do not greet the same age again.';
-                if (snapshot) {
-                    if (snapshot.enemyHpRatio < 0.25) phaseHint = 'Enemy base is in danger. Acknowledge the threat and choose defense or desperation, not an opening taunt.';
-                    else if (snapshot.threatCount >= 3) phaseHint = 'Player pressure is near the enemy base. Talk about the lane threat.';
-                    else if (globalTime > 120 && gameState.player.age === gameState.enemy.age) phaseHint = `Long ${AGES[gameState.player.age].name} fight. Vary wording and discuss economy, pressure, or survival.`;
-                }
-                if ((DirectorMemory.data.agreements || {}).pressure === 'mercy') {
-                    phaseHint += ' Mercy pact still allows defending the base when threatened.';
-                }
-                return {
-                    avoidSay: avoidSay.slice(-9),
-                    avoidActionReasons: this.data.actionLedger.map(a => a.reason).filter(Boolean).slice(-6),
-                    phaseHint,
-                    currentAges: this.ageLine()
-                };
-            },
-            applyMemoryPatch(patch) {
-                if (!patch || typeof patch !== 'object') return false;
-                let changed = false;
-                let setLine = (key, maxLen) => {
-                    if (typeof patch[key] !== 'string') return;
-                    let clean = this.cleanLine(patch[key], maxLen);
-                    if (clean && clean !== this.data[key]) {
-                        this.data[key] = clean;
-                        changed = true;
-                    }
-                };
-                setLine('summary', 700);
-                setLine('playerProfile', 240);
-                setLine('tone', 120);
-                if (Array.isArray(patch.doNotRepeat)) {
-                    this.data.doNotRepeat = this.normalizeList(patch.doNotRepeat, 8, 80);
-                    changed = true;
-                }
-                if (Array.isArray(patch.openLoops)) {
-                    this.data.openLoops = this.normalizeList(patch.openLoops, 5, 120);
-                    changed = true;
-                }
-                if (Array.isArray(patch.suggestions)) {
-                    this.data.suggestions = this.normalizeSuggestions(patch.suggestions);
-                    changed = true;
-                }
-                this.data.summary = this.removeAvoidPhrases(this.data.summary);
-                return changed;
-            },
-            updateLocalDigest(reason) {
-                let pressure = (DirectorMemory.data.agreements || {}).pressure || 'balanced';
-                let playerTurns = this.data.recentTurns.filter(t => t.role === 'player').slice(-2).map(t => t.text);
-                let actionLine = this.data.actionLedger.slice(-5).map(a => `${a.tool}:${a.applied ? 'applied' : 'blocked'}`).join(', ');
-                let highSignal = this.data.eventLog
-                    .filter(line => !/^Fallback action spawn_unit/i.test(line))
-                    .slice(-5)
-                    .join(' ');
-                let parts = [
-                    `${this.data.difficulty || currentDifficulty} match at ${this.ageLine() || 'unknown ages'}.`,
-                    `Pressure plan: ${pressure}.`,
-                    playerTurns.length ? `Recent player: ${playerTurns.join(' / ')}.` : '',
-                    actionLine ? `Recent Gemma tools: ${actionLine}.` : '',
-                    highSignal
-                ].filter(Boolean);
-                this.data.summary = this.cleanLine(this.removeAvoidPhrases(parts.join(' ')), 700);
-                if (typeof NativeGemma !== 'undefined') {
-                    NativeGemma.log('memory.local_digest', {
-                        reason,
-                        matchId: this.data.matchId,
-                        summaryChars: this.data.summary.length
-                    });
-                }
-            },
-            removeAvoidPhrases(text) {
-                let result = this.cleanLine(text, 700);
-                this.data.doNotRepeat.forEach(phrase => {
-                    let clean = this.cleanLine(phrase, 80);
-                    if (clean.length < 8) return;
-                    result = result.split(clean).join('[previous line]');
-                });
-                return this.cleanLine(result, 700);
-            },
-            normalizeSuggestions(value) {
-                let raw = Array.isArray(value) ? value : [];
-                let out = raw.map(item => {
-                    if (typeof item === 'string') return this.cleanLine(item, 48);
-                    if (item && typeof item === 'object') return this.cleanLine(item.text || item.target || item.say || '', 48);
-                    return '';
-                }).filter(Boolean);
-                if (out.length === 0) out = this.fallbackSuggestions();
-                return [...new Set(out.map(v => v.trim()))].slice(0, 3);
-            },
-            fallbackSuggestions() {
-                let pressure = (DirectorMemory.data.agreements || {}).pressure || 'balanced';
-                if (pressure === 'mercy') return ['rush me now', 'balanced plan', 'no turrets'];
-                if (pressure === 'rush') return ['go easy', 'truce for 20 seconds', 'melee only'];
-                return ['rush me', 'go easy', 'remember I like late game'];
             },
             updateInputSuggestion() {
                 let input = document.getElementById('director-input');
                 if (!input) return;
-                let suggestion = this.data && this.data.suggestions && this.data.suggestions[0];
-                input.placeholder = suggestion || '...';
+                let pacts = DirectorMemory.inputAgreementTags ? DirectorMemory.inputAgreementTags() : DirectorMemory.tags();
+                let pactLine = pacts.length ? pacts.join(', ') : 'none';
+                let gemmaState = (typeof NativeGemma !== 'undefined' && NativeGemma.status && NativeGemma.status.state) || '';
+                let hasGemma = typeof NativeGemma !== 'undefined' && NativeGemma.available &&
+                    ['ready', 'installed', 'loading', 'downloading'].includes(gemmaState);
+                if (!hasGemma) {
+                    input.placeholder = `agreements: ${pactLine}`;
+                    return;
+                }
+                let ideas = [
+                    `Gemma, remember my usual trap is fake rush then tech. Pacts: ${pactLine}`,
+                    `Gemma, answer like you noticed my army habits. Pacts: ${pactLine}`,
+                    `Gemma, keep the rivalry personal but fair. Pacts: ${pactLine}`
+                ];
+                input.placeholder = ideas[Math.floor((Date.now() / 5000) % ideas.length)];
             }
         };
+
+        const GEMMA_EMOTION_WORDS = [
+            'Accepting', 'Open', 'Calm', 'Centered', 'Content', 'Fulfilled', 'Patient', 'Peaceful', 'Present',
+            'Relaxed', 'Serene', 'Trusting', 'Aliveness', 'Joy', 'Amazed', 'Awe', 'Bliss', 'Delighted',
+            'Eager', 'Ecstatic', 'Enchanted', 'Energized', 'Engaged', 'Enthusiastic', 'Excited', 'Free',
+            'Happy', 'Inspired', 'Invigorated', 'Lively', 'Passionate', 'Playful', 'Radiant', 'Refreshed',
+            'Rejuvenated', 'Renewed', 'Satisfied', 'Thrilled', 'Vibrant', 'Angry', 'Annoyed', 'Agitated',
+            'Aggravated', 'Bitter', 'Contempt', 'Cynical', 'Disdain', 'Disgruntled', 'Disturbed', 'Edgy',
+            'Exasperated', 'Frustrated', 'Furious', 'Grouchy', 'Hostile', 'Impatient', 'Irritated', 'Irate',
+            'Moody', 'On edge', 'Outraged', 'Pissed', 'Resentful', 'Upset', 'Vindictive', 'Courageous',
+            'Powerful', 'Adventurous', 'Brave', 'Capable', 'Confident', 'Daring', 'Determined', 'Grounded',
+            'Proud', 'Strong', 'Worthy', 'Valiant', 'Connected', 'Loving', 'Affectionate', 'Caring',
+            'Compassion', 'Empathy', 'Safe', 'Warm', 'Curious', 'Exploring', 'Fascinated', 'Interested',
+            'Intrigued', 'Involved', 'Stimulated', 'Despair', 'Sad', 'Anguish', 'Depressed', 'Despondent',
+            'Disappointed', 'Discouraged', 'Forlorn', 'Gloomy', 'Grief', 'Heartbroken', 'Hopeless', 'Lonely',
+            'Longing', 'Melancholy', 'Sorrow', 'Teary', 'Unhappy', 'Weary', 'Yearning', 'Disconnected',
+            'Numb', 'Aloof', 'Bored', 'Confused', 'Distant', 'Empty', 'Indifferent', 'Isolated', 'Lethargic',
+            'Listless', 'Removed', 'Resistant', 'Shut Down', 'Uneasy', 'Withdrawn', 'Embarrassed', 'Shame',
+            'Ashamed', 'Humiliated', 'Inhibited', 'Mortified', 'Self-conscious', 'Useless', 'Weak',
+            'Worthless', 'Fear', 'Afraid', 'Anxious', 'Apprehensive', 'Frightened', 'Hesitant', 'Nervous',
+            'Panic', 'Paralyzed', 'Scared', 'Terrified', 'Worried', 'Fragile', 'Helpless', 'Sensitive',
+            'Grateful', 'Appreciative', 'Blessed', 'Fortunate', 'Grace', 'Humbled', 'Lucky', 'Moved',
+            'Thankful', 'Touched', 'Guilt', 'Regret', 'Remorseful', 'Sorry', 'Hopeful', 'Encouraged',
+            'Expectant', 'Optimistic', 'Powerless', 'Impotent', 'Incapable', 'Resigned', 'Trapped',
+            'Victim', 'Tender', 'Reflective', 'Self-loving', 'Vulnerable', 'Stressed', 'Tense',
+            'Burned out', 'Cranky', 'Depleted', 'Exhausted', 'Frazzled', 'Overwhelm', 'Rattled', 'Rejecting',
+            'Restless', 'Shaken', 'Tight', 'Worn out', 'Unsettled', 'Doubt', 'Concerned', 'Dissatisfied',
+            'Perplexed', 'Questioning', 'Reluctant', 'Shocked', 'Skeptical', 'Suspicious', 'Ungrounded',
+            'Unsure', 'Achy', 'Airy', 'Blocked', 'Breathless', 'Bruised', 'Burning', 'Buzzy', 'Clammy',
+            'Clenched', 'Cold', 'Constricted', 'Contained', 'Contracted', 'Dizzy', 'Drained', 'Dull',
+            'Electric', 'Expanded', 'Flowing', 'Fluid', 'Fluttery', 'Frozen', 'Full', 'Gentle', 'Hard',
+            'Heavy', 'Hollow', 'Hot', 'Icy', 'Itchy', 'Jumpy', 'Knotted', 'Light', 'Loose', 'Nauseous',
+            'Pain', 'Pounding', 'Prickly', 'Pulsing', 'Queasy', 'Radiating', 'Releasing', 'Rigid', 'Settled',
+            'Shaky', 'Shivery', 'Slow', 'Smooth', 'Soft', 'Sore', 'Spacey', 'Spacious', 'Sparkly', 'Stiff',
+            'Still', 'Suffocated', 'Sweaty', 'Throbbing', 'Tingling', 'Trembly', 'Twitchy', 'Vibrating',
+            'Wobbly', 'Wooden'
+        ];
+
+        const GEMMA_EMOTION_LOOKUP = (() => {
+            let lookup = Object.create(null);
+            GEMMA_EMOTION_WORDS.forEach(word => {
+                lookup[String(word).toLowerCase().replace(/[^a-z0-9]+/g, '')] = word;
+            });
+            return lookup;
+        })();
+
+        function normalizeGemmaEmotionWord(value) {
+            let key = String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+            return GEMMA_EMOTION_LOOKUP[key] || 'Centered';
+        }
+
+        function shuffledGemmaEmotionWords() {
+            let out = GEMMA_EMOTION_WORDS.slice();
+            for (let i = out.length - 1; i > 0; i--) {
+                let j = Math.floor(Math.random() * (i + 1));
+                let tmp = out[i];
+                out[i] = out[j];
+                out[j] = tmp;
+            }
+            return out;
+        }
 
         function normalizeGemmaRecentUserMessage(value, maxLen = 120) {
             return String(value || '').replace(/\s+/g, ' ').trim().slice(0, maxLen);
         }
 
-        function fitGemmaContextText(g, text, maxWidth) {
-            let clean = normalizeGemmaRecentUserMessage(text, 160);
-            if (!clean || maxWidth <= 24) return '';
-            if (g.measureText(clean).width <= maxWidth) return clean;
-            let trimmed = clean;
-            while (trimmed.length > 4 && g.measureText(`${trimmed}...`).width > maxWidth) {
-                trimmed = trimmed.slice(0, -1).trimEnd();
-            }
-            return trimmed.length > 0 ? `${trimmed}...` : '';
-        }
-
-        function captureGemmaContextImage(snapshot = null, recentUserMessage = '') {
+        function captureGemmaContextImage(snapshot = null) {
             if (!LOCAL_GEMMA_IMAGE_INPUT_ENABLED) return null;
             if (!canvas || !gameState || !gameState.running) return null;
             try {
                 let shot = document.createElement('canvas');
-                shot.width = 768;
-                shot.height = 432;
+                shot.width = 896;
+                shot.height = 504;
                 let g = shot.getContext('2d', { alpha: false });
                 if (!g) return null;
-                drawGemmaContextImage(g, shot.width, shot.height, snapshot || AIDirector.snapshot(), recentUserMessage);
-                return shot.toDataURL('image/jpeg', 0.86);
+                drawGemmaContextImage(g, shot.width, shot.height, snapshot || AIDirector.snapshot());
+                return shot.toDataURL('image/jpeg', 0.82);
             } catch (e) {
                 NativeGemma.log('context_image.capture_failed', { message: String(e && e.message ? e.message : e) });
                 return null;
             }
         }
 
-        function drawGemmaContextImage(g, width, height, snapshot, recentUserMessage = '') {
+        function drawGemmaContextImage(g, width, height, snapshot) {
             const playerColor = '#1d4ed8';
             const enemyColor = '#b91c1c';
             const ink = '#111827';
             const muted = '#6b7280';
             const paper = '#fffaf0';
-            const laneLeft = 48;
-            const laneRight = width - 48;
-            const laneY = 246;
+            const laneLeft = 56;
+            const laneRight = width - 56;
+            const laneY = 292;
             const laneW = laneRight - laneLeft;
             const mapX = worldX => laneLeft + Math.max(0, Math.min(1, worldX / CANVAS_WIDTH)) * laneW;
             const pct = value => `${Math.round(Math.max(0, Math.min(1, value || 0)) * 100)}%`;
@@ -1987,28 +2102,22 @@
             }
 
             g.fillStyle = ink;
-            g.font = '700 22px system-ui, Arial, sans-serif';
+            g.font = '800 24px system-ui, Arial, sans-serif';
             g.textAlign = 'center';
-            g.fillText('TACTICAL CONTEXT MAP FOR GEMMA', width / 2, 32);
-            g.font = '600 14px system-ui, Arial, sans-serif';
-            g.fillText('BLUE PLAYER starts left and attacks right. RED GEMMA ENEMY starts right and attacks left.', width / 2, 54);
+            g.fillText('MAP FOR GEMMA AI: YOU ARE RED ON THE RIGHT', width / 2, 30);
+            g.font = '700 15px system-ui, Arial, sans-serif';
+            g.fillText('BLUE PLAYER is your opponent on the LEFT and attacks RIGHT. RED GEMMA is YOU and attacks LEFT.', width / 2, 54);
 
-            drawGemmaContextBase(g, 24, 76, 198, 82, playerColor, 'PLAYER BASE', AGES[gameState.player.age].name, pct(snapshot.playerHpRatio), gameState.player);
-            drawGemmaContextBase(g, width - 222, 76, 198, 82, enemyColor, 'GEMMA BASE (YOU)', AGES[gameState.enemy.age].name, pct(snapshot.enemyHpRatio), gameState.enemy);
+            drawGemmaContextBase(g, 28, 76, 224, 90, playerColor, 'BLUE PLAYER / OPPONENT', AGES[gameState.player.age].name, pct(snapshot.playerHpRatio), gameState.player);
+            drawGemmaContextBase(g, width - 252, 76, 224, 90, enemyColor, 'RED GEMMA / YOU', AGES[gameState.enemy.age].name, pct(snapshot.enemyHpRatio), gameState.enemy);
 
-            drawGemmaContextLegend(g, width / 2 - 150, 76, 300, 82, playerColor, enemyColor, ink, muted);
+            drawGemmaContextLegend(g, width / 2 - 184, 76, 368, 90, playerColor, enemyColor, ink, muted);
 
-            let recentUserLine = normalizeGemmaRecentUserMessage(recentUserMessage, 120);
-            if (recentUserLine) {
-                drawGemmaContextRoundRect(g, 24, 162, width - 48, 24, 6, '#fff7ed', '#f59e0b', 1.25);
-                g.fillStyle = '#9a3412';
-                g.font = '800 10px system-ui, Arial, sans-serif';
-                g.textAlign = 'left';
-                g.fillText('LATEST PLAYER CHAT (SEEN ONCE):', 34, 174);
-                g.fillStyle = '#111827';
-                g.font = '700 11px system-ui, Arial, sans-serif';
-                g.fillText(fitGemmaContextText(g, recentUserLine, width - 290), 230, 174);
-            }
+            drawGemmaContextRoundRect(g, 28, 176, width - 56, 34, 8, '#ffffff', '#d1d5db', 1.25);
+            g.font = '800 14px system-ui, Arial, sans-serif';
+            g.textAlign = 'center';
+            g.fillStyle = ink;
+            g.fillText('READ THE MAP AS RED GEMMA: defend the right base, push left, destroy the blue base.', width / 2, 194);
 
             g.fillStyle = '#dbeafe';
             g.fillRect(mapX(0), laneY - 82, mapX(BASE_WIDTH) - mapX(0), 164);
@@ -2024,19 +2133,19 @@
             g.lineTo(laneRight, laneY);
             g.stroke();
 
-            drawGemmaContextArrow(g, laneLeft + 120, laneY - 64, laneRight - 120, laneY - 64, playerColor, 'PLAYER PUSHES ->');
-            drawGemmaContextArrow(g, laneRight - 120, laneY + 64, laneLeft + 120, laneY + 64, enemyColor, '<- GEMMA PUSHES');
+            drawGemmaContextArrow(g, laneLeft + 132, laneY - 64, laneRight - 132, laneY - 64, playerColor, 'BLUE PLAYER ATTACKS RIGHT ->');
+            drawGemmaContextArrow(g, laneRight - 132, laneY + 64, laneLeft + 132, laneY + 64, enemyColor, '<- YOU ATTACK LEFT AS RED GEMMA');
 
             drawGemmaContextVertical(g, mapX(BASE_WIDTH), laneY - 94, laneY + 94, '#374151', 'PLAYER HIT LINE', 'left');
             drawGemmaContextVertical(g, mapX(CANVAS_WIDTH - BASE_WIDTH), laneY - 94, laneY + 94, '#374151', 'GEMMA HIT LINE', 'right');
             drawGemmaContextVertical(g, mapX(snapshot.playerFrontX || BASE_WIDTH), laneY - 116, laneY + 116, playerColor, 'PLAYER FRONT', 'left', true);
             drawGemmaContextVertical(g, mapX(snapshot.enemyFrontX || (CANVAS_WIDTH - BASE_WIDTH)), laneY - 116, laneY + 116, enemyColor, 'GEMMA FRONT', 'right', true);
 
-            drawGemmaContextLabel(g, 'GEMMA DANGER ZONE: player units here threaten your base', mapX(CANVAS_WIDTH - BASE_WIDTH - 310), laneY - 104, {
+            drawGemmaContextLabel(g, 'RED SHADE = DANGER TO YOUR GEMMA BASE', mapX(CANVAS_WIDTH - BASE_WIDTH - 310), laneY - 108, {
                 fill: '#fff7ed',
                 color: enemyColor,
                 align: 'center',
-                font: '700 12px system-ui, Arial, sans-serif'
+                font: '800 12px system-ui, Arial, sans-serif'
             });
 
             let markers = collectGemmaContextUnitMarkers();
@@ -2065,23 +2174,28 @@
                 `Gemma units ${snapshot.enemyUnits}`,
                 `Threats near Gemma base ${snapshot.threatCount}`,
                 `Closest player threat: ${closest}`,
-                `Pressure pact: ${snapshot.pressure || 'balanced'}`
+                `Front gap ${snapshot.frontGap} px`,
+                `Pressure pact: ${snapshot.pressure || 'balanced'}`,
+                `Gemma emotion: ${snapshot.emotion || 'Centered'}`,
+                `Engine plan: ${snapshot.engineOrder || 'adaptive'}`,
+                `Engine order: ${snapshot.engineOrder || 'adaptive'}`,
+                `Lane pressure ${Math.round(snapshot.lanePressure)}`
             ];
             g.fillStyle = '#111827';
             g.font = '600 13px system-ui, Arial, sans-serif';
             g.textAlign = 'left';
-            status.forEach((line, idx) => g.fillText(line, 32 + (idx % 3) * 238, 384 + Math.floor(idx / 3) * 22));
+            status.forEach((line, idx) => g.fillText(line, 34 + (idx % 4) * 214, 430 + Math.floor(idx / 4) * 21));
 
             g.fillStyle = muted;
             g.font = '600 11px system-ui, Arial, sans-serif';
             g.textAlign = 'center';
-            g.fillText('Image is a labeled tactical diagram, not the sketch art. Labels define what each line and marker means.', width / 2, height - 14);
+            g.fillText('This is the complete tactical diagram. Color, side, labels, arrows, and marker shapes define the current battle.', width / 2, height - 14);
         }
 
         function drawGemmaContextBase(g, x, y, w, h, color, title, age, hpText, state) {
             drawGemmaContextRoundRect(g, x, y, w, h, 8, '#ffffff', color, 2);
             g.fillStyle = color;
-            g.font = '800 14px system-ui, Arial, sans-serif';
+            g.font = '800 13px system-ui, Arial, sans-serif';
             g.textAlign = 'left';
             g.fillText(title, x + 12, y + 22);
             g.fillStyle = '#111827';
@@ -2089,9 +2203,9 @@
             g.fillText(age, x + 12, y + 42);
             g.fillText(`HP ${hpText}  Gold ${Math.floor(state.gold)}`, x + 12, y + 62);
             g.fillStyle = '#e5e7eb';
-            g.fillRect(x + 108, y + 28, 72, 10);
+            g.fillRect(x + 126, y + 28, 78, 10);
             g.fillStyle = color;
-            g.fillRect(x + 108, y + 28, Math.max(0, Math.min(72, 72 * state.hp / state.maxHp)), 10);
+            g.fillRect(x + 126, y + 28, Math.max(0, Math.min(78, 78 * state.hp / state.maxHp)), 10);
         }
 
         function drawGemmaContextLegend(g, x, y, w, h, playerColor, enemyColor, ink, muted) {
@@ -2111,6 +2225,7 @@
             g.fillText('diamond heavy', x + 170, y + 46);
             g.fillText('dashed vertical = front line', x + 30, y + 68);
             g.fillText('gray vertical = base hit line', x + 170, y + 68);
+            g.fillText('P0/P1/P2 = blue player units; G0/G1/G2 = your red units', x + 30, y + 84);
         }
 
         function collectGemmaContextUnitMarkers() {
@@ -2292,6 +2407,105 @@
             }
         }
 
+        function gemmaPromptLine(value, maxLen = 180) {
+            return String(value || '').replace(/\s+/g, ' ').trim().slice(0, maxLen);
+        }
+
+        function buildGemmaEmotionPrompt(ctx) {
+            let snapshot = ctx.snapshot;
+            let enemyAgeData = AGES[gameState.enemy.age];
+            let playerAgeData = AGES[gameState.player.age];
+            let latestPlayer = gemmaPromptLine(ctx.relayComment ? ctx.relayComment.text : ctx.cleanExtraMessage, 160);
+            let emotions = shuffledGemmaEmotionWords();
+            let emotionLine = emotions.join(', ');
+            let playerUnitLine = snapshot.playerProfile || `${snapshot.playerUnits} units: ${snapshot.playerMelee} melee, ${snapshot.playerRanged} ranged, ${snapshot.playerHeavy} heavy`;
+            let enemyUnitLine = snapshot.enemyProfile || `${snapshot.enemyUnits} units: ${snapshot.enemyMelee} melee, ${snapshot.enemyRanged} ranged, ${snapshot.enemyHeavy} heavy`;
+            let tacticalLine = [
+                `front gap ${snapshot.frontGap}px`,
+                `threats near your base ${snapshot.threatCount}`,
+                `closest threat ${Math.round(snapshot.closestThreatDist)}px`,
+                `my turrets ${snapshot.playerTurretCount}`,
+                `your turrets ${snapshot.enemyTurretCount}`,
+                `engine plan ${snapshot.macroPlan || 'balanced'} / ${snapshot.engineOrder || 'adaptive'}`
+            ].join(', ');
+            let prompt = [
+                'Gemma, we are still playing our notebook Age of War match and chatting across the table.',
+                'You are the red general on the right. I am the blue player on the left. I attached the little labeled map again so you can see the bases, front lines, danger zone, unit markers, HP, gold, and pressure.',
+                'I am not asking you to click units or spend gold here; the local game keeps doing that while you think. I only want your in-character reply and the feeling behind it so the match keeps sounding human.',
+                `Right now you are in ${enemyAgeData.name}; I am in ${playerAgeData.name}.`,
+                `Your base is at ${Math.round(snapshot.enemyHpRatio * 100)}% with ${Math.floor(snapshot.enemyGold)} gold. My base is at ${Math.round(snapshot.playerHpRatio * 100)}% with ${Math.floor(snapshot.playerGold)} gold.`,
+                `My army: ${playerUnitLine}. Your army: ${enemyUnitLine}.`,
+                `What matters tactically: ${tacticalLine}.`,
+                `Our table rules and preferences: ${DirectorMemory.tags().join(', ')}.`,
+                latestPlayer ? `I just told you: "${latestPlayer}"` : 'I did not say anything new this turn.',
+                'Please answer in exactly two short lines so the phone UI can read it.',
+                'First line: talk directly to me as Gemma, one or two short sentences.',
+                'Second line: one exact emotion word from this shuffled list, with no label:',
+                emotionLine
+            ].join('\n\n');
+            return {
+                prompt,
+                emotions
+            };
+        }
+
+        function parseGemmaEmotionReply(rawText, allowedWords = GEMMA_EMOTION_WORDS) {
+            let text = String(rawText || '').replace(/\u0000/g, '').replace(/^```(?:text)?/i, '').replace(/```$/i, '').trim();
+            let lines = text.split(/\r?\n+/).map(line => line.replace(/\s+/g, ' ').trim()).filter(Boolean);
+            let allowed = Array.isArray(allowedWords) && allowedWords.length ? allowedWords : GEMMA_EMOTION_WORDS;
+            let allowedLookup = Object.create(null);
+            allowed.forEach(word => {
+                allowedLookup[String(word).toLowerCase().replace(/[^a-z0-9]+/g, '')] = word;
+            });
+            let emotion = '';
+            let emotionLineIndex = -1;
+            for (let i = lines.length - 1; i >= 0; i--) {
+                let raw = lines[i].replace(/^(emotion|feeling|mood)\s*[:=-]\s*/i, '').trim();
+                let key = raw.toLowerCase().replace(/[^a-z0-9]+/g, '');
+                if (allowedLookup[key] || GEMMA_EMOTION_LOOKUP[key]) {
+                    emotion = allowedLookup[key] || GEMMA_EMOTION_LOOKUP[key];
+                    emotionLineIndex = i;
+                    break;
+                }
+            }
+            if (!emotion) {
+                let suffixSource = lines.length ? lines[lines.length - 1] : text;
+                let suffixTokens = String(suffixSource || '')
+                    .replace(/[^\w -]+$/g, '')
+                    .replace(/[_-]+/g, ' ')
+                    .trim()
+                    .split(/\s+/)
+                    .filter(Boolean);
+                for (let width = Math.min(4, suffixTokens.length); width >= 1; width--) {
+                    let phrase = suffixTokens.slice(-width).join(' ');
+                    let key = phrase.toLowerCase().replace(/[^a-z0-9]+/g, '');
+                    if (allowedLookup[key] || GEMMA_EMOTION_LOOKUP[key]) {
+                        emotion = allowedLookup[key] || GEMMA_EMOTION_LOOKUP[key];
+                        emotionLineIndex = lines.length - 1;
+                        break;
+                    }
+                }
+            }
+            if (!emotion) {
+                let haystack = ` ${text.toLowerCase().replace(/[^a-z0-9]+/g, ' ')} `;
+                let sorted = GEMMA_EMOTION_WORDS.slice().sort((a, b) => b.length - a.length);
+                for (let i = 0; i < sorted.length; i++) {
+                    let word = sorted[i];
+                    let key = word.toLowerCase().replace(/[^a-z0-9]+/g, ' ');
+                    if (haystack.includes(` ${key.trim()} `)) {
+                        emotion = word;
+                        break;
+                    }
+                }
+            }
+            emotion = normalizeGemmaEmotionWord(emotion || 'Centered');
+            let replyLines = lines.filter((_, index) => index !== emotionLineIndex);
+            let reply = replyLines.join(' ').replace(/\b(emotion|feeling|mood)\s*[:=-]\s*[\w -]+$/i, '').trim();
+            if (!reply) reply = 'I am watching the line and adjusting.';
+            reply = reply.replace(/\s+/g, ' ').slice(0, 240);
+            return { reply, emotion, rawText: text };
+        }
+
         // --- LOCAL GEMMA BRIDGE ---
         const NativeGemma = {
             available: false,
@@ -2320,6 +2534,10 @@
                 try {
                     window.LocalGemmaAndroid.logDirectorEvent(String(event || 'event'), JSON.stringify(details || {}));
                 } catch (e) { }
+            },
+            ownsVisibleChat() {
+                let state = this.status && this.status.state ? this.status.state : '';
+                return this.available && (this.status.busy || ['ready', 'installed', 'loading', 'downloading'].includes(state));
             },
             updateStatus(next) {
                 this.status = Object.assign({}, this.status, next || {});
@@ -2371,6 +2589,7 @@
                     button.disabled = disabled;
                     button.classList.toggle('hidden', !action);
                 }
+                if (typeof GemmaMemory !== 'undefined') GemmaMemory.updateInputSuggestion();
             },
             install() {
                 if (!this.available) {
@@ -2410,28 +2629,6 @@
                 if (this.status.busy || globalTime - this.lastRequestAt < minGap) return false;
 
                 let snapshot = AIDirector.snapshot();
-                let enemyAgeData = AGES[gameState.enemy.age];
-                let agreements = DirectorMemory.data.agreements || {};
-                let nextUpgradeCosts = {};
-                ['dmg', 'hp', 'econ'].forEach(type => {
-                    let level = Math.max(0, Math.min(9, gameState.enemy.upgrades[type] || 0));
-                    nextUpgradeCosts[type] = gameState.enemy.upgrades[type] >= 10 ? null : UPGRADE_COSTS[level];
-                });
-                let enemyGold = Math.floor(gameState.enemy.gold);
-                let affordableUnits = enemyAgeData.units
-                    .map((unit, idx) => ({ typeIndex: idx, name: unit.name, type: unit.type, cost: unit.cost }))
-                    .filter(unit => enemyGold >= unit.cost && !(agreements.meleeOnly && unit.type === 'ranged'));
-                let affordableUpgrades = ['dmg', 'hp', 'econ'].filter(type => gameState.enemy.upgrades[type] < 10 && enemyGold >= nextUpgradeCosts[type]);
-                let openTurretSlots = gameState.enemy.turrets.filter((slot, idx) => slot === null && idx < gameState.enemy.unlockedSlots).length;
-                let affordableTurrets = (!agreements.noTurrets && openTurretSlots > 0)
-                    ? enemyAgeData.turrets.map((turret, idx) => ({ typeIndex: idx, cost: turret.cost })).filter(turret => enemyGold >= turret.cost)
-                    : [];
-                let affordableTools = [];
-                if (affordableUnits.length) affordableTools.push('spawn_unit');
-                if (affordableUpgrades.length) affordableTools.push('buy_upgrade');
-                if (affordableTurrets.length || (!agreements.noTurrets && gameState.enemy.unlockedSlots < 4 && enemyGold >= gameState.enemy.unlockedSlots * 500)) affordableTools.push('build_turret');
-                if (!agreements.noSpecials && gameState.enemy.specialTimer <= 0 && !gameState.specialActive) affordableTools.push('use_special');
-                affordableTools.push('none');
                 let cleanExtraMessage = normalizeGemmaRecentUserMessage(extraMessage, 120);
                 let requestedUserLineId = options && options.userLineId ? String(options.userLineId) : '';
                 let relayComment = null;
@@ -2449,132 +2646,41 @@
                     };
                 }
 
-                let contextImageDataUrl = captureGemmaContextImage(snapshot, relayComment ? relayComment.text : '');
+                let contextImageDataUrl = captureGemmaContextImage(snapshot);
                 let requestId = `g${Date.now()}_${Math.floor(Math.random() * 10000)}`;
-                let payload = {
-                    version: RELEASE_VERSION,
+                let promptBuild = buildGemmaEmotionPrompt({
                     reason,
-                    extraMessage: cleanExtraMessage,
-                    turnInstruction: reason === 'player_chat'
-                        ? 'Answer extraMessage directly in say before choosing an action. Keep it in character and do not ignore the player.'
-                        : 'Comment on the current battle state without repeating recent lines.',
-                    visualContext: {
-                        contextImageAttached: !!contextImageDataUrl,
-                        imageType: 'annotated tactical map, not raw sketch art',
-                        perspective: 'You are Gemma, the red enemy on the right side of the image.',
-                        ownershipHint: 'Blue markers and the left base are the player/user. Red markers and the right base are your Gemma enemy side.',
-                        recentUserMessage: relayComment ? relayComment.text : '',
-                        recentUserMessageIncludedInImage: !!relayComment,
-                        useImageFor: contextImageDataUrl
-                            ? 'Read the labels first. The image labels explain front lines, hit lines, danger zone, unit sides, unit types, and troop clusters. Trust JSON for exact numbers and legal actions.'
-                            : 'No image is attached in this build. Use JSON snapshot, lane metrics, memory, and age/theme fields for context.'
-                    },
-                    difficulty: currentDifficulty,
-                    memory: DirectorMemory.data,
-                    gemmaMemory: GemmaMemory.buildContext(snapshot, reason),
-                    snapshot: {
-                        time: Math.round(globalTime),
-                        player: {
-                            age: AGES[gameState.player.age].name,
-                            hpRatio: Number(snapshot.playerHpRatio.toFixed(2)),
-                            gold: Math.floor(gameState.player.gold),
-                            xp: Math.floor(gameState.player.xp),
-                            units: snapshot.playerUnits
-                        },
-                        enemy: {
-                            age: AGES[gameState.enemy.age].name,
-                            hpRatio: Number(snapshot.enemyHpRatio.toFixed(2)),
-                            gold: Math.floor(gameState.enemy.gold),
-                            xp: Math.floor(gameState.enemy.xp),
-                            units: snapshot.enemyUnits
-                        },
-                        lane: {
-                            threatCount: snapshot.threatCount,
-                            heavyThreat: snapshot.heavyThreat,
-                            closestThreatDist: Math.floor(snapshot.closestThreatDist),
-                            pressure: snapshot.pressure,
-                            playerFrontX: snapshot.playerFrontX,
-                            enemyFrontX: snapshot.enemyFrontX,
-                            frontGap: snapshot.frontGap,
-                            lanePressure: Math.round(snapshot.lanePressure)
-                        }
-                    },
-                    enemyChoices: {
-                        unitOptions: enemyAgeData.units.map((unit, idx) => ({
-                            typeIndex: idx,
-                            name: unit.name,
-                            type: unit.type,
-                            cost: unit.cost
-                        })),
-                        turretCosts: enemyAgeData.turrets.map(turret => turret.cost),
-                        upgradeLevels: Object.assign({}, gameState.enemy.upgrades),
-                        nextUpgradeCosts,
-                        affordableUnits,
-                        affordableUpgrades,
-                        affordableTurrets,
-                        affordableTools,
-                        openTurretSlots,
-                        canBuyTurretSlot: gameState.enemy.unlockedSlots < 4,
-                        specialReady: gameState.enemy.specialTimer <= 0 && !gameState.specialActive
-                    },
-                    constraints: {
-                        oneActionOnly: true,
-                        jsonOnly: true,
-                        validTools: ['spawn_unit', 'buy_upgrade', 'build_turret', 'use_special', 'none'],
-                        chooseOnlyAffordableTools: affordableTools,
-                        validTypeIndexes: [0, 1, 2],
-                        validUpgrades: ['dmg', 'hp', 'econ'],
-                        noSpecials: !!agreements.noSpecials,
-                        noTurrets: !!agreements.noTurrets,
-                        meleeOnly: !!agreements.meleeOnly,
-                        pressurePlan: agreements.pressure || 'balanced',
-                        mercyAllowsBaseDefense: snapshot.enemyHpRatio < 0.5 || snapshot.threatCount > 0,
-                        avoidRepeatedOpeners: true
-                    },
-                    schema: {
-                        say: 'short in-character message',
-                        pressure: 'rush|balanced|mercy|null',
-                        action: {
-                            tool: 'spawn_unit|buy_upgrade|build_turret|use_special|none',
-                            typeIndex: '0,1,2 for unit or turret',
-                            upgrade: 'dmg|hp|econ',
-                            reason: 'short reason'
-                        },
-                        memoryPatch: {
-                            summary: 'optional <=700 chars bounded memory for next turn',
-                            playerProfile: 'optional <=240 chars stable player preference',
-                            doNotRepeat: 'optional array of short recent phrases to avoid',
-                            openLoops: 'optional array of unresolved player requests or threats',
-                            tone: 'optional short style guidance',
-                            suggestions: 'optional array of 1-3 short player command suggestions'
-                        }
-                    }
-                };
-                let payloadJson = JSON.stringify(payload);
+                    cleanExtraMessage,
+                    relayComment,
+                    snapshot
+                });
+                let promptText = promptBuild.prompt;
 
                 this.pending[requestId] = {
-                    payload,
                     reason,
                     userLineId: relayComment ? relayComment.lineId : '',
-                    relayedUserMessage: relayComment ? relayComment.text : ''
+                    relayedUserMessage: relayComment ? relayComment.text : '',
+                    emotions: promptBuild.emotions || GEMMA_EMOTION_WORDS
                 };
                 this.lastRequestAt = globalTime;
                 this.status.busy = true;
                 this.updateStatus(this.status);
+                DirectorPanel.beginModelThoughts(requestId, reason);
                 this.log('request.pre_send', {
                     requestId,
                     reason,
                     gameTime: Math.round(globalTime),
-                    payloadChars: payloadJson.length,
+                    promptChars: promptText.length,
                     difficulty: currentDifficulty,
-                    memorySummaryChars: GemmaMemory.data ? GemmaMemory.data.summary.length : 0,
-                    contextImageChars: contextImageDataUrl ? contextImageDataUrl.length : 0
+                    nativeConversationMessages: this.status.conversationMessages || 0,
+                    contextImageChars: contextImageDataUrl ? contextImageDataUrl.length : 0,
+                    enginePlan: snapshot.engineOrder || ''
                 });
                 try {
                     if (contextImageDataUrl && typeof window.LocalGemmaAndroid.generateDirectorTurnWithImage === 'function') {
-                        window.LocalGemmaAndroid.generateDirectorTurnWithImage(requestId, payloadJson, contextImageDataUrl);
+                        window.LocalGemmaAndroid.generateDirectorTurnWithImage(requestId, promptText, contextImageDataUrl);
                     } else {
-                        window.LocalGemmaAndroid.generateDirectorTurn(requestId, payloadJson);
+                        window.LocalGemmaAndroid.generateDirectorTurn(requestId, promptText);
                     }
                     if (relayComment && relayComment.lineId) {
                         DirectorPanel.markPlayerLineSeen(relayComment.lineId, requestId);
@@ -2589,37 +2695,34 @@
                     delete this.pending[requestId];
                     this.status.busy = false;
                     this.updateStatus(this.status);
+                    DirectorPanel.failModelThoughts(requestId, 'bridge error');
                     this.log('request.bridge_error', { requestId, message: String(e && e.message ? e.message : e) });
                     return false;
                 }
+            },
+            stream(requestId, phase, text, done) {
+                DirectorPanel.updateModelThoughts(requestId, phase, text, !!done);
             },
             receive(requestId, rawText) {
                 let pendingMeta = this.pending[requestId] || null;
                 delete this.pending[requestId];
                 this.status.busy = false;
                 this.refresh();
-                let parsed = parseGemmaJson(rawText);
-                if (!parsed) {
-                    this.log('response.parse_failed', { requestId, rawText: String(rawText || '') });
-                    DirectorPanel.addModelRaw(String(rawText || '').trim() || '<<empty model response>>');
-                    return;
-                }
-                if (parsed._recovered) {
-                    delete parsed._recovered;
-                    this.log('response.parse_recovered', { requestId, turn: parsed });
-                }
-                this.log('response.parsed', {
+                let result = parseGemmaEmotionReply(rawText, pendingMeta && pendingMeta.emotions);
+                this.log('response.emotion', {
                     requestId,
-                    turn: parsed,
-                    reason: pendingMeta && pendingMeta.reason ? pendingMeta.reason : ''
+                    emotion: result.emotion || '',
+                    replyChars: String(result.reply || '').length,
+                    rawChars: String(rawText || '').length
                 });
-                applyGemmaDirectorTurn(parsed, requestId);
+                applyGemmaEmotionTurn(result, requestId, pendingMeta);
             },
             error(requestId, message) {
                 delete this.pending[requestId];
                 this.status.busy = false;
                 this.updateStatus(Object.assign({}, this.status, { state: this.status.state === 'ready' ? 'ready' : 'error', message }));
                 this.log('request.error', { requestId, message: String(message || '') });
+                DirectorPanel.failModelThoughts(requestId, String(message || 'error'));
                 DirectorPanel.addSystem(`Local Gemma could not answer: ${message}`);
             }
         };
@@ -2633,298 +2736,23 @@
             NativeGemma.install();
         }
 
-        function parseGemmaJson(rawText) {
-            let text = String(rawText || '').trim();
-            if (!text) return null;
-
-            let candidates = buildGemmaJsonCandidates(text);
-            for (let i = 0; i < candidates.length; i++) {
-                let parsed = tryParseGemmaCandidate(candidates[i]);
-                if (parsed) return parsed;
-            }
-
-            return recoverGemmaTurnFromText(text);
-        }
-
-        function buildGemmaJsonCandidates(text) {
-            let cleaned = String(text || '').trim();
-            cleaned = cleaned.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
-
-            let seeds = [cleaned];
-            let balanced = extractBalancedJsonObject(cleaned);
-            if (balanced) seeds.push(balanced);
-            let first = cleaned.indexOf('{');
-            if (first !== -1) {
-                let fromFirst = cleaned.slice(first).trim();
-                seeds.push(fromFirst);
-                let last = fromFirst.lastIndexOf('}');
-                if (last > 0) seeds.push(fromFirst.slice(0, last + 1));
-            }
-
-            let unique = [];
-            let seen = Object.create(null);
-            for (let i = 0; i < seeds.length; i++) {
-                let seed = String(seeds[i] || '').replace(/\u0000/g, '').trim();
-                if (!seed || seen[seed]) continue;
-                seen[seed] = true;
-                unique.push(seed);
-
-                let repaired = repairJsonLikeText(seed);
-                if (repaired && !seen[repaired]) {
-                    seen[repaired] = true;
-                    unique.push(repaired);
-                }
-            }
-            return unique;
-        }
-
-        function repairJsonLikeText(text) {
-            let repaired = String(text || '').trim();
-            if (!repaired) return '';
-
-            // Fix common local-model artifacts like ," ,"memoryPatch" and dangling commas/quotes.
-            repaired = repaired.replace(/,\s*"\s*,\s*"/g, ',"');
-            repaired = repaired.replace(/"\s*(NotRepeat|notRepeat|NoRepeat)"\s*:/g, '"doNotRepeat":');
-            repaired = repaired.replace(/"\s*(memPatch|memory_patch)"\s*:/g, '"memoryPatch":');
-            repaired = repaired.replace(/,\s*"(?=\s*[}\]])/g, '');
-            repaired = repaired.replace(/,\s*([}\]])/g, '$1');
-            repaired = balanceJsonBrackets(repaired);
-            return repaired.trim();
-        }
-
-        function extractBalancedJsonObject(text) {
-            let source = String(text || '');
-            let start = source.indexOf('{');
-            if (start === -1) return '';
-
-            let depth = 0;
-            let inString = false;
-            let escaped = false;
-            for (let i = start; i < source.length; i++) {
-                let ch = source[i];
-                if (inString) {
-                    if (escaped) escaped = false;
-                    else if (ch === '\\') escaped = true;
-                    else if (ch === '"') inString = false;
-                    continue;
-                }
-                if (ch === '"') {
-                    inString = true;
-                    continue;
-                }
-                if (ch === '{') depth++;
-                else if (ch === '}') {
-                    depth--;
-                    if (depth === 0) return source.slice(start, i + 1).trim();
-                }
-            }
-            return source.slice(start).trim();
-        }
-
-        function balanceJsonBrackets(text) {
-            let out = String(text || '');
-            let stack = [];
-            let inString = false;
-            let escaped = false;
-
-            for (let i = 0; i < out.length; i++) {
-                let ch = out[i];
-                if (inString) {
-                    if (escaped) escaped = false;
-                    else if (ch === '\\') escaped = true;
-                    else if (ch === '"') inString = false;
-                    continue;
-                }
-                if (ch === '"') {
-                    inString = true;
-                    continue;
-                }
-                if (ch === '{' || ch === '[') stack.push(ch);
-                else if (ch === '}' && stack[stack.length - 1] === '{') stack.pop();
-                else if (ch === ']' && stack[stack.length - 1] === '[') stack.pop();
-            }
-
-            while (stack.length > 0) {
-                out += stack.pop() === '{' ? '}' : ']';
-            }
-            return out;
-        }
-
-        function tryParseGemmaCandidate(candidate) {
-            if (!candidate) return null;
-            try {
-                let parsed = JSON.parse(candidate);
-                if (!parsed || typeof parsed !== 'object') return null;
-                return normalizeGemmaTurnObject(parsed);
-            } catch (e) {
-                return null;
-            }
-        }
-
-        function cleanGemmaText(value, maxLen = 220) {
-            return String(value || '').replace(/\s+/g, ' ').trim().slice(0, maxLen);
-        }
-
-        function normalizeGemmaList(value, maxItems = 6, maxLen = 120) {
-            return (Array.isArray(value) ? value : [])
-                .map(item => cleanGemmaText(item, maxLen))
-                .filter(Boolean)
-                .slice(0, maxItems);
-        }
-
-        function normalizeGemmaMemoryPatch(patch) {
-            if (!patch || typeof patch !== 'object') return null;
-            let out = {};
-
-            let summary = cleanGemmaText(patch.summary, 700);
-            if (summary) out.summary = summary;
-
-            let profile = cleanGemmaText(patch.playerProfile, 240);
-            if (profile) out.playerProfile = profile;
-
-            let tone = cleanGemmaText(patch.tone, 120);
-            if (tone) out.tone = tone;
-
-            let doNotRepeatSource = patch.doNotRepeat || patch.notRepeat || patch.NotRepeat || patch.noRepeat || patch.avoidSay;
-            let doNotRepeat = normalizeGemmaList(doNotRepeatSource, 8, 80);
-            if (doNotRepeat.length) out.doNotRepeat = doNotRepeat;
-
-            let openLoops = normalizeGemmaList(patch.openLoops, 5, 120);
-            if (openLoops.length) out.openLoops = openLoops;
-
-            let suggestions = normalizeGemmaList(patch.suggestions, 3, 48);
-            if (suggestions.length) out.suggestions = suggestions;
-
-            return Object.keys(out).length ? out : null;
-        }
-
-        function normalizeGemmaTurnObject(parsed) {
-            if (!parsed || typeof parsed !== 'object') return null;
-            let raw = (parsed.turn && typeof parsed.turn === 'object') ? parsed.turn : parsed;
-            if (!raw || typeof raw !== 'object') return null;
-
-            let turn = {};
-            let say = cleanGemmaText(raw.say, 240);
-            if (say) turn.say = say;
-
-            let pressure = cleanGemmaText(raw.pressure, 16).toLowerCase();
-            if (['rush', 'balanced', 'mercy'].includes(pressure)) turn.pressure = pressure;
-
-            let actionRaw = raw.action && typeof raw.action === 'object' ? raw.action : null;
-            if (actionRaw) {
-                let action = {};
-                let tool = cleanGemmaText(actionRaw.tool, 24);
-                if (['spawn_unit', 'buy_upgrade', 'build_turret', 'use_special', 'none'].includes(tool)) {
-                    action.tool = tool;
-                }
-                let typeIndex = Number(actionRaw.typeIndex);
-                if (Number.isFinite(typeIndex)) action.typeIndex = Math.max(0, Math.min(2, Math.round(typeIndex)));
-                let upgrade = cleanGemmaText(actionRaw.upgrade, 12).toLowerCase();
-                if (['dmg', 'hp', 'econ'].includes(upgrade)) action.upgrade = upgrade;
-                let reason = cleanGemmaText(actionRaw.reason, 96);
-                if (reason) action.reason = reason;
-                if (Object.keys(action).length > 0) {
-                    if (!action.tool) action.tool = 'none';
-                    turn.action = action;
-                }
-            }
-
-            let patch = normalizeGemmaMemoryPatch(raw.memoryPatch || raw.memory || raw.turnMemory);
-            if (patch) turn.memoryPatch = patch;
-
-            if (!turn.say && !turn.action) return null;
-            if (!turn.say) turn.say = 'I am adjusting the plan.';
-            return turn;
-        }
-
-        function recoverGemmaTurnFromText(text) {
-            let say = extractJsonStringField(text, 'say');
-            let pressure = extractJsonStringField(text, 'pressure');
-            let tool = extractJsonStringField(text, 'tool');
-            let reason = extractJsonStringField(text, 'reason');
-            let upgrade = extractJsonStringField(text, 'upgrade');
-            let typeIndex = extractJsonNumberField(text, 'typeIndex');
-
-            let turn = {};
-            if (say) turn.say = say;
-            if (['rush', 'balanced', 'mercy'].includes(pressure)) turn.pressure = pressure;
-
-            if (tool || reason || upgrade || typeIndex !== null) {
-                turn.action = {};
-                if (['spawn_unit', 'buy_upgrade', 'build_turret', 'use_special', 'none'].includes(tool)) {
-                    turn.action.tool = tool;
-                }
-                if (Number.isFinite(typeIndex)) turn.action.typeIndex = typeIndex;
-                if (upgrade) turn.action.upgrade = upgrade;
-                if (reason) turn.action.reason = reason;
-                if (!turn.action.tool) turn.action.tool = 'none';
-            }
-
-            if (!turn.say && !turn.action) return null;
-            if (!turn.say) turn.say = 'I am adjusting the plan.';
-            let normalized = normalizeGemmaTurnObject(turn);
-            if (!normalized) return null;
-            normalized._recovered = true;
-            return normalized;
-        }
-
-        function extractJsonStringField(text, key) {
-            let escapedKey = String(key || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            let match = String(text || '').match(new RegExp('"' + escapedKey + '"\\s*:\\s*"((?:\\\\.|[^"\\\\])*)"', 'i'));
-            if (!match) return '';
-            return decodeJsonLikeString(match[1]).trim();
-        }
-
-        function extractJsonNumberField(text, key) {
-            let escapedKey = String(key || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            let match = String(text || '').match(new RegExp('"' + escapedKey + '"\\s*:\\s*(-?\\d+|null)', 'i'));
-            if (!match) return null;
-            if (String(match[1]).toLowerCase() === 'null') return null;
-            let value = Number(match[1]);
-            return Number.isFinite(value) ? value : null;
-        }
-
-        function decodeJsonLikeString(value) {
-            return String(value || '')
-                .replace(/\\u([0-9a-fA-F]{4})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
-                .replace(/\\n/g, ' ')
-                .replace(/\\r/g, ' ')
-                .replace(/\\t/g, ' ')
-                .replace(/\\"/g, '"')
-                .replace(/\\\\/g, '\\');
-        }
-
-        function applyGemmaDirectorTurn(turn, requestId = '') {
-            if (turn.pressure && ['rush', 'balanced', 'mercy'].includes(turn.pressure)) {
-                DirectorMemory.setPressure(turn.pressure);
-                DirectorPanel.renderMemory();
-            }
-
-            let action = turn.action || {};
-            let reason = action.reason || 'Gemma plan';
-            let requestedTool = action.tool || 'none';
-            let applied = false;
-            if (requestedTool === 'spawn_unit') applied = AIDirector.trySpawnUnit(Math.max(0, Math.min(2, Number(action.typeIndex) || 0)), reason);
-            else if (requestedTool === 'buy_upgrade') applied = AIDirector.tryUpgrade(['dmg', 'hp', 'econ'].includes(action.upgrade) ? action.upgrade : 'econ', reason);
-            else if (requestedTool === 'build_turret') applied = AIDirector.tryBuildTurret(reason);
-            else if (requestedTool === 'use_special') applied = AIDirector.trySpecial(reason);
-
-            NativeGemma.log('action.result', {
+        function applyGemmaEmotionTurn(result, requestId = '', pendingMeta = null) {
+            let emotion = normalizeGemmaEmotionWord(result && result.emotion);
+            AIDirector.acceptGemmaEmotion(emotion, requestId, result && result.reply ? result.reply : '');
+            GemmaMemory.recordEmotion(result || {}, {
                 requestId,
-                requestedTool,
-                applied,
-                pressure: turn.pressure || null,
-                action
+                emotion,
+                reason: pendingMeta && pendingMeta.reason ? pendingMeta.reason : 'Gemma reply'
             });
-            GemmaMemory.recordModel(turn, { requestId, requestedTool, applied });
-            if (!applied && requestedTool !== 'none') DirectorPanel.addSystem('model move unavailable');
-
-            if (turn.say) DirectorPanel.addModel(turn.say);
+            DirectorPanel.finishModelThoughts(requestId, result && result.reply ? result.reply : 'I am watching the line and adjusting.');
+            DirectorPanel.renderMemory();
+            DirectorPanel.addSystem(`emotion: ${emotion}`);
         }
 
         window.onLocalGemmaStatus = (json) => {
             try { NativeGemma.updateStatus(JSON.parse(json)); } catch (e) { }
         };
+        window.onLocalGemmaStream = (requestId, phase, text, done) => NativeGemma.stream(requestId, phase, text, done);
         window.onLocalGemmaResponse = (requestId, text) => NativeGemma.receive(requestId, text);
         window.onLocalGemmaError = (requestId, message) => NativeGemma.error(requestId, message);
 
@@ -2936,8 +2764,9 @@
             systemWriteTimeout: null,
             playerLineSeq: 0,
             currentPlayerLine: null,
+            thoughtEntries: {},
             init() {
-                ['commander-hud', 'ai-hud', 'director-log', 'director-tool-log', 'director-input', 'director-memory', 'player-last-line', 'btn-pause'].forEach(id => {
+                ['commander-hud', 'ai-hud', 'director-center-status', 'emotion-badge', 'emotion-word', 'agreement-strip', 'director-log', 'director-signal-log', 'director-input', 'director-memory', 'player-last-line', 'btn-pause'].forEach(id => {
                     this.els[id] = document.getElementById(id);
                 });
                 this.renderMemory();
@@ -2946,14 +2775,16 @@
                 if (!this.els['ai-hud']) return;
                 GemmaMemory.start(diffKey);
                 this.els['ai-hud'].classList.remove('hidden');
+                if (this.els['director-center-status']) this.els['director-center-status'].classList.remove('hidden');
                 if (this.els['director-log']) this.els['director-log'].innerHTML = '';
-                if (this.els['director-tool-log']) this.els['director-tool-log'].innerHTML = '';
+                if (this.els['director-signal-log']) this.els['director-signal-log'].innerHTML = '';
                 if (this.els['player-last-line']) {
                     this.els['player-last-line'].innerHTML = '';
                     this.els['player-last-line'].classList.add('hidden');
                 }
                 this.playerLineSeq = 0;
                 this.currentPlayerLine = null;
+                this.thoughtEntries = {};
                 this.renderMemory();
                 NativeGemma.refresh();
 
@@ -2961,7 +2792,7 @@
                     this.addSystem(`Director online. Pacts and notes are active.`);
                 }, 800);
             },
-            add(role, text, tool = false) {
+            add(role, text) {
                 if (!text) return;
                 if (role === 'player') {
                     return this.addPlayerLine(text);
@@ -3046,25 +2877,150 @@
                 if (!message) return;
                 this.writeLatest(this.els['director-log'], message, 'director-msg', 'ai');
             },
+            beginModelThoughts(requestId, reason = '') {
+                let host = this.els['director-log'];
+                if (!host || !requestId) return;
+                host.classList.remove('hidden');
+                clearTimeout(this.aiWriteTimeout);
+                let entry = {
+                    requestId,
+                    reason,
+                    visible: '...',
+                    phases: {},
+                    done: {},
+                    open: false
+                };
+                this.thoughtEntries = {};
+                this.thoughtEntries[requestId] = entry;
+                host.innerHTML = '';
+
+                let row = document.createElement('div');
+                row.className = 'director-msg has-thoughts is-writing';
+                row.setAttribute('data-gemma-request-id', requestId);
+                row.setAttribute('role', 'button');
+                row.setAttribute('tabindex', '0');
+                row.setAttribute('aria-label', 'Toggle opponent thoughts');
+                row.addEventListener('click', () => this.toggleModelThoughts(requestId));
+                row.addEventListener('keydown', event => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        this.toggleModelThoughts(requestId);
+                    }
+                });
+
+                let main = document.createElement('div');
+                main.className = 'director-msg-main';
+
+                let toggle = document.createElement('button');
+                toggle.className = 'director-thought-toggle';
+                toggle.type = 'button';
+                toggle.title = 'Opponent thoughts';
+                toggle.setAttribute('aria-label', 'Opponent thoughts');
+                toggle.innerText = '...';
+                toggle.addEventListener('click', event => {
+                    event.stopPropagation();
+                    this.toggleModelThoughts(requestId);
+                });
+
+                let visible = document.createElement('span');
+                visible.className = 'director-msg-text';
+                visible.innerText = entry.visible;
+
+                let panel = document.createElement('div');
+                panel.className = 'director-thought-panel';
+
+                let viewport = document.createElement('div');
+                viewport.className = 'director-thought-viewport';
+
+                let track = document.createElement('div');
+                track.className = 'director-thought-track';
+                track.innerText = 'reading map...';
+
+                viewport.appendChild(track);
+                panel.appendChild(viewport);
+                main.appendChild(toggle);
+                main.appendChild(visible);
+                row.appendChild(main);
+                row.appendChild(panel);
+                host.appendChild(row);
+
+                entry.row = row;
+                entry.visibleEl = visible;
+                entry.trackEl = track;
+            },
+            updateModelThoughts(requestId, phase, text, done = false) {
+                if (!requestId) return;
+                let entry = this.thoughtEntries[requestId];
+                if (!entry) {
+                    this.beginModelThoughts(requestId, 'model');
+                    entry = this.thoughtEntries[requestId];
+                    if (!entry) return;
+                }
+                let clean = this.normalizeThoughtLine(text);
+                if (clean) entry.phases[phase] = clean;
+                if (done) entry.done[phase] = true;
+                if (phase === 'message' && clean) entry.visible = 'writing...';
+                this.renderThoughtEntry(entry);
+            },
+            finishModelThoughts(requestId, visibleText) {
+                let entry = this.thoughtEntries[requestId];
+                if (!entry) {
+                    this.addModel(visibleText);
+                    return;
+                }
+                entry.visible = this.normalizeLine(this.sanitizeModelLine(visibleText), 220) || entry.visible || 'I am adjusting the plan.';
+                entry.done.final = true;
+                this.renderThoughtEntry(entry);
+            },
+            failModelThoughts(requestId, message) {
+                let entry = this.thoughtEntries[requestId];
+                if (!entry) return;
+                entry.phases.error = this.normalizeLine(message || 'Gemma could not finish', 120);
+                if (!entry.phases.opinion) entry.visible = 'The thought broke before a clean reply.';
+                this.renderThoughtEntry(entry);
+            },
+            toggleModelThoughts(requestId) {
+                let entry = this.thoughtEntries[requestId];
+                if (!entry || !entry.row) return;
+                entry.open = !entry.open;
+                entry.row.classList.toggle('thoughts-open', entry.open);
+            },
+            renderThoughtEntry(entry) {
+                if (!entry) return;
+                if (entry.visibleEl) entry.visibleEl.innerText = entry.visible || '...';
+                if (entry.trackEl) entry.trackEl.innerText = this.buildThoughtLine(entry);
+            },
+            buildThoughtLine(entry) {
+                let labels = {
+                    message: 'reply',
+                    error: 'error'
+                };
+                let parts = ['message', 'error']
+                    .map(phase => entry.phases[phase] ? `${labels[phase]}: ${entry.phases[phase]}` : '')
+                    .filter(Boolean);
+                if (parts.length === 0) return 'reading map...';
+                return parts.join('    //    ');
+            },
             sanitizeModelLine(text) {
                 let raw = String(text || '').trim();
                 if (!raw) return '';
                 if (!this.looksLikeModelJsonLeak(raw)) return raw;
-                let recovered = recoverGemmaTurnFromText(raw);
-                if (recovered && recovered.say) return recovered.say;
-                return 'I am reworking that move.';
+                return raw.replace(/[{}\[\]"]/g, '').replace(/\s+/g, ' ').slice(0, 220);
             },
             looksLikeModelJsonLeak(text) {
                 let sample = String(text || '').trim();
                 if (!sample) return false;
                 if (/^[\[{]/.test(sample)) return true;
-                return /"say"\s*:|"action"\s*:|"memoryPatch"\s*:|"pressure"\s*:/.test(sample);
+                return /"say"\s*:|"action"\s*:|"pressure"\s*:/.test(sample);
             },
             normalizeRawModelLine(text, maxLen = 1400) {
                 let raw = String(text || '').replace(/\u0000/g, '').trim();
                 if (!raw) return '';
                 if (raw.length <= maxLen) return raw;
                 return `${raw.slice(0, maxLen)} ...[truncated ${raw.length - maxLen} chars]`;
+            },
+            normalizeThoughtLine(text) {
+                return String(text || '').replace(/\u0000/g, '').replace(/\s+/g, ' ').trim();
             },
             normalizeLine(text, maxLen = 220) {
                 return String(text || '').replace(/\s+/g, ' ').trim().slice(0, maxLen);
@@ -3093,14 +3049,15 @@
                 }
             },
             addSystem(text) {
-                let host = this.els['director-tool-log'];
+                let host = this.els['director-signal-log'];
                 if (!host || !text) return;
-                this.writeLatest(host, this.normalizeLine(text, 96), 'director-tool-msg', 'system');
+                this.writeLatest(host, this.normalizeLine(text, 96), 'director-signal-msg', 'system');
             },
-            showAction(toolName, reason) {
-                let name = String(toolName || '').toLowerCase();
+            showAction(signalName, reason) {
+                let name = String(signalName || '').toLowerCase();
                 let label = 'move';
-                if (name.includes('spawn') || name.includes('unit')) label = 'unit';
+                if (name.includes('order')) label = 'order';
+                else if (name.includes('spawn') || name.includes('unit')) label = 'unit';
                 else if (name.includes('upgrade') || name.includes('econ') || name.includes('dmg') || name.includes('hp')) label = 'upgrade';
                 else if (name.includes('turret') || name.includes('slot')) label = 'fort';
                 else if (name.includes('evolve') || name.includes('age')) label = 'age';
@@ -3111,14 +3068,68 @@
             },
             renderMemory() {
                 let host = this.els['director-memory'];
-                if (!host) return;
-                host.innerHTML = '';
-                DirectorMemory.tags().forEach(tag => {
-                    let chip = document.createElement('span');
-                    chip.className = 'memory-chip';
-                    chip.innerText = tag;
-                    host.appendChild(chip);
+                if (host) {
+                    host.innerHTML = '';
+                    let tags = [];
+                    if (typeof AIDirector !== 'undefined' && AIDirector.activeOrderFromState) {
+                        tags.push(`plan: ${AIDirector.macroPlan || 'balanced'} / ${AIDirector.activeOrderFromState()}`);
+                    }
+                    tags.forEach(tag => {
+                        let chip = document.createElement('span');
+                        chip.className = 'memory-chip';
+                        chip.innerText = tag;
+                        host.appendChild(chip);
+                    });
+                }
+                this.renderCenterStatus();
+                GemmaMemory.updateInputSuggestion();
+            },
+            renderCenterStatus() {
+                let moodWord = normalizeGemmaEmotionWord((GemmaMemory.data && GemmaMemory.data.emotion) || (typeof AIDirector !== 'undefined' && AIDirector.emotionWord) || 'Centered');
+                let wordEl = this.els['emotion-word'];
+                let badge = this.els['emotion-badge'];
+                if (wordEl) wordEl.innerText = moodWord;
+                if (badge) {
+                    let icon = badge.querySelector('.emotion-icon');
+                    if (icon) icon.innerText = this.emotionPlaceholder(moodWord);
+                    badge.title = `Gemma emotion: ${moodWord}`;
+                }
+                let strip = this.els['agreement-strip'];
+                if (!strip) return;
+                strip.innerHTML = '';
+                let items = DirectorMemory.agreementItems();
+                if (typeof AIDirector !== 'undefined' && globalTime < AIDirector.restraintUntil) {
+                    items.push({ key: 'restraint', label: `truce: ${Math.ceil(AIDirector.restraintUntil - globalTime)}s` });
+                }
+                items.forEach(item => {
+                    let chip = document.createElement('button');
+                    chip.type = 'button';
+                    chip.className = 'agreement-chip';
+                    chip.title = `Remove ${item.label}`;
+                    chip.innerText = `${item.label} x`;
+                    chip.addEventListener('click', () => this.removeAgreement(item.key));
+                    strip.appendChild(chip);
                 });
+            },
+            emotionPlaceholder(word) {
+                let key = String(word || '').toLowerCase();
+                if (/angry|furious|hostile|irritated|pissed|resentful|vindictive/.test(key)) return '!';
+                if (/fear|afraid|anxious|panic|worried|scared|terrified|tense|stressed/.test(key)) return '?';
+                if (/joy|happy|excited|eager|thrilled|vibrant|energized/.test(key)) return '*';
+                if (/sad|despair|gloomy|grief|hopeless|lonely|weary/.test(key)) return '.';
+                if (/curious|intrigued|skeptical|questioning/.test(key)) return '~';
+                return '◇';
+            },
+            removeAgreement(key) {
+                if (key === 'restraint') {
+                    if (typeof AIDirector !== 'undefined') AIDirector.restraintUntil = 0;
+                } else if (String(key || '').startsWith('note:')) {
+                    DirectorMemory.removeNote(Number(String(key).slice(5)));
+                } else {
+                    DirectorMemory.clearAgreement(key);
+                }
+                GemmaMemory.recordSystem(`Player removed agreement ${key}.`);
+                this.renderMemory();
             },
             handlePlayerText(raw) {
                 let message = String(raw || '').trim();
@@ -3186,14 +3197,16 @@
                     replies.push(`Truce for ${seconds}s unless you hit my doorstep.`);
                 }
 
-                if (replies.length === 0) {
-                    replies.push('I heard you. I will keep reading the lane and adapt.');
-                }
-
                 this.renderMemory();
-                GemmaMemory.recordSystem(`Local director replied: ${replies.join(' ')}`);
-                setTimeout(() => this.add('ai', replies.join(' ')), 400);
-                NativeGemma.requestTurn('player_chat', message, { userLineId: playerLineId });
+                if (replies.length) {
+                    let localNote = replies.join(' ');
+                    GemmaMemory.recordSystem(`Local pact update: ${localNote}`);
+                    this.addSystem(localNote);
+                }
+                let requested = NativeGemma.requestTurn('player_chat', message, { userLineId: playerLineId });
+                if (!requested && (!NativeGemma.available || !['ready', 'installed', 'loading', 'downloading'].includes(NativeGemma.status.state || ''))) {
+                    setTimeout(() => this.add('ai', replies.join(' ') || 'I heard you. I will keep reading the lane and adapt.'), 400);
+                }
             }
         };
 
@@ -3229,6 +3242,22 @@
             lastPlayerAge: 0,
             lastEnemyAge: 0,
             lastActionNoticeAt: -99,
+            lastPlanNoticeAt: -99,
+            emotionWord: 'Centered',
+            emotionUntil: 0,
+            emotionReply: '',
+            localOrder: 'balanced',
+            localOrderUntil: 0,
+            lastCommentKey: '',
+            statusRenderTimer: 0,
+            macroPlan: 'balanced',
+            macroPlanUntil: 0,
+            bankUntil: 0,
+            lastSpawnType: -1,
+            lastSpawnAt: -99,
+            spawnStreak: 0,
+            lastUpgradeAt: -99,
+            planMistakeBias: 0,
             start(diffKey) {
                 this.actionTimer = 0.8;
                 this.chatTimer = 3.5;
@@ -3237,6 +3266,22 @@
                 this.lastPlayerAge = 0;
                 this.lastEnemyAge = 0;
                 this.lastActionNoticeAt = -99;
+                this.lastPlanNoticeAt = -99;
+                this.emotionWord = 'Centered';
+                this.emotionUntil = 0;
+                this.emotionReply = '';
+                this.localOrder = 'balanced';
+                this.localOrderUntil = 0;
+                this.lastCommentKey = '';
+                this.statusRenderTimer = 0;
+                this.macroPlan = 'balanced';
+                this.macroPlanUntil = 0;
+                this.bankUntil = 0;
+                this.lastSpawnType = -1;
+                this.lastSpawnAt = -99;
+                this.spawnStreak = 0;
+                this.lastUpgradeAt = -99;
+                this.planMistakeBias = Math.random() * 0.14;
                 this.lowHpWarned = false;
                 DirectorPanel.start(diffKey);
             },
@@ -3247,8 +3292,16 @@
                 this.actionTimer -= dt;
                 this.chatTimer -= dt;
                 this.gemmaTimer -= dt;
+                this.statusRenderTimer -= dt;
                 let snapshot = this.snapshot();
+                this.updateMacroPlan(snapshot);
+                this.updateLocalOrder(snapshot);
+                snapshot.engineOrder = this.activeOrderFromState();
                 this.maybeMilestoneChat(snapshot);
+                if (this.statusRenderTimer <= 0) {
+                    this.statusRenderTimer = 1;
+                    DirectorPanel.renderMemory();
+                }
 
                 if (this.actionTimer <= 0) {
                     this.actionTimer = this.nextThinkDelay();
@@ -3266,37 +3319,256 @@
             setRestraint(seconds) {
                 this.restraintUntil = Math.max(this.restraintUntil, globalTime + seconds);
             },
+            normalizeOrder(value) {
+                let clean = String(value || '').toLowerCase().replace(/[^a-z]/g, '').trim();
+                let valid = ['press', 'defend', 'counter', 'tech', 'swarm', 'heavy', 'hold', 'fortify', 'special', 'none', 'balanced'];
+                return valid.includes(clean) ? clean : 'none';
+            },
+            activeOrderFromState() {
+                return this.localOrder || 'balanced';
+            },
+            acceptGemmaEmotion(emotion, requestId = '', reply = '') {
+                this.emotionWord = normalizeGemmaEmotionWord(emotion);
+                this.emotionUntil = globalTime + this.emotionDuration(this.emotionWord);
+                this.emotionReply = String(reply || '').slice(0, 220);
+                this.localOrderUntil = 0;
+                this.actionTimer = Math.min(this.actionTimer, 0.15);
+                return this.emotionWord;
+            },
+            emotionDuration(emotion) {
+                let profile = this.emotionProfile(emotion);
+                return 26 + profile.volatility * 18 + Math.random() * 16;
+            },
+            emotionProfile(emotion = null) {
+                let word = normalizeGemmaEmotionWord(emotion || this.emotionWord || (GemmaMemory.data && GemmaMemory.data.emotion) || 'Centered');
+                let key = word.toLowerCase();
+                let hot = ['angry', 'annoyed', 'agitated', 'aggravated', 'bitter', 'contempt', 'cynical', 'disdain', 'disgruntled', 'disturbed', 'edgy', 'exasperated', 'frustrated', 'furious', 'grouchy', 'hostile', 'impatient', 'irritated', 'irate', 'moody', 'on edge', 'outraged', 'pissed', 'resentful', 'upset', 'vindictive'];
+                let brave = ['courageous', 'powerful', 'adventurous', 'brave', 'capable', 'confident', 'daring', 'determined', 'proud', 'strong', 'valiant'];
+                let fear = ['fear', 'afraid', 'anxious', 'apprehensive', 'frightened', 'hesitant', 'nervous', 'panic', 'paralyzed', 'scared', 'terrified', 'worried', 'fragile', 'helpless', 'powerless', 'trapped'];
+                let calm = ['accepting', 'open', 'calm', 'centered', 'content', 'fulfilled', 'patient', 'peaceful', 'present', 'relaxed', 'serene', 'trusting', 'grounded', 'settled'];
+                let joy = ['aliveness', 'joy', 'amazed', 'awe', 'bliss', 'delighted', 'eager', 'ecstatic', 'enchanted', 'energized', 'engaged', 'enthusiastic', 'excited', 'happy', 'inspired', 'invigorated', 'lively', 'passionate', 'playful', 'thrilled', 'vibrant'];
+                let curious = ['curious', 'exploring', 'fascinated', 'interested', 'intrigued', 'involved', 'stimulated', 'questioning', 'skeptical'];
+                let sad = ['despair', 'sad', 'anguish', 'depressed', 'despondent', 'disappointed', 'discouraged', 'forlorn', 'gloomy', 'grief', 'heartbroken', 'hopeless', 'lonely', 'melancholy', 'sorrow', 'unhappy', 'weary'];
+                let tired = ['disconnected', 'numb', 'aloof', 'bored', 'empty', 'indifferent', 'lethargic', 'listless', 'removed', 'shut down', 'burned out', 'depleted', 'exhausted', 'worn out', 'slow', 'wooden'];
+                let tense = ['stressed', 'tense', 'cranky', 'frazzled', 'overwhelm', 'rattled', 'restless', 'shaken', 'tight', 'unsettled', 'doubt', 'concerned', 'dissatisfied', 'disturbed', 'hesitant', 'perplexed', 'reluctant', 'shocked', 'suspicious', 'unsure'];
+                let has = list => list.includes(key);
+                let profile = { aggression: 0, caution: 0, tech: 0, patience: 0, volatility: 0.25, special: 0, greed: 0 };
+                if (has(hot)) Object.assign(profile, { aggression: 0.55, caution: -0.18, volatility: 0.9, special: 0.22 });
+                else if (has(brave)) Object.assign(profile, { aggression: 0.38, caution: -0.08, volatility: 0.45, special: 0.12 });
+                else if (has(fear) || has(tense)) Object.assign(profile, { aggression: -0.18, caution: 0.55, tech: -0.08, patience: 0.2, volatility: 0.75, special: 0.18 });
+                else if (has(calm)) Object.assign(profile, { aggression: -0.04, caution: 0.18, tech: 0.18, patience: 0.32, volatility: 0.12 });
+                else if (has(joy)) Object.assign(profile, { aggression: 0.24, caution: -0.03, tech: 0.08, volatility: 0.5, greed: 0.1 });
+                else if (has(curious)) Object.assign(profile, { aggression: -0.02, caution: 0.1, tech: 0.35, patience: 0.2, volatility: 0.25 });
+                else if (has(sad) || has(tired)) Object.assign(profile, { aggression: -0.28, caution: 0.34, tech: 0.06, patience: 0.42, volatility: 0.38 });
+                return profile;
+            },
+            updateMacroPlan(snapshot) {
+                if (globalTime < this.macroPlanUntil && snapshot.threatCount < 6 && snapshot.enemyHpRatio > 0.28) return;
+                let profile = this.emotionProfile();
+                let ai = gameState.enemy;
+                let ageData = AGES[ai.age];
+                let heavyCost = ageData && ageData.units[2] ? ageData.units[2].cost : 999999;
+                let scores = {
+                    stabilize: snapshot.threatCount * 0.65 + (1 - snapshot.enemyHpRatio) * 2.4 + profile.caution,
+                    punishRanged: snapshot.playerRanged * 0.55 + (snapshot.playerRanged > snapshot.playerMelee ? 1.1 : 0) + profile.aggression * 0.4,
+                    screenHeavy: snapshot.playerHeavy * 0.9 + snapshot.heavyThreat * 1.2 + profile.caution * 0.4,
+                    techWindow: (snapshot.threatCount < 2 ? 1.1 : -0.7) + profile.tech + (gameState.player.age > ai.age ? 0.9 : 0) + snapshot.enemyXpRatio * 0.7,
+                    bankHeavy: (snapshot.threatCount < 3 ? 0.8 : -0.6) + (snapshot.enemyGold / Math.max(1, heavyCost)) * 1.2 + (snapshot.playerRanged > 0 ? 0.55 : 0),
+                    killPush: Math.max(0, 0.5 - snapshot.playerHpRatio) * 2.4 + profile.aggression + (snapshot.frontGap > 560 ? 0.8 : 0),
+                    flood: Math.max(0, snapshot.playerUnits - snapshot.enemyUnits) * 0.35 + profile.aggression * 0.8 + (snapshot.pressure === 'rush' ? 1 : 0),
+                    fortify: profile.caution * 0.9 + (snapshot.threatCount >= 2 ? 0.7 : 0) + (DirectorMemory.data.agreements.noTurrets ? -2 : 0)
+                };
+                if (snapshot.pressure === 'mercy' && snapshot.playerHpRatio < 0.55 && snapshot.threatCount < 3) {
+                    scores.techWindow += 1.3;
+                    scores.killPush -= 2.2;
+                    scores.flood -= 1.3;
+                }
+                let next = this.pickTopScore(scores, this.macroPlan);
+                if (next !== this.macroPlan) {
+                    this.macroPlan = next;
+                    this.localOrderUntil = 0;
+                    DirectorPanel.renderMemory();
+                }
+                this.macroPlanUntil = globalTime + 7 + Math.random() * 9 + profile.patience * 5;
+            },
+            updateLocalOrder(snapshot) {
+                if (globalTime < this.localOrderUntil) return;
+                let next = this.pickLocalOrder(snapshot);
+                let changed = next !== this.localOrder;
+                this.localOrder = next;
+                this.localOrderUntil = globalTime + 6 + Math.random() * 7;
+                if (changed) DirectorPanel.renderMemory();
+            },
+            pickLocalOrder(snapshot) {
+                let ai = gameState.enemy;
+                let pressure = (DirectorMemory.data.agreements || {}).pressure || 'balanced';
+                let profile = this.emotionProfile();
+                let scores = {
+                    defend: 0.5 + snapshot.threatCount * 0.42 + (1 - snapshot.enemyHpRatio) * 2.2 + profile.caution * 1.2,
+                    counter: 0.8 + Math.max(0, snapshot.playerUnits - snapshot.enemyUnits) * 0.38 + snapshot.playerRanged * 0.18 + snapshot.playerHeavy * 0.25,
+                    tech: 0.9 + profile.tech * 1.4 + Math.max(0, gameState.player.age - ai.age) * 0.8 + snapshot.enemyXpRatio * 0.75,
+                    press: 0.7 + profile.aggression * 1.35 + Math.max(0, 0.55 - snapshot.playerHpRatio) * 2.5 + Math.max(0, snapshot.frontGap - 520) / 360,
+                    swarm: 0.45 + profile.aggression + Math.max(0, snapshot.playerUnits - snapshot.enemyUnits) * 0.22,
+                    heavy: 0.35 + profile.greed + (snapshot.playerRanged > snapshot.playerMelee ? 1.0 : 0) + Math.max(0, snapshot.enemyGold - AGES[ai.age].units[2].cost) / Math.max(1, AGES[ai.age].units[2].cost),
+                    fortify: 0.42 + profile.caution + (snapshot.threatCount >= 2 ? 0.75 : 0) + (snapshot.enemyHpRatio < 0.55 ? 0.7 : 0),
+                    special: 0.2 + profile.special + (snapshot.threatCount >= 4 ? 1.0 : 0) + (snapshot.playerUnits >= 5 ? 0.65 : 0),
+                    hold: 0.18 + profile.patience + (pressure === 'mercy' ? 1.2 : 0)
+                };
+                if (snapshot.restrained && snapshot.threatCount < 2) scores.tech += 3;
+                if (pressure === 'rush') {
+                    scores.press += 1.1;
+                    scores.swarm += 0.8;
+                    scores.hold -= 0.7;
+                }
+                if (pressure === 'mercy' && snapshot.playerHpRatio < 0.5 && snapshot.threatCount < 3) {
+                    scores.hold += 3;
+                    scores.press -= 2;
+                    scores.swarm -= 1;
+                }
+                if (snapshot.threatCount >= 5 || snapshot.enemyHpRatio < 0.32) scores.defend += 3;
+                if (snapshot.playerRanged > snapshot.enemyRanged + 1 || snapshot.playerUnits > snapshot.enemyUnits + 2 || snapshot.heavyThreat) scores.counter += 1.7;
+                if (snapshot.threatCount >= 4) {
+                    scores.tech -= 1.6;
+                    scores.heavy -= 0.8;
+                    scores.hold -= 1.1;
+                }
+                let plan = this.macroPlan || 'balanced';
+                if (plan === 'stabilize') {
+                    scores.defend += 1.6;
+                    scores.fortify += 0.8;
+                    scores.tech -= 0.8;
+                } else if (plan === 'punishRanged') {
+                    scores.heavy += 1.3;
+                    scores.press += 0.6;
+                    scores.swarm -= 0.5;
+                } else if (plan === 'screenHeavy') {
+                    scores.counter += 1.4;
+                    scores.defend += 0.7;
+                } else if (plan === 'techWindow') {
+                    scores.tech += 1.6;
+                    scores.hold += 0.35;
+                } else if (plan === 'bankHeavy') {
+                    scores.heavy += 1.7;
+                    scores.hold += 0.5;
+                } else if (plan === 'killPush') {
+                    scores.press += 1.8;
+                    scores.special += 0.6;
+                    scores.hold -= 1.2;
+                } else if (plan === 'flood') {
+                    scores.swarm += 1.4;
+                    scores.press += 0.5;
+                } else if (plan === 'fortify') {
+                    scores.fortify += 1.5;
+                    scores.defend += 0.55;
+                }
+                return this.pickTopScore(scores, this.localOrder);
+            },
             nextThinkDelay() {
                 let pressure = DirectorMemory.data.agreements.pressure;
                 let pressureFactor = pressure === 'rush' ? 0.7 : (pressure === 'mercy' ? 1.7 : 1);
+                let profile = this.emotionProfile();
+                let emotionFactor = Math.max(0.62, Math.min(1.45, 1 - profile.aggression * 0.22 + profile.caution * 0.18 + profile.patience * 0.14));
+                let order = this.activeOrderFromState();
+                let orderFactor = {
+                    swarm: 0.58,
+                    defend: 0.62,
+                    counter: 0.68,
+                    press: 0.72,
+                    special: 0.78,
+                    fortify: 0.88,
+                    heavy: 0.96,
+                    tech: 1.08,
+                    hold: 1.25
+                }[order] || 1;
                 let difficultyFactor = 1 - (currentConfig.aiAggression * 0.12);
-                return Math.max(0.25, (currentConfig.thinkRate * pressureFactor * difficultyFactor) + Math.random() * 0.45);
+                return Math.max(0.22, (currentConfig.thinkRate * pressureFactor * emotionFactor * orderFactor * difficultyFactor) + Math.random() * 0.35);
+            },
+            pickTopScore(scores, current = '') {
+                let entries = Object.keys(scores).map(key => ({ key, score: scores[key] + (key === current ? 0.22 : 0) }));
+                entries.sort((a, b) => b.score - a.score);
+                if (entries.length > 1 && entries[1].score > entries[0].score - 0.18 && Math.random() < 0.32) return entries[1].key;
+                return entries[0] ? entries[0].key : 'balanced';
             },
             snapshot() {
                 let ai = gameState.enemy;
                 let player = gameState.player;
                 let playerUnits = 0, enemyUnits = 0, threatCount = 0;
-                let heavyThreat = false, closestThreatDist = Infinity;
+                let playerMelee = 0, playerRanged = 0, playerHeavy = 0;
+                let enemyMelee = 0, enemyRanged = 0, enemyHeavy = 0;
+                let playerValue = 0, enemyValue = 0, threatValue = 0;
+                let playerNames = Object.create(null), enemyNames = Object.create(null);
+                let heavyThreat = false, closestThreatDist = Infinity, closestThreatType = 'none';
                 let playerFront = BASE_WIDTH, enemyFront = CANVAS_WIDTH - BASE_WIDTH;
 
                 for (let i = 0; i < gameState.units.pool.length; i++) {
                     let u = gameState.units.pool[i];
                     if (!u.active || u.hp <= 0 || u.drawProgress < 0.5) continue;
+                    let unitData = AGES[u.age] && AGES[u.age].units ? AGES[u.age].units[u.uType] : null;
+                    let value = unitData ? unitData.cost : (u.maxHp || 1);
                     if (u.team === 1) {
                         playerUnits++;
+                        if (u.type === 'ranged') playerRanged++;
+                        else if (u.type === 'heavy') playerHeavy++;
+                        else playerMelee++;
+                        playerValue += value;
+                        playerNames[u.name || u.type] = (playerNames[u.name || u.type] || 0) + 1;
                         playerFront = Math.max(playerFront, u.x);
                         let dist = (CANVAS_WIDTH - BASE_WIDTH) - u.x;
-                        if (dist < closestThreatDist) closestThreatDist = dist;
-                        if (dist < 620) threatCount++;
+                        if (dist < closestThreatDist) {
+                            closestThreatDist = dist;
+                            closestThreatType = u.type || 'unit';
+                        }
+                        if (dist < 620) {
+                            threatCount++;
+                            threatValue += value;
+                        }
                         if (dist < 620 && u.type === 'heavy') heavyThreat = true;
                     } else {
                         enemyUnits++;
+                        if (u.type === 'ranged') enemyRanged++;
+                        else if (u.type === 'heavy') enemyHeavy++;
+                        else enemyMelee++;
+                        enemyValue += value;
+                        enemyNames[u.name || u.type] = (enemyNames[u.name || u.type] || 0) + 1;
                         enemyFront = Math.min(enemyFront, u.x);
                     }
                 }
+                let evolveNeed = AGES[ai.age] && AGES[ai.age].evolveXP ? AGES[ai.age].evolveXP : 1;
+                let describeNames = names => Object.keys(names)
+                    .sort((a, b) => names[b] - names[a])
+                    .slice(0, 4)
+                    .map(name => `${names[name]} ${name}`)
+                    .join(', ') || 'none';
+                let turretProfile = state => {
+                    let ageData = AGES[state.age];
+                    let count = 0, dps = 0, range = 0;
+                    for (let i = 0; i < state.turrets.length; i++) {
+                        let idx = state.turrets[i];
+                        if (idx === null || idx === undefined || i >= state.unlockedSlots) continue;
+                        let turret = ageData.turrets[idx];
+                        if (!turret) continue;
+                        count++;
+                        dps += turret.dmg / Math.max(0.1, turret.attackSpeed || 1);
+                        range = Math.max(range, turret.range || 0);
+                    }
+                    return { count, dps, range };
+                };
+                let playerTurrets = turretProfile(player);
+                let enemyTurrets = turretProfile(ai);
 
                 return {
                     playerUnits, enemyUnits, threatCount, heavyThreat,
+                    playerMelee, playerRanged, playerHeavy,
+                    enemyMelee, enemyRanged, enemyHeavy,
+                    playerValue, enemyValue, threatValue, closestThreatType,
+                    playerProfile: describeNames(playerNames),
+                    enemyProfile: describeNames(enemyNames),
+                    playerTurretCount: playerTurrets.count,
+                    playerTurretDps: playerTurrets.dps,
+                    playerTurretRange: playerTurrets.range,
+                    enemyTurretCount: enemyTurrets.count,
+                    enemyTurretDps: enemyTurrets.dps,
+                    enemyTurretRange: enemyTurrets.range,
                     closestThreatDist: Number.isFinite(closestThreatDist) ? closestThreatDist : 9999,
                     lanePressure: playerFront - (CANVAS_WIDTH - enemyFront),
                     playerFrontX: Math.round(playerFront),
@@ -3305,15 +3577,23 @@
                     playerHpRatio: player.hp / player.maxHp,
                     enemyHpRatio: ai.hp / ai.maxHp,
                     enemyGold: ai.gold,
+                    playerGold: player.gold,
+                    enemyAge: ai.age,
+                    playerAge: player.age,
+                    enemyXpRatio: ai.age >= AGES.length - 1 ? 1 : Math.max(0, Math.min(1, ai.xp / evolveNeed)),
                     pressure: DirectorMemory.data.agreements.pressure,
+                    emotion: this.emotionWord || (GemmaMemory.data && GemmaMemory.data.emotion) || 'Centered',
+                    macroPlan: this.macroPlan || 'balanced',
+                    engineOrder: this.activeOrderFromState(),
                     restrained: globalTime < this.restraintUntil
                 };
             },
             maybeMilestoneChat(snapshot) {
+                let gemmaOwnsChat = NativeGemma.ownsVisibleChat();
                 if (gameState.player.age !== this.lastPlayerAge) {
                     this.lastPlayerAge = gameState.player.age;
                     let line = `You reached ${AGES[gameState.player.age].name}. I am updating the counter-plan.`;
-                    DirectorPanel.add('ai', line);
+                    if (!gemmaOwnsChat) DirectorPanel.add('ai', line);
                     GemmaMemory.recordSystem(line);
                 }
                 if (gameState.enemy.age !== this.lastEnemyAge) {
@@ -3324,12 +3604,31 @@
                 if (snapshot.enemyHpRatio < 0.25 && !this.lowHpWarned) {
                     this.lowHpWarned = true;
                     let line = 'My base is down to the margin. Expect defensive spending.';
-                    DirectorPanel.add('ai', line);
+                    if (!gemmaOwnsChat) DirectorPanel.add('ai', line);
                     GemmaMemory.recordSystem(line);
                 }
             },
             comment(snapshot) {
+                if (NativeGemma.ownsVisibleChat()) return;
                 let a = DirectorMemory.data.agreements;
+                let order = this.activeOrderFromState();
+                let orderLines = {
+                    press: ['I am keeping the lane busy; quiet gold is wasted pressure.', 'Your front is too far out. I am forcing contact.'],
+                    defend: ['You are close enough that I have to stabilize before I swing back.', 'Base first, counterpush second. I am buying time.'],
+                    counter: ['I am reading your unit mix and changing the answer, not just spamming.', 'That composition has a weakness. I am moving into the counter.'],
+                    tech: ['I can afford a slower minute, so I am turning it into economy and age timing.', 'You gave me room; I am converting it into tech.'],
+                    swarm: ['I am not waiting for a perfect unit. I am filling the lane now.', 'Cheap bodies first; the timing matters more than elegance.'],
+                    heavy: ['I am holding enough gold for a heavier hit.', 'The next swing is being banked, not missed.'],
+                    hold: ['I am not spending into a bad trade unless you force me.', 'I am letting the position breathe until there is a better punish.'],
+                    fortify: ['I am turning the right side into a harder target.', 'You will have to pay for every step near my base.'],
+                    special: ['I am watching for the special timing, not wasting it early.', 'If you stack too tightly, I have the clear ready.']
+                };
+                let lines = orderLines[order] || [];
+                if (lines.length && this.lastCommentKey !== order) {
+                    this.lastCommentKey = order;
+                    DirectorPanel.add('ai', lines[Math.floor(Math.random() * lines.length)]);
+                    return;
+                }
                 if (snapshot.restrained) {
                     DirectorPanel.add('ai', 'Truce timer is still active. I am using the quiet turns for upgrades.');
                 } else if (a.noSpecials || a.noTurrets || a.meleeOnly) {
@@ -3346,6 +3645,9 @@
             },
             chooseAction(snapshot) {
                 if (this.tryEvolve()) return;
+                this.updateLocalOrder(snapshot);
+                snapshot.engineOrder = this.activeOrderFromState();
+                let order = snapshot.engineOrder || 'balanced';
 
                 if (snapshot.restrained && snapshot.threatCount < 2) {
                     if (this.tryUpgrade('econ', 'truce economy')) return;
@@ -3353,34 +3655,265 @@
                     return;
                 }
 
-                if ((snapshot.threatCount >= 5 || snapshot.heavyThreat) && this.trySpecial('clear the pressure wave')) return;
-                if (snapshot.threatCount > 0 && this.tryBuildTurret('base defense')) return;
-                if (snapshot.enemyHpRatio < 0.45 && this.tryUpgrade('hp', 'stabilize base')) return;
-
+                if (this.tryEmergencyAction(snapshot)) return;
+                if (this.tryHumanTimingHold(order, snapshot)) return;
+                if (this.tryOrderAction(order, snapshot)) return;
+                if (this.tryBestScoredAction(order, snapshot)) return;
+                if (this.tryCounterUnit(snapshot, 'fallback counter read')) return;
+                if (this.tryPressureUnit(snapshot, 'fallback lane presence')) return;
+                this.holdAction('saving for a better human-like trade');
+            },
+            tryHumanTimingHold(order, snapshot) {
                 let ai = gameState.enemy;
-                let ecoTarget = 2 + Math.floor(currentConfig.aiAggression * 4) + (snapshot.pressure === 'rush' ? 1 : 0);
-                if (ai.upgrades.econ < ecoTarget && snapshot.threatCount < 4 && this.tryUpgrade('econ', 'long game income')) return;
-
-                if (snapshot.pressure === 'mercy' && snapshot.playerHpRatio < 0.45 && snapshot.threatCount < 3) {
-                    if (this.tryUpgrade('dmg', 'holding attacks back')) return;
-                    return;
-                }
-
-                if (snapshot.pressure === 'rush') {
-                    if (this.trySpawnUnit(2, 'rush heavy')) return;
-                    if (this.trySpawnUnit(1, 'rush support')) return;
-                    if (this.trySpawnUnit(0, 'rush filler')) return;
-                }
-
-                if (snapshot.threatCount >= 3) {
-                    if (this.trySpawnUnit(1, 'answer nearby units')) return;
-                    if (this.trySpawnUnit(0, 'stall the lane')) return;
-                }
-
                 let ageData = AGES[ai.age];
-                if (ai.gold >= ageData.units[2].cost * (1.4 - currentConfig.aiAggression * 0.4) && this.trySpawnUnit(2, 'timed power unit')) return;
-                if (snapshot.enemyUnits < Math.max(2, Math.floor(snapshot.playerUnits * 0.9)) && this.trySpawnUnit(1, 'match your army count')) return;
-                if ((currentConfig.aiAggression > 0.45 || ai.gold > ageData.units[0].cost * 5) && this.trySpawnUnit(0, 'keep lane presence')) return;
+                if (!ageData) return false;
+                let heavy = ageData.units[2];
+                let support = ageData.units[1];
+                let profile = this.emotionProfile();
+                if (snapshot.threatCount >= 3 || snapshot.enemyHpRatio < 0.38) return false;
+                if ((this.macroPlan === 'bankHeavy' || order === 'heavy' || (snapshot.playerRanged > snapshot.playerMelee && snapshot.frontGap > 280)) &&
+                    heavy && ai.gold >= heavy.cost * 0.58 && ai.gold < heavy.cost) {
+                    return this.holdAction('banking for heavy counter timing');
+                }
+                if (this.macroPlan === 'techWindow' && snapshot.threatCount < 2) {
+                    let econLevel = ai.upgrades.econ || 0;
+                    let econCost = econLevel < 10 ? UPGRADE_COSTS[econLevel] : Infinity;
+                    if (ai.gold >= econCost * 0.62 && ai.gold < econCost) return this.holdAction('waiting for economy upgrade');
+                }
+                if (this.lastSpawnType === 2 && globalTime - this.lastSpawnAt < 4.5 && support && ai.gold >= support.cost && snapshot.enemyUnits <= snapshot.playerUnits + 1) {
+                    return this.trySpawnUnit(1, 'human follow-up support after heavy');
+                }
+                if (profile.patience > 0.35 && snapshot.enemyUnits >= snapshot.playerUnits + 1 && snapshot.frontGap > 430 && Math.random() < 0.35) {
+                    return this.holdAction('not overcommitting into open lane');
+                }
+                return false;
+            },
+            tryBestScoredAction(order, snapshot) {
+                let ai = gameState.enemy;
+                let ageData = AGES[ai.age];
+                if (!ageData) return false;
+                let profile = this.emotionProfile();
+                let candidates = [];
+                let add = (kind, score, reason, run) => {
+                    if (!Number.isFinite(score)) return;
+                    candidates.push({ kind, score: score + Math.random() * 0.08, reason, run });
+                };
+
+                if (!DirectorMemory.data.agreements.noSpecials && ai.specialTimer <= 0 && !gameState.specialActive) {
+                    add('special', this.scoreSpecial(snapshot, order, profile), 'scored special timing', () => this.trySpecial('scored special timing'));
+                }
+                if (!DirectorMemory.data.agreements.noTurrets) {
+                    let openSlot = ai.turrets.some((slot, idx) => slot === null && idx < ai.unlockedSlots);
+                    let canSlot = ai.unlockedSlots < 4 && ai.gold >= ai.unlockedSlots * 500;
+                    if (openSlot || canSlot) add('turret', this.scoreTurret(snapshot, order, profile), 'scored base defense', () => this.tryBuildTurret('scored base defense'));
+                }
+                ['econ', 'dmg', 'hp'].forEach(type => {
+                    let lvl = ai.upgrades[type] || 0;
+                    if (lvl < 10 && ai.gold >= UPGRADE_COSTS[lvl]) {
+                        add(`upgrade:${type}`, this.scoreUpgrade(type, snapshot, order, profile), `scored ${type} upgrade`, () => this.tryUpgrade(type, `scored ${type} upgrade`));
+                    }
+                });
+                for (let i = 0; i < ageData.units.length; i++) {
+                    let unit = ageData.units[i];
+                    if (!unit || ai.gold < unit.cost) continue;
+                    if (DirectorMemory.data.agreements.meleeOnly && unit.type === 'ranged') continue;
+                    add(`unit:${unit.name}`, this.scoreUnitType(i, snapshot, order, profile), `scored ${unit.name}`, () => this.trySpawnUnit(i, `scored ${unit.name}`));
+                }
+                add('hold', this.scoreHold(snapshot, order, profile), 'scored patience', () => this.holdAction('scored patience'));
+                candidates.sort((a, b) => b.score - a.score);
+                let best = candidates[0];
+                if (!best || best.score < 0.15) return false;
+                return best.run();
+            },
+            scoreUnitType(typeIdx, snapshot, order, profile) {
+                let unit = AGES[gameState.enemy.age].units[typeIdx];
+                if (!unit) return -999;
+                let score = 0.25 + currentConfig.aiAggression * 0.45 + profile.aggression * 0.8 - profile.patience * 0.18;
+                let countNeed = Math.max(0, snapshot.playerUnits - snapshot.enemyUnits);
+                score += Math.min(1.7, countNeed * 0.34);
+                if (order === 'swarm' && typeIdx === 0) score += 1.1;
+                if (order === 'press') score += typeIdx === 2 ? 0.65 : 0.35;
+                if (order === 'heavy' && typeIdx === 2) score += 1.55;
+                if (order === 'defend' && snapshot.threatCount > 0) score += typeIdx === 0 ? 0.6 : 0.35;
+                if (order === 'counter') score += 0.45;
+                if (this.macroPlan === 'punishRanged') score += unit.type === 'heavy' ? 1.4 : (unit.type === 'melee' ? -0.9 : 0.15);
+                if (this.macroPlan === 'screenHeavy') score += unit.type === 'ranged' ? 1.25 : (unit.type === 'heavy' ? -0.45 : 0.25);
+                if (this.macroPlan === 'flood') score += typeIdx === 0 ? 0.9 : 0.25;
+                if (this.macroPlan === 'killPush') score += unit.type === 'heavy' ? 0.9 : 0.35;
+                if (this.macroPlan === 'stabilize') score += unit.type === 'melee' ? 0.65 : 0.25;
+                if (snapshot.playerRanged > snapshot.playerMelee && unit.type === 'melee' && snapshot.closestThreatDist > 180) score -= 2.4;
+                if (snapshot.playerRanged > snapshot.playerMelee && unit.type === 'heavy') score += 1.85;
+                if (snapshot.playerHeavy > 0 && unit.type === 'ranged') score += 1.35;
+                if (snapshot.playerMelee >= snapshot.playerRanged + 2 && unit.type === 'ranged') score += 0.9;
+                if (snapshot.heavyThreat && unit.type === 'ranged') score += 1.1;
+                if (snapshot.threatCount >= 3 && unit.type === 'heavy' && snapshot.enemyGold < unit.cost * 1.8) score -= 0.7;
+                if (snapshot.playerHpRatio < 0.36 && unit.type === 'heavy' && snapshot.pressure !== 'mercy') score += 1.1;
+                if (snapshot.pressure === 'mercy' && snapshot.playerHpRatio < 0.5) score -= unit.type === 'heavy' ? 1.5 : 0.6;
+                if (snapshot.playerTurretCount >= 2 && unit.type !== 'heavy' && snapshot.frontGap > 480) score -= 0.55;
+                if (snapshot.playerTurretCount >= 2 && unit.type === 'heavy') score += 0.45;
+                if (this.lastSpawnType === typeIdx) score -= Math.min(0.8, this.spawnStreak * 0.22);
+                if (unit.type === 'melee' && snapshot.enemyMelee > snapshot.enemyRanged + 2 && snapshot.playerRanged > 0) score -= 0.6;
+                return score;
+            },
+            scoreUpgrade(type, snapshot, order, profile) {
+                let ai = gameState.enemy;
+                let lvl = ai.upgrades[type] || 0;
+                let score = 0.2 - lvl * 0.05;
+                if (type === 'econ') {
+                    score += 1.1 + profile.tech + profile.patience * 0.5;
+                    if (snapshot.threatCount > 2) score -= 1.6;
+                    if (order === 'tech' || order === 'hold') score += 0.8;
+                    if (gameState.player.age > ai.age) score += 0.45;
+                    if (this.macroPlan === 'techWindow') score += 0.85;
+                    if (this.macroPlan === 'killPush' || this.macroPlan === 'flood') score -= 0.65;
+                } else if (type === 'dmg') {
+                    score += 0.65 + snapshot.enemyUnits * 0.12 + profile.aggression * 0.55;
+                    if (order === 'press' || order === 'counter' || order === 'swarm') score += 0.5;
+                    if (snapshot.playerUnits >= 3) score += 0.35;
+                    if (snapshot.playerTurretCount >= 2 || this.macroPlan === 'killPush') score += 0.45;
+                } else if (type === 'hp') {
+                    score += (1 - snapshot.enemyHpRatio) * 1.8 + snapshot.threatCount * 0.24 + profile.caution * 0.9;
+                    if (order === 'defend' || order === 'fortify') score += 0.7;
+                    if (this.macroPlan === 'stabilize' || this.macroPlan === 'fortify') score += 0.5;
+                }
+                if (globalTime - this.lastUpgradeAt < 3.5) score -= 0.45;
+                return score;
+            },
+            scoreTurret(snapshot, order, profile) {
+                let score = 0.2 + profile.caution * 1.0;
+                score += snapshot.threatCount * 0.35 + Math.max(0, 0.62 - snapshot.enemyHpRatio) * 1.3;
+                if (order === 'defend' || order === 'fortify') score += 1.0;
+                if (snapshot.closestThreatDist < 420) score += 0.9;
+                if (snapshot.threatCount === 0 && profile.aggression > 0.2) score -= 0.6;
+                if (this.macroPlan === 'fortify' || this.macroPlan === 'stabilize') score += 0.8;
+                if (this.macroPlan === 'killPush' || this.macroPlan === 'flood') score -= 0.45;
+                return score;
+            },
+            scoreSpecial(snapshot, order, profile) {
+                let score = -0.2 + profile.special + profile.volatility * 0.25;
+                if (snapshot.threatCount >= 5) score += 2.2;
+                if (snapshot.heavyThreat && snapshot.threatCount >= 2) score += 1.4;
+                if (snapshot.playerUnits >= 5) score += 0.9;
+                if (snapshot.playerHpRatio < 0.45 && snapshot.pressure !== 'mercy') score += 0.5;
+                if (order === 'special') score += 1.0;
+                if (this.macroPlan === 'killPush') score += 0.55;
+                if (this.macroPlan === 'techWindow' && snapshot.threatCount < 3) score -= 0.55;
+                return score;
+            },
+            scoreHold(snapshot, order, profile) {
+                let score = 0.05 + profile.patience * 0.8;
+                if (order === 'hold' || order === 'tech' || order === 'heavy') score += 0.45;
+                if (snapshot.threatCount > 1) score -= 1.4;
+                if (snapshot.enemyUnits < snapshot.playerUnits) score -= 0.8;
+                if (snapshot.pressure === 'mercy' && snapshot.playerHpRatio < 0.5) score += 1.2;
+                if (this.macroPlan === 'bankHeavy' || this.macroPlan === 'techWindow') score += 0.5;
+                if (this.macroPlan === 'killPush' || this.macroPlan === 'flood') score -= 0.9;
+                return score;
+            },
+            tryEmergencyAction(snapshot) {
+                if ((snapshot.threatCount >= 6 || (snapshot.heavyThreat && snapshot.threatCount >= 2)) && this.trySpecial('emergency clear')) return true;
+                if (snapshot.threatCount >= 3 && this.tryBuildTurret('live base defense')) return true;
+                if (snapshot.enemyHpRatio < 0.45 && this.tryUpgrade('hp', 'live base stabilize')) return true;
+                if (snapshot.threatCount >= 2 && snapshot.enemyUnits < snapshot.playerUnits && this.tryCounterUnit(snapshot, 'live counter near base')) return true;
+                return false;
+            },
+            tryOrderAction(order, snapshot) {
+                let ai = gameState.enemy;
+                let ageData = AGES[ai.age];
+                if (!ageData) return false;
+
+                if (order === 'defend') {
+                    if (snapshot.threatCount >= 3 && this.trySpecial('order defend clear')) return true;
+                    if (this.tryBuildTurret('order defend turret')) return true;
+                    if (this.tryUpgrade('hp', 'order defend hp')) return true;
+                    if (this.tryCounterUnit(snapshot, 'order defend counter')) return true;
+                    if (this.trySpawnUnit(0, 'order defend blocker')) return true;
+                    return false;
+                }
+
+                if (order === 'fortify') {
+                    if (this.tryBuildTurret('order fortify turret')) return true;
+                    if (this.tryUpgrade('hp', 'order fortify hp')) return true;
+                    if (snapshot.threatCount < 2 && this.tryUpgrade('econ', 'order fortify income')) return true;
+                    if (snapshot.enemyUnits < snapshot.playerUnits + 1 && this.trySpawnUnit(1, 'order fortify cover')) return true;
+                    return false;
+                }
+
+                if (order === 'counter') {
+                    if (this.tryCounterUnit(snapshot, 'order counter unit mix')) return true;
+                    if (this.tryUpgrade('dmg', 'order counter damage')) return true;
+                    return false;
+                }
+
+                if (order === 'tech') {
+                    let ecoTarget = Math.min(10, 3 + Math.floor(currentConfig.aiAggression * 5));
+                    if (snapshot.threatCount < 3 && ai.upgrades.econ < ecoTarget && this.tryUpgrade('econ', 'order tech economy')) return true;
+                    if (snapshot.threatCount < 2 && this.tryUpgrade('dmg', 'order tech damage')) return true;
+                    if (snapshot.enemyUnits < Math.max(1, Math.floor(snapshot.playerUnits * 0.7)) && this.trySpawnUnit(1, 'order tech screen')) return true;
+                    return this.holdAction('order tech patience');
+                }
+
+                if (order === 'press') {
+                    if (snapshot.playerHpRatio < 0.35 && this.trySpawnUnit(2, 'order press finisher')) return true;
+                    if (this.tryPressureUnit(snapshot, 'order press')) return true;
+                    if (this.tryUpgrade('dmg', 'order press damage')) return true;
+                    return false;
+                }
+
+                if (order === 'swarm') {
+                    if (snapshot.playerRanged > snapshot.playerMelee && this.trySpawnUnit(2, 'order swarm punish ranged')) return true;
+                    if (snapshot.playerHeavy > 0 && this.trySpawnUnit(1, 'order swarm screen heavy')) return true;
+                    if (this.trySpawnUnit(0, 'order swarm body')) return true;
+                    if (this.trySpawnUnit(1, 'order swarm ranged')) return true;
+                    if (this.tryUpgrade('dmg', 'order swarm damage')) return true;
+                    return false;
+                }
+
+                if (order === 'heavy') {
+                    if (this.trySpawnUnit(2, 'order heavy power unit')) return true;
+                    if (snapshot.threatCount > 0 && this.tryCounterUnit(snapshot, 'order heavy safety screen')) return true;
+                    if (snapshot.enemyUnits < Math.max(1, snapshot.playerUnits) && this.trySpawnUnit(0, 'order heavy cheap screen')) return true;
+                    return this.holdAction('saving for heavy unit');
+                }
+
+                if (order === 'special') {
+                    if ((snapshot.threatCount >= 2 || snapshot.playerUnits >= 3 || snapshot.playerHpRatio < 0.55) && this.trySpecial('order special timing')) return true;
+                    if (snapshot.threatCount >= 1 && this.tryBuildTurret('order special setup defense')) return true;
+                    if (this.tryPressureUnit(snapshot, 'order special setup pressure')) return true;
+                    return false;
+                }
+
+                if (order === 'hold') {
+                    if (snapshot.threatCount >= 2 && this.tryCounterUnit(snapshot, 'order hold necessary answer')) return true;
+                    if (snapshot.threatCount < 2 && this.tryUpgrade('econ', 'order hold quiet economy')) return true;
+                    return this.holdAction('holding for better trade');
+                }
+
+                return false;
+            },
+            tryPressureUnit(snapshot, reason) {
+                if (snapshot.threatCount < 4 && snapshot.enemyGold >= AGES[gameState.enemy.age].units[2].cost && this.trySpawnUnit(2, `${reason} heavy`)) return true;
+                if (snapshot.playerRanged > snapshot.playerMelee && this.trySpawnUnit(2, `${reason} crush ranged`)) return true;
+                if (this.trySpawnUnit(1, `${reason} support`)) return true;
+                if (this.trySpawnUnit(0, `${reason} filler`)) return true;
+                return false;
+            },
+            tryCounterUnit(snapshot, reason) {
+                if (snapshot.heavyThreat && this.trySpawnUnit(1, `${reason} anti-heavy range`)) return true;
+                if (snapshot.playerRanged > snapshot.playerMelee && this.trySpawnUnit(2, `${reason} punish ranged`)) return true;
+                if (snapshot.playerHeavy > 0 && this.trySpawnUnit(1, `${reason} kite heavy`)) return true;
+                if (snapshot.playerUnits > snapshot.enemyUnits + 1 && this.trySpawnUnit(1, `${reason} match count`)) return true;
+                if (snapshot.playerUnits > snapshot.enemyUnits && this.trySpawnUnit(0, `${reason} cheap body`)) return true;
+                if (this.trySpawnUnit(1, `${reason} default cover`)) return true;
+                if (this.trySpawnUnit(0, `${reason} default blocker`)) return true;
+                return false;
+            },
+            holdAction(reason) {
+                if (globalTime - this.lastPlanNoticeAt > 5) {
+                    this.reportSignal('hold', reason);
+                    this.lastPlanNoticeAt = globalTime;
+                }
+                return true;
             },
             tryEvolve() {
                 let ai = gameState.enemy;
@@ -3393,7 +3926,7 @@
                 ai.turrets = [null, null, null, null];
                 ai.turretTimers = [0, 0, 0, 0];
                 this.lastEnemyAge = ai.age;
-                this.reportTool('evolve_enemy', AGES[ai.age].name, true);
+                this.reportSignal('age', AGES[ai.age].name, true);
                 return true;
             },
             tryUpgrade(type, reason) {
@@ -3409,7 +3942,8 @@
                     ai.hp += (newMax - ai.maxHp);
                     ai.maxHp = newMax;
                 }
-                this.reportTool(`buy_upgrade:${type}`, reason);
+                this.reportSignal(`upgrade:${type}`, reason);
+                this.lastUpgradeAt = globalTime;
                 return true;
             },
             tryBuildTurret(reason) {
@@ -3422,23 +3956,42 @@
                     if (ai.unlockedSlots < 4 && ai.gold >= slotCost) {
                         ai.gold -= slotCost;
                         ai.unlockedSlots++;
-                        this.reportTool('buy_turret_slot', reason);
+                        this.reportSignal('fort:slot', reason);
                         return true;
                     }
                     return false;
                 }
 
                 let ageData = AGES[ai.age];
-                let typeIdx = 0;
-                if (ai.gold >= ageData.turrets[2].cost && currentConfig.aiAggression > 0.45) typeIdx = 2;
-                else if (ai.gold >= ageData.turrets[1].cost) typeIdx = 1;
+                let typeIdx = this.bestTurretIndex(ageData, ai.gold);
                 let cost = ageData.turrets[typeIdx].cost;
                 if (ai.gold < cost) return false;
                 ai.gold -= cost;
                 ai.turrets[emptySlot] = typeIdx;
                 ai.turretProgress[emptySlot] = 0;
-                this.reportTool(`build_turret:${ageData.turrets[typeIdx].name}`, reason);
+                this.reportSignal(`fort:${ageData.turrets[typeIdx].name}`, reason);
                 return true;
+            },
+            bestTurretIndex(ageData, gold) {
+                let snapshot = this.snapshot();
+                let best = 0;
+                let bestScore = -Infinity;
+                for (let i = 0; i < ageData.turrets.length; i++) {
+                    let turret = ageData.turrets[i];
+                    if (!turret || gold < turret.cost) continue;
+                    let dps = turret.dmg / Math.max(0.1, turret.attackSpeed || 1);
+                    let score = dps * 0.018 + turret.range * 0.004 - turret.cost / Math.max(1, gold) * 0.25;
+                    if (snapshot.threatCount >= 3) score += dps * 0.012;
+                    if (snapshot.closestThreatDist < 340 && turret.range >= 300) score += 0.7;
+                    if (snapshot.playerHeavy > 0) score += turret.dmg * 0.004;
+                    if (snapshot.playerRanged > snapshot.playerMelee) score += turret.range * 0.002;
+                    if (currentConfig.aiAggression > 0.7 && i === 2) score += 0.35;
+                    if (score > bestScore) {
+                        bestScore = score;
+                        best = i;
+                    }
+                }
+                return best;
             },
             trySpecial(reason) {
                 let a = DirectorMemory.data.agreements;
@@ -3446,7 +3999,7 @@
                 if (a.noSpecials || ai.specialTimer > 0 || gameState.specialActive) return false;
                 triggerSpecial(-1);
                 ai.specialTimer = AGES[ai.age].special.cooldown;
-                this.reportTool(`use_special:${AGES[ai.age].special.name}`, reason, true);
+                this.reportSignal(`special:${AGES[ai.age].special.name}`, reason, true);
                 return true;
             },
             trySpawnUnit(typeIdx, reason) {
@@ -3459,14 +4012,18 @@
                 if (ai.gold < data.cost) return false;
                 ai.gold -= data.cost;
                 spawnUnit(-1, ai.age, typeIdx);
-                this.reportTool(`spawn_unit:${data.name}`, reason);
+                if (this.lastSpawnType === typeIdx && globalTime - this.lastSpawnAt < 7) this.spawnStreak++;
+                else this.spawnStreak = 1;
+                this.lastSpawnType = typeIdx;
+                this.lastSpawnAt = globalTime;
+                this.reportSignal(`unit:${data.name}`, reason);
                 return true;
             },
-            reportTool(name, reason, force = false) {
+            reportSignal(name, reason, force = false) {
                 if (force || globalTime - this.lastActionNoticeAt > 1.8) {
                     DirectorPanel.showAction(name, reason);
                     if (force || /special|evolve|age/i.test(name)) {
-                        GemmaMemory.recordSystem(`Fallback action ${name}: ${reason}`);
+                        GemmaMemory.recordSystem(`Engine signal ${name}: ${reason}`);
                     }
                     this.lastActionNoticeAt = globalTime;
                 }

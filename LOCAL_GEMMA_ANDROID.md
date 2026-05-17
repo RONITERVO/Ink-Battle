@@ -1,25 +1,19 @@
 # Local Gemma 4 Android Plan
 
-The app now uses a no-backend architecture for the AI opponent:
+The app uses a no-backend opponent:
 
-- The game always has the deterministic local Codex Director fallback.
+- The JavaScript game owns all tactical decisions and remains fully playable offline without Gemma.
 - On Android, the WebView exposes `LocalGemmaAndroid` through `LocalGemmaBridge.kt`.
 - After user consent, Android `DownloadManager` downloads a `.litertlm` Gemma 4 model into the app's external files directory.
-- LiteRT-LM loads the model locally and returns small JSON director turns.
-- The LiteRT-LM engine is process-scoped and survives Activity/WebView recreation; only short-lived request conversations are closed after each turn.
-- The JavaScript game validates every returned action before applying it.
-- Gemma turns use bounded application-managed memory: each request creates a fresh LiteRT-LM conversation and receives the current summary, recent player/model turns, recent events, action outcomes, and repetition guards.
-- Gemma director turns also receive a labeled tactical context image when available. The JavaScript app redraws the live lane as a clear diagram with base ownership, hit lines, front lines, danger zones, unit markers, counts, and a legend. The native bridge configures LiteRT-LM `visionBackend` and sends the image through a short-lived cache JPEG using `Content.ImageFile`.
-- The main Gemma turn may return an optional `memoryPatch` with bounded summary, phrase guards, open loops, tone, and input suggestions. There is no separate post-turn model memory job.
-- Deterministic memory hygiene strips repeated model phrases from summaries and records only high-signal fallback events, but never replaces visible Gemma speech.
+- LiteRT-LM loads the model locally. Gemma stays in the same no-system chat for two visible turns, then the bridge starts a fresh native chat.
+- The fresh native chat carries raw text copied from the previous native chat window and includes the previous chat's tail user image. No generated or local summary is inserted.
+- Gemma receives the labeled tactical context image and is asked to return exactly two lines: a visible opponent message and one emotion word from the randomized emotion vocabulary.
+- The deterministic engine consumes the emotion word as a mood signal only. It never accepts unit, upgrade, turret, special, strategy, or order commands from the model.
 
 ## Model Choice
 
 Default for the app's 6GB+ phone target: `Gemma 4 E2B`.
 
-Reasoning:
-
-- Google's Gemma 4 LiteRT-LM docs position E2B and E4B for mobile/edge deployment.
 - E2B is 2.58GB and is the safer default for 6GB phones.
 - E4B is 3.65GB and is selected automatically only when Android reports at least 12GB RAM.
 
@@ -31,22 +25,20 @@ Configured downloads:
 ## Native Files
 
 - `app/src/main/java/com/sketchwar/ageofwar/LocalGemmaBridge.kt`
-  - Model recommendation.
-  - DownloadManager install.
-  - LiteRT-LM engine setup.
-  - Process-scoped engine reuse across Activity/WebView recreation.
+  - Model recommendation and install flow.
+  - Process-scoped LiteRT-LM engine reuse across Activity/WebView recreation.
+  - Two-turn shared conversation reuse for short-term chat continuity.
+  - `ImageFile` paths retained until the shared conversation is reset or closed.
+  - Raw previous-chat text and the previous tail user image are carried into the next native chat; no summary callback or local summary prompt is used.
+  - Empty LiteRT responses reset the native chat before the next request.
   - GPU first, CPU fallback.
-  - JSON-only director prompt tuned for bounded Gemma 4 turn memory and optional `memoryPatch`.
-  - Multimodal director prompt with explicit red/right-side Gemma ownership and tactical-map label guidance.
-  - LiteRT-LM `visionBackend` setup and short-lived `ImageFile` context images for Android image input stability.
-  - Chunked `AgeOfWarGemma` logcat diagnostics for exact request payloads, prompts, raw responses, parse failures, and action results.
-- `app/src/main/java/com/sketchwar/ageofwar/MainActivity.java`
-  - Registers the bridge as `LocalGemmaAndroid`.
-- `app/build.gradle`
-  - Adds `com.google.ai.edge.litertlm:litertlm-android:0.11.0`.
-- `app/src/main/AndroidManifest.xml`
-  - Adds internet/network permissions for model download.
-  - Adds optional OpenCL native libraries recommended by LiteRT-LM GPU backend.
+  - No-system `ConversationConfig()` for Gemma 4 default behavior.
+  - One prompt cap, one optional `ImageFile`, one streamed `message` phase, and raw text returned to JavaScript.
+- `Age_of_War_notebook_8.html`
+  - Builds the randomized emotion prompt.
+  - Parses the two-line model answer, including suffix/last-word emotion recovery, without JSON repair.
+  - Runs the offline tactical engine with composition, threat, age, economy, turret, macro-plan, timing-bank, and emotion scoring.
+  - Shows the current emotion and removable pact chips between the base health bars.
 
 ## Runtime UX
 
@@ -54,9 +46,10 @@ Configured downloads:
 2. Director panel shows local Gemma status.
 3. Player taps `Get Gemma`.
 4. App asks for confirmation before the multi-GB download.
-5. Fallback AI continues playing during download and model loading.
-6. Once ready, Gemma periodically produces high-level director turns.
-7. If Gemma returns `memoryPatch`, the same turn updates bounded memory and the command input placeholder suggestion.
+5. Offline AI continues playing during download, loading, and model thinking.
+6. Once ready, Gemma periodically returns a visible message plus one emotion word.
+7. The emotion word appears as the current mood signal and biases the local engine's timing, risk tolerance, defense, teching, special use, and aggression.
+8. Active agreements are clickable chips; removing one updates the local engine and future Gemma context.
 
 ## Gemma Diagnostics
 
@@ -68,30 +61,18 @@ adb logcat -v time -s AgeOfWarGemma:I
 
 Each local model turn logs:
 
-- `request.payload`: exact JSON sent by the WebView bridge.
+- `request.prompt.message`: final user-turn prompt passed to LiteRT-LM after the app's prompt cap.
 - `request.context_image`: attached tactical context image byte count and MIME metadata.
-- `request.prompt`: final prompt passed to LiteRT-LM after the app's prompt cap.
-- `response.raw`: unmodified Gemma text.
-- `js.response.parsed`, `js.response.parse_failed`, and `js.action.result`: JavaScript parse and validation outcomes.
-
-Long values are split into numbered chunks between `BEGIN` and `END` lines so they can be reconstructed from logcat.
+- `conversation.created`, `conversation.reuse`, `conversation.image_retained`, `conversation.carryover_saved`, `conversation.carryover_applied`, `conversation.reset_after_two_turns`: native chat lifetime, retained image-file, and raw carryover diagnostics.
+- `response.phase.message`: unmodified streamed Gemma text.
+- `response.raw`: raw two-line model response returned to JavaScript.
+- `js.response.emotion`: JavaScript parse result for reply and emotion.
 
 ## Safety Rules
 
 - No API keys.
 - No backend.
-- No prompt/game-state upload for inference.
+- No prompt/game-state upload for cloud inference.
 - No arbitrary code execution from the model.
-- Model output is parsed as JSON and constrained to known tools:
-  - `spawn_unit`
-  - `buy_upgrade`
-  - `build_turret`
-  - `use_special`
-  - `none`
-- Existing player pacts still gate model-requested actions.
-
-## Sources Used
-
-- Google recommends LiteRT-LM over the deprecated MediaPipe LLM Inference API for this path.
-- Google LiteRT-LM Android docs describe the Gradle dependency, Engine/Conversation API, GPU native library declarations, and background initialization requirement.
-- Google Gemma 4 LiteRT-LM docs list E2B/E4B support, model sizes, mobile performance, and MTP recommendations.
+- Model output is only a visible message plus an emotion word.
+- Existing player pacts still gate local engine spending.
