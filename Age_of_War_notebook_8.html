@@ -1846,7 +1846,6 @@
                     version: this.version,
                     matchId: '',
                     difficulty: diffKey || 'normal',
-                    summary: 'No active match yet.',
                     emotion: 'Centered',
                     emotionHistory: [],
                     openLoops: [],
@@ -1861,7 +1860,6 @@
                 let data = this.freshData(diffKey);
                 if (!raw || typeof raw !== 'object') return data;
                 data.matchId = this.cleanLine(raw.matchId, 80);
-                data.summary = this.cleanLine(raw.summary || data.summary, 900);
                 data.emotion = normalizeGemmaEmotionWord(raw.emotion || data.emotion);
                 data.emotionHistory = this.normalizeList(raw.emotionHistory, 8, 40)
                     .map(word => normalizeGemmaEmotionWord(word))
@@ -1901,14 +1899,12 @@
             start(diffKey) {
                 this.data = this.freshData(diffKey);
                 this.data.matchId = `m${Date.now()}_${Math.floor(Math.random() * 10000)}`;
-                this.data.summary = `${(DIFFICULTY_SETTINGS[diffKey] || {}).name || diffKey} match opened in Stone Age. Gemma emotion starts Centered; the offline engine owns all tactical decisions.`;
                 this.save();
                 this.updateInputSuggestion();
             },
             clearAll() {
                 this.data = this.freshData(currentDifficulty);
                 this.data.matchId = `m${Date.now()}_${Math.floor(Math.random() * 10000)}`;
-                this.data.summary = 'Player cleared Gemma turn memory for this match.';
                 this.data.emotion = 'Centered';
                 this.data.emotionHistory = [];
                 this.save();
@@ -1944,7 +1940,6 @@
                 this.data.openLoops.push(`Answer player: ${clean}`);
                 this.data.openLoops = this.data.openLoops.slice(-5);
                 this.recordEvent(`Player said: ${clean}`);
-                this.updateLocalDigest('player_message');
                 this.save();
             },
             recordSystem(text) {
@@ -1980,40 +1975,8 @@
                     emotion
                 });
                 this.data.actionLedger = this.data.actionLedger.slice(-this.maxActions);
-                this.updateLocalDigest('emotion_turn');
                 this.save();
                 this.updateInputSuggestion();
-            },
-            compactSummary(snapshot, reason, latestPlayerMessage = '') {
-                if (!this.data) this.init();
-                let nativeMessages = (typeof NativeGemma !== 'undefined' && NativeGemma.status) ? Number(NativeGemma.status.conversationMessages || 0) : 0;
-                if (nativeMessages > 0) {
-                    return 'Same open chat; use the earlier messages in this conversation, the current map, and my latest line.';
-                }
-                this.updateLocalDigest('opening_prompt');
-                return this.cleanLine(this.data.summary || 'No previous summary yet.', 900);
-            },
-            updateLocalDigest(reason) {
-                let pressure = (DirectorMemory.data.agreements || {}).pressure || 'balanced';
-                let playerTurns = this.data.recentTurns.filter(t => t.role === 'player').slice(-2).map(t => t.text);
-                let highSignal = this.data.eventLog
-                    .filter(line => !/^Engine signal unit/i.test(line) && !/^Gemma felt/i.test(line) && !/^Gemma said/i.test(line))
-                    .slice(-5)
-                    .join(' ');
-                let parts = [
-                    `${this.data.difficulty || currentDifficulty} match at ${this.ageLine() || 'unknown ages'}.`,
-                    `Pressure plan: ${pressure}.`,
-                    playerTurns.length ? `Recent player: ${playerTurns.join(' / ')}.` : '',
-                    highSignal
-                ].filter(Boolean);
-                this.data.summary = this.cleanLine(parts.join(' '), 900);
-                if (typeof NativeGemma !== 'undefined') {
-                    NativeGemma.log('memory.local_digest', {
-                        reason,
-                        matchId: this.data.matchId,
-                        summaryChars: this.data.summary.length
-                    });
-                }
             },
             updateInputSuggestion() {
                 let input = document.getElementById('director-input');
@@ -2452,7 +2415,6 @@
             let snapshot = ctx.snapshot;
             let enemyAgeData = AGES[gameState.enemy.age];
             let playerAgeData = AGES[gameState.player.age];
-            let compactSummary = GemmaMemory.compactSummary(snapshot, ctx.reason, ctx.relayComment ? ctx.relayComment.text : ctx.cleanExtraMessage);
             let latestPlayer = gemmaPromptLine(ctx.relayComment ? ctx.relayComment.text : ctx.cleanExtraMessage, 160);
             let emotions = shuffledGemmaEmotionWords();
             let emotionLine = emotions.join(', ');
@@ -2475,7 +2437,6 @@
                 `My army: ${playerUnitLine}. Your army: ${enemyUnitLine}.`,
                 `What matters tactically: ${tacticalLine}.`,
                 `Our table rules and preferences: ${DirectorMemory.tags().join(', ')}.`,
-                `What you should remember about me and this match: ${compactSummary}`,
                 latestPlayer ? `I just told you: "${latestPlayer}"` : 'I did not say anything new this turn.',
                 'Please answer in exactly two short lines so the phone UI can read it.',
                 'First line: talk directly to me as Gemma, one or two short sentences.',
@@ -2711,7 +2672,7 @@
                     gameTime: Math.round(globalTime),
                     promptChars: promptText.length,
                     difficulty: currentDifficulty,
-                    memorySummaryChars: GemmaMemory.data ? GemmaMemory.data.summary.length : 0,
+                    nativeConversationMessages: this.status.conversationMessages || 0,
                     contextImageChars: contextImageDataUrl ? contextImageDataUrl.length : 0,
                     enginePlan: snapshot.engineOrder || ''
                 });

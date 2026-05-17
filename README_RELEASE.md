@@ -58,7 +58,7 @@ and assets into `app/src/main/assets` before Android packaging.
 - The Android project uses Android Gradle Plugin 9.2.0, which requires JDK 17 and Gradle 9.4.1.
 - No OpenAI API key, unofficial OpenAI subscriber-login flow, or backend is included in the client.
 - Local Gemma 4 model downloads require user consent and internet only for the model download. Inference runs on-device afterward.
-- Local Gemma 4 turns use bounded mobile memory: the bridge keeps the same local chat for up to about nine text turns, resets multimodal chats earlier after three retained images or any empty native response, then starts a fresh chat whose opening prompt can carry the app's compact local continuity summary.
+- Local Gemma 4 turns use bounded mobile memory: the bridge keeps the same local chat for two visible turns, then starts a fresh native chat with raw previous-chat text plus the previous chat's tail user image. No summary is generated or inserted.
 - The normal Gemma turn returns only a visible opponent message and one emotion word; all tactics remain inside the deterministic offline engine.
 - Chunked `AgeOfWarGemma` logcat diagnostics are included for prompt/response diagnosis.
 - Deterministic memory hygiene keeps recent player context and game facts without feeding emotion history back into Gemma.

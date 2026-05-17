@@ -5,8 +5,9 @@ The app uses a no-backend opponent:
 - The JavaScript game owns all tactical decisions and remains fully playable offline without Gemma.
 - On Android, the WebView exposes `LocalGemmaAndroid` through `LocalGemmaBridge.kt`.
 - After user consent, Android `DownloadManager` downloads a `.litertlm` Gemma 4 model into the app's external files directory.
-- LiteRT-LM loads the model locally. Gemma stays in the same no-system chat for up to about nine text turns; multimodal chats reset earlier after three retained image turns or any empty native response. When that bounded chat resets, the next opening prompt can carry the app's compact local continuity summary.
-- Gemma receives the labeled tactical context image. The opening message of a native chat includes compact local memory; later turns rely on the same native chat history instead of repeating that summary. It is asked to return exactly two lines: a visible opponent message and one emotion word from the randomized emotion vocabulary.
+- LiteRT-LM loads the model locally. Gemma stays in the same no-system chat for two visible turns, then the bridge starts a fresh native chat.
+- The fresh native chat carries raw text copied from the previous native chat window and includes the previous chat's tail user image. No generated or local summary is inserted.
+- Gemma receives the labeled tactical context image and is asked to return exactly two lines: a visible opponent message and one emotion word from the randomized emotion vocabulary.
 - The deterministic engine consumes the emotion word as a mood signal only. It never accepts unit, upgrade, turret, special, strategy, or order commands from the model.
 
 ## Model Choice
@@ -26,9 +27,10 @@ Configured downloads:
 - `app/src/main/java/com/sketchwar/ageofwar/LocalGemmaBridge.kt`
   - Model recommendation and install flow.
   - Process-scoped LiteRT-LM engine reuse across Activity/WebView recreation.
-  - Bounded shared conversation reuse for short-term chat continuity.
+  - Two-turn shared conversation reuse for short-term chat continuity.
   - `ImageFile` paths retained until the shared conversation is reset or closed.
-  - Empty LiteRT responses and the observed fourth retained-image turn reset the native chat before the next request.
+  - Raw previous-chat text and the previous tail user image are carried into the next native chat; no summary callback or local summary prompt is used.
+  - Empty LiteRT responses reset the native chat before the next request.
   - GPU first, CPU fallback.
   - No-system `ConversationConfig()` for Gemma 4 default behavior.
   - One prompt cap, one optional `ImageFile`, one streamed `message` phase, and raw text returned to JavaScript.
@@ -61,7 +63,7 @@ Each local model turn logs:
 
 - `request.prompt.message`: final user-turn prompt passed to LiteRT-LM after the app's prompt cap.
 - `request.context_image`: attached tactical context image byte count and MIME metadata.
-- `conversation.created`, `conversation.reuse`, `conversation.image_retained`, `conversation.reset_after_response`: native chat lifetime and retained image-file diagnostics.
+- `conversation.created`, `conversation.reuse`, `conversation.image_retained`, `conversation.carryover_saved`, `conversation.carryover_applied`, `conversation.reset_after_two_turns`: native chat lifetime, retained image-file, and raw carryover diagnostics.
 - `response.phase.message`: unmodified streamed Gemma text.
 - `response.raw`: raw two-line model response returned to JavaScript.
 - `js.response.emotion`: JavaScript parse result for reply and emotion.
