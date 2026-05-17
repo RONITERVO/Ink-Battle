@@ -35,11 +35,13 @@ class LocalGemmaBridge(
         const val LOG_CHUNK_SIZE = 3_000
         const val MAX_PROMPT_CHARS = 6_000
         const val MODEL_RESPONSE_TIMEOUT_SECONDS = 90L
-        const val MAX_CHAT_MESSAGES_BEFORE_SUMMARY = 18
+        const val MAX_CHAT_MESSAGES_BEFORE_RESET = 18
+        const val MAX_IMAGE_MESSAGES_BEFORE_RESET = 3
         const val MAX_CONTEXT_IMAGE_BYTES = 700_000
         const val ENABLE_IMAGE_INPUT = true
 
         private val ENGINE_LOCK = Any()
+        private val sharedConversationImageFiles = mutableListOf<File>()
         @Volatile private var sharedEngine: Engine? = null
         @Volatile private var sharedModelPath: String? = null
         @Volatile private var sharedModelKey: String? = null
@@ -50,6 +52,7 @@ class LocalGemmaBridge(
         @Volatile private var sharedConversation: Conversation? = null
         @Volatile private var sharedConversationModelPath: String? = null
         @Volatile private var sharedConversationMessages: Int = 0
+        @Volatile private var sharedConversationSerial: Long = 0L
     }
 
     private data class ModelSpec(
@@ -157,6 +160,7 @@ class LocalGemmaBridge(
             var loaded: Engine? = null
             var previous: Engine? = null
             var previousConversation: Conversation? = null
+            var previousConversationImages: List<File> = emptyList()
             try {
                 Engine.setNativeMinLogSeverity(LogSeverity.ERROR)
                 loaded = createEngine(path)
@@ -167,6 +171,7 @@ class LocalGemmaBridge(
                         sharedConversation = null
                         sharedConversationModelPath = null
                         sharedConversationMessages = 0
+                        previousConversationImages = drainConversationImagesLocked()
                     }
                     sharedEngine = loaded
                     sharedModelPath = path
@@ -175,8 +180,9 @@ class LocalGemmaBridge(
                     sharedLoadingPath = null
                     sharedLastError = null
                 }
-                closeEngineQuietly(previous)
                 closeConversationQuietly(previousConversation)
+                deleteFilesQuietly(previousConversationImages)
+                closeEngineQuietly(previous)
                 loaded = null
                 logLine("load.ready model=${current.key} reused=false")
                 postStatus("ready")
@@ -247,6 +253,7 @@ class LocalGemmaBridge(
                 conversation = chatConversation(activeEngine, activeModelPath)
                 val contents = if (contextImageBytes != null) {
                     contextImageFile = writeContextImageFile(requestId, contextImageBytes, "context_image_file")
+                    retainConversationImageFile(conversation, contextImageFile!!)
                     Contents.of(
                         com.google.ai.edge.litertlm.Content.ImageFile(contextImageFile!!.absolutePath),
                         com.google.ai.edge.litertlm.Content.Text(prompt)
@@ -260,11 +267,16 @@ class LocalGemmaBridge(
                 logLine("response.ready requestId=$requestId responseChars=${response.length} elapsedMs=$elapsedMs")
                 logLong("response.raw requestId=$requestId", response)
                 postResponse(requestId, response)
-                if (shouldSummarizeConversation()) {
-                    val summary = summarizeConversation(requestId, conversation)
-                    if (summary.isNotBlank()) postSummary(requestId, summary)
+                val retainedImageCount = conversationImageCount()
+                if (response.isBlank()) {
                     closeConversation = true
-                    releaseSharedConversation(conversation)
+                    logLine("conversation.reset_after_empty_response requestId=$requestId messages=${conversationMessageCount()} images=$retainedImageCount")
+                } else if (shouldResetConversation()) {
+                    closeConversation = true
+                    logLine("conversation.reset_after_response requestId=$requestId messages=${conversationMessageCount()}")
+                } else if (retainedImageCount >= MAX_IMAGE_MESSAGES_BEFORE_RESET) {
+                    closeConversation = true
+                    logLine("conversation.reset_after_image_window requestId=$requestId messages=${conversationMessageCount()} images=$retainedImageCount")
                 }
             } catch (t: Throwable) {
                 synchronized(ENGINE_LOCK) {
@@ -276,10 +288,12 @@ class LocalGemmaBridge(
                 closeConversation = true
             } finally {
                 if (closeConversation) {
-                    releaseSharedConversation(conversation)
+                    val imagesToDelete = releaseSharedConversation(conversation)
                     closeConversationQuietly(conversation)
+                    deleteFilesQuietly(imagesToDelete)
+                } else if (contextImageFile != null && !isConversationImageRetained(contextImageFile)) {
+                    try { contextImageFile?.delete() } catch (_: Throwable) {}
                 }
-                try { contextImageFile?.delete() } catch (_: Throwable) {}
                 synchronized(ENGINE_LOCK) {
                     sharedBusy = false
                 }
@@ -394,6 +408,8 @@ class LocalGemmaBridge(
             .put("progress", progress)
             .put("busy", busy)
             .put("message", message)
+            .put("conversationMessages", synchronized(ENGINE_LOCK) { sharedConversationMessages })
+            .put("conversationSerial", synchronized(ENGINE_LOCK) { sharedConversationSerial })
     }
 
     private fun postStatus(forcedState: String? = null) {
@@ -407,10 +423,6 @@ class LocalGemmaBridge(
 
     private fun postError(requestId: String, message: String) {
         runJs("window.onLocalGemmaError(${JSONObject.quote(requestId)}, ${JSONObject.quote(message)});")
-    }
-
-    private fun postSummary(requestId: String, summary: String) {
-        runJs("window.onLocalGemmaSummary && window.onLocalGemmaSummary(${JSONObject.quote(requestId)}, ${JSONObject.quote(summary)});")
     }
 
     private fun postStream(requestId: String, phase: String, text: String, done: Boolean) {
@@ -429,25 +441,47 @@ class LocalGemmaBridge(
     private fun conversationConfig(): ConversationConfig = ConversationConfig()
 
     private fun chatConversation(engine: Engine, modelPath: String): Conversation {
+        var stale: Conversation? = null
+        var staleImages: List<File> = emptyList()
         synchronized(ENGINE_LOCK) {
             val existing = sharedConversation
             if (existing != null && existing.isAlive && sharedConversationModelPath == modelPath) {
-                logLine("conversation.reuse messages=$sharedConversationMessages")
+                logLine("conversation.reuse messages=$sharedConversationMessages images=${sharedConversationImageFiles.size}")
                 return existing
             }
+            stale = existing
+            if (stale != null) staleImages = drainConversationImagesLocked()
             sharedConversation = null
             sharedConversationModelPath = null
             sharedConversationMessages = 0
         }
+        closeConversationQuietly(stale)
+        deleteFilesQuietly(staleImages)
 
         val created = engine.createConversation(conversationConfig())
         synchronized(ENGINE_LOCK) {
             sharedConversation = created
             sharedConversationModelPath = modelPath
             sharedConversationMessages = 0
+            sharedConversationSerial += 1L
         }
-        logLine("conversation.created modelPath=${modelPath.takeLast(48)}")
+        logLine("conversation.created serial=$sharedConversationSerial modelPath=${modelPath.takeLast(48)}")
         return created
+    }
+
+    private fun retainConversationImageFile(conversation: Conversation?, file: File) {
+        synchronized(ENGINE_LOCK) {
+            if (conversation != null && sharedConversation === conversation) {
+                sharedConversationImageFiles.add(file)
+                logLine("conversation.image_retained count=${sharedConversationImageFiles.size} file=${file.name}")
+            }
+        }
+    }
+
+    private fun isConversationImageRetained(file: File): Boolean {
+        return synchronized(ENGINE_LOCK) {
+            sharedConversationImageFiles.any { it.absolutePath == file.absolutePath }
+        }
     }
 
     private fun noteConversationMessages(count: Int) {
@@ -456,41 +490,37 @@ class LocalGemmaBridge(
         }
     }
 
-    private fun shouldSummarizeConversation(): Boolean {
+    private fun shouldResetConversation(): Boolean {
         return synchronized(ENGINE_LOCK) {
-            sharedConversationMessages >= MAX_CHAT_MESSAGES_BEFORE_SUMMARY
+            sharedConversationMessages >= MAX_CHAT_MESSAGES_BEFORE_RESET
         }
     }
 
-    private fun summarizeConversation(requestId: String, conversation: Conversation): String {
-        return try {
-            val prompt = """
-Gemma, before we turn to a fresh page, help me keep the useful continuity from our match.
-
-Please write one compact paragraph under 90 words. Save only things that help our next few turns feel like the same rivalry: what the human player has said or prefers, active table rules, important game events, age/timing facts, and any running promises or grudges.
-
-Do not list emotion words. Do not rate your mood. Do not use JSON, labels, markdown, or bullets.
-            """.trimIndent()
-            logLong("request.prompt.summary requestId=$requestId", prompt)
-            val summary = sendModelPhase(requestId, conversation, "summary", Contents.of(prompt))
-            noteConversationMessages(2)
-            logLong("response.summary requestId=$requestId", summary)
-            summary.take(900)
-        } catch (t: Throwable) {
-            logError("summary.error requestId=$requestId", t)
-            ""
-        }
+    private fun conversationMessageCount(): Int {
+        return synchronized(ENGINE_LOCK) { sharedConversationMessages }
     }
 
-    private fun releaseSharedConversation(conversation: Conversation?) {
-        if (conversation == null) return
+    private fun conversationImageCount(): Int {
+        return synchronized(ENGINE_LOCK) { sharedConversationImageFiles.size }
+    }
+
+    private fun releaseSharedConversation(conversation: Conversation?): List<File> {
+        if (conversation == null) return emptyList()
         synchronized(ENGINE_LOCK) {
             if (sharedConversation === conversation) {
                 sharedConversation = null
                 sharedConversationModelPath = null
                 sharedConversationMessages = 0
+                return drainConversationImagesLocked()
             }
         }
+        return emptyList()
+    }
+
+    private fun drainConversationImagesLocked(): List<File> {
+        val images = sharedConversationImageFiles.toList()
+        sharedConversationImageFiles.clear()
+        return images
     }
 
     private fun cleanPrompt(raw: String): String {
@@ -598,6 +628,12 @@ Do not list emotion words. Do not rate your mood. Do not use JSON, labels, markd
         try { conversation?.close() } catch (_: Throwable) {}
     }
 
+    private fun deleteFilesQuietly(files: List<File>) {
+        for (file in files) {
+            try { file.delete() } catch (_: Throwable) {}
+        }
+    }
+
     private fun logLine(message: String) {
         Log.i(LOG_TAG, message)
     }
@@ -626,6 +662,17 @@ Do not list emotion words. Do not rate your mood. Do not use JSON, labels, markd
     }
 
     override fun close() {
+        val conversation: Conversation?
+        val images: List<File>
+        synchronized(ENGINE_LOCK) {
+            conversation = sharedConversation
+            sharedConversation = null
+            sharedConversationModelPath = null
+            sharedConversationMessages = 0
+            images = drainConversationImagesLocked()
+        }
+        closeConversationQuietly(conversation)
+        deleteFilesQuietly(images)
         executor.shutdown()
     }
 }

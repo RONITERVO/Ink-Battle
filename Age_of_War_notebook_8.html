@@ -1980,29 +1980,24 @@
                     emotion
                 });
                 this.data.actionLedger = this.data.actionLedger.slice(-this.maxActions);
-                if (say) this.recordEvent(`Gemma said: ${say}`);
                 this.updateLocalDigest('emotion_turn');
                 this.save();
                 this.updateInputSuggestion();
             },
             compactSummary(snapshot, reason, latestPlayerMessage = '') {
                 if (!this.data) this.init();
+                let nativeMessages = (typeof NativeGemma !== 'undefined' && NativeGemma.status) ? Number(NativeGemma.status.conversationMessages || 0) : 0;
+                if (nativeMessages > 0) {
+                    return 'Same open chat; use the earlier messages in this conversation, the current map, and my latest line.';
+                }
+                this.updateLocalDigest('opening_prompt');
                 return this.cleanLine(this.data.summary || 'No previous summary yet.', 900);
-            },
-            applyNativeSummary(summary) {
-                if (!this.data) this.init();
-                let clean = this.cleanLine(summary, 900);
-                if (!clean) return;
-                this.data.summary = clean;
-                this.recordEvent('Gemma continuity summary refreshed.');
-                this.save();
-                this.updateInputSuggestion();
             },
             updateLocalDigest(reason) {
                 let pressure = (DirectorMemory.data.agreements || {}).pressure || 'balanced';
                 let playerTurns = this.data.recentTurns.filter(t => t.role === 'player').slice(-2).map(t => t.text);
                 let highSignal = this.data.eventLog
-                    .filter(line => !/^Engine signal unit/i.test(line) && !/^Gemma felt/i.test(line))
+                    .filter(line => !/^Engine signal unit/i.test(line) && !/^Gemma felt/i.test(line) && !/^Gemma said/i.test(line))
                     .slice(-5)
                     .join(' ');
                 let parts = [
@@ -2768,13 +2763,6 @@
                 this.log('request.error', { requestId, message: String(message || '') });
                 DirectorPanel.failModelThoughts(requestId, String(message || 'error'));
                 DirectorPanel.addSystem(`Local Gemma could not answer: ${message}`);
-            },
-            summary(requestId, summary) {
-                GemmaMemory.applyNativeSummary(summary);
-                this.log('response.summary', {
-                    requestId,
-                    summaryChars: String(summary || '').length
-                });
             }
         };
 
@@ -2806,7 +2794,6 @@
         window.onLocalGemmaStream = (requestId, phase, text, done) => NativeGemma.stream(requestId, phase, text, done);
         window.onLocalGemmaResponse = (requestId, text) => NativeGemma.receive(requestId, text);
         window.onLocalGemmaError = (requestId, message) => NativeGemma.error(requestId, message);
-        window.onLocalGemmaSummary = (requestId, summary) => NativeGemma.summary(requestId, summary);
 
         // --- DIRECTOR CHAT SURFACE (COMMANDER HUD) ---
         const DirectorPanel = {

@@ -58,12 +58,12 @@ and assets into `app/src/main/assets` before Android packaging.
 - The Android project uses Android Gradle Plugin 9.2.0, which requires JDK 17 and Gradle 9.4.1.
 - No OpenAI API key, unofficial OpenAI subscriber-login flow, or backend is included in the client.
 - Local Gemma 4 model downloads require user consent and internet only for the model download. Inference runs on-device afterward.
-- Local Gemma 4 turns use bounded mobile memory: the bridge keeps the same local chat for about nine turns, asks for one compact continuity summary, then starts a fresh chat with recent player/game context and the randomized emotion vocabulary.
+- Local Gemma 4 turns use bounded mobile memory: the bridge keeps the same local chat for up to about nine text turns, resets multimodal chats earlier after three retained images or any empty native response, then starts a fresh chat whose opening prompt can carry the app's compact local continuity summary.
 - The normal Gemma turn returns only a visible opponent message and one emotion word; all tactics remain inside the deterministic offline engine.
 - Chunked `AgeOfWarGemma` logcat diagnostics are included for prompt/response diagnosis.
 - Deterministic memory hygiene keeps recent player context and game facts without feeding emotion history back into Gemma.
 - The offline engine now uses macro plans, matchup scoring, timing banks, turret pressure, and emotion-biased risk tolerance while still respecting player pacts.
-- Gemma director turns include a labeled tactical context image instead of a raw gameplay screenshot. The native bridge configures LiteRT-LM `visionBackend` and sends the image via the documented `ImageFile` path instead of raw `ImageBytes`.
+- Gemma director turns include a labeled tactical context image instead of a raw gameplay screenshot. The native bridge configures LiteRT-LM `visionBackend`, sends the image via the documented `ImageFile` path, and keeps those image files alive until the native chat is reset or closed.
 - The LiteRT-LM engine is now process-scoped, so Activity/WebView recreation reuses the loaded Gemma model instead of unloading and reloading it.
 - `Gemma 4 E2B` is the default 6GB+ phone model; `Gemma 4 E4B` is reserved for devices reporting at least 12GB RAM.
 
