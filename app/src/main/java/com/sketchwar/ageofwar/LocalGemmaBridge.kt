@@ -20,7 +20,6 @@ import com.google.ai.edge.litertlm.LogSeverity
 import com.google.ai.edge.litertlm.Message
 import com.google.ai.edge.litertlm.MessageCallback
 import java.io.File
-import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -34,12 +33,8 @@ class LocalGemmaBridge(
     private companion object {
         const val LOG_TAG = "AgeOfWarGemma"
         const val LOG_CHUNK_SIZE = 3_000
-        const val MAX_PROMPT_PAYLOAD_CHARS = 12_000
-        const val MAX_ROLEPLAY_PROMPT_CHARS = 3_800
-        const val MAX_CONVERSATION_MESSAGES = 12
-        const val ROLEPLAY_TURN_MESSAGE_BUDGET = 10
-        const val ROLEPLAY_PHASE_TIMEOUT_SECONDS = 90L
-        const val SELECTION_IMAGE_TIMEOUT_MS = 2_500L
+        const val MAX_PROMPT_CHARS = 6_000
+        const val MODEL_RESPONSE_TIMEOUT_SECONDS = 90L
         const val MAX_CONTEXT_IMAGE_BYTES = 700_000
         const val ENABLE_IMAGE_INPUT = true
 
@@ -51,10 +46,6 @@ class LocalGemmaBridge(
         @Volatile private var sharedLoadingPath: String? = null
         @Volatile private var sharedBusy: Boolean = false
         @Volatile private var sharedLastError: String? = null
-        @Volatile private var sharedConversation: Conversation? = null
-        @Volatile private var sharedConversationModelPath: String? = null
-        @Volatile private var sharedConversationSession: String? = null
-        @Volatile private var sharedConversationMessages: Int = 0
     }
 
     private data class ModelSpec(
@@ -64,11 +55,6 @@ class LocalGemmaBridge(
         val url: String,
         val sizeGb: Double,
         val minRamGb: Int
-    )
-
-    private data class SelectionImageRequest(
-        val latch: CountDownLatch,
-        val dataUrl: AtomicReference<String?>
     )
 
     private val models = listOf(
@@ -94,7 +80,6 @@ class LocalGemmaBridge(
     private val cacheDirPath = activity.applicationContext.cacheDir.absolutePath
     private val prefs = activity.applicationContext.getSharedPreferences("local_gemma_v1", Context.MODE_PRIVATE)
     private val downloadManager = activity.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-    private val pendingSelectionImages = ConcurrentHashMap<String, SelectionImageRequest>()
     private val modelDir: File by lazy {
         File(activity.getExternalFilesDir(null) ?: activity.filesDir, "models").apply { mkdirs() }
     }
@@ -167,19 +152,11 @@ class LocalGemmaBridge(
         executor.execute {
             var loaded: Engine? = null
             var previous: Engine? = null
-            var previousConversation: Conversation? = null
             try {
                 Engine.setNativeMinLogSeverity(LogSeverity.ERROR)
                 loaded = createEngine(path)
                 synchronized(ENGINE_LOCK) {
                     previous = if (sharedEngine != null && sharedModelPath != path) sharedEngine else null
-                    previousConversation = if (sharedConversation != null && sharedConversationModelPath != path) sharedConversation else null
-                    if (previousConversation != null) {
-                        sharedConversation = null
-                        sharedConversationModelPath = null
-                        sharedConversationSession = null
-                        sharedConversationMessages = 0
-                    }
                     sharedEngine = loaded
                     sharedModelPath = path
                     sharedModelKey = current.key
@@ -188,7 +165,6 @@ class LocalGemmaBridge(
                     sharedLastError = null
                 }
                 closeEngineQuietly(previous)
-                closeConversationQuietly(previousConversation)
                 loaded = null
                 logLine("load.ready model=${current.key} reused=false")
                 postStatus("ready")
@@ -209,12 +185,12 @@ class LocalGemmaBridge(
     }
 
     @JavascriptInterface
-    fun generateDirectorTurn(requestId: String, payloadJson: String) {
-        generateDirectorTurnWithImage(requestId, payloadJson, null)
+    fun generateDirectorTurn(requestId: String, promptText: String) {
+        generateDirectorTurnWithImage(requestId, promptText, null)
     }
 
     @JavascriptInterface
-    fun generateDirectorTurnWithImage(requestId: String, payloadJson: String, contextImageDataUrl: String?) {
+    fun generateDirectorTurnWithImage(requestId: String, promptText: String, contextImageDataUrl: String?) {
         val path = prefs.getString("modelPath", null)
         var busyNow = false
         var loaded: Engine? = null
@@ -237,95 +213,38 @@ class LocalGemmaBridge(
         }
         val activeEngine = loaded
         if (activeEngine == null) {
-            logLine("request.rejected loading requestId=$requestId payloadChars=${payloadJson.length}")
+            logLine("request.rejected loading requestId=$requestId promptChars=${promptText.length}")
             loadModel()
             postError(requestId, "Gemma is loading")
             return
         }
 
+        val prompt = cleanPrompt(promptText)
         val startedAt = System.currentTimeMillis()
-        logLine("request.start requestId=$requestId payloadChars=${payloadJson.length}")
-        logLong("request.payload requestId=$requestId", payloadJson)
+        logLine("request.start requestId=$requestId promptChars=${prompt.length}")
+        logLong("request.prompt.message requestId=$requestId", prompt)
         val contextImageBytes = decodeContextImageDataUrl(requestId, contextImageDataUrl)
-        val activeModelPath = path ?: synchronized(ENGINE_LOCK) { sharedModelPath } ?: ""
         postStatus("ready")
         executor.execute {
             var contextImageFile: File? = null
-            var selectionImageFile: File? = null
-            var turnConversation: Conversation? = null
+            var conversation: Conversation? = null
             var finalStatus = "ready"
             try {
-                val roleplay = roleplayPayload(payloadJson)
-                val sessionId = roleplay.optString("sessionId", "default").ifBlank { "default" }.take(120)
-                turnConversation = roleplayConversation(
-                    activeEngine,
-                    activeModelPath,
-                    sessionId,
-                    roleplay.optBoolean("resetChat", false)
-                )
-                val conversation = turnConversation!!
-
-                val battlefieldPrompt = promptField(roleplay, "battlefieldPrompt", fallbackBattlefieldPrompt(payloadJson))
-                val opinionPrompt = promptField(roleplay, "opinionPrompt", fallbackOpinionPrompt())
-                val doctrinePrompt = promptField(roleplay, "doctrinePrompt", fallbackDoctrinePrompt())
-                val actionPrompt = promptField(roleplay, "actionPrompt", fallbackActionPrompt())
-                val summaryPrompt = promptField(roleplay, "summaryPrompt", fallbackSummaryPrompt())
-
-                val battlefieldContents = if (contextImageBytes != null) {
+                conversation = activeEngine.createConversation(conversationConfig())
+                val contents = if (contextImageBytes != null) {
                     contextImageFile = writeContextImageFile(requestId, contextImageBytes, "context_image_file")
                     Contents.of(
                         com.google.ai.edge.litertlm.Content.ImageFile(contextImageFile!!.absolutePath),
-                        com.google.ai.edge.litertlm.Content.Text(battlefieldPrompt)
+                        com.google.ai.edge.litertlm.Content.Text(prompt)
                     )
                 } else {
-                    Contents.of(battlefieldPrompt)
+                    Contents.of(prompt)
                 }
-                logLong("request.prompt.battlefield requestId=$requestId", battlefieldPrompt)
-                val battlefield = sendRoleplayPhase(requestId, conversation, "battlefield", battlefieldContents)
-                noteConversationMessages(2)
-
-                logLong("request.prompt.opinion requestId=$requestId", opinionPrompt)
-                val opinion = sendRoleplayPhase(requestId, conversation, "opinion", Contents.of(opinionPrompt))
-                noteConversationMessages(2)
-
-                logLong("request.prompt.doctrine requestId=$requestId", doctrinePrompt)
-                val doctrine = sendRoleplayPhase(requestId, conversation, "doctrine", Contents.of(doctrinePrompt))
-                noteConversationMessages(2)
-
-                val selectionImageBytes = requestSelectionImageBytes(requestId)
-                val actionContents = if (selectionImageBytes != null) {
-                    selectionImageFile = writeContextImageFile(requestId, selectionImageBytes, "selection_image_file")
-                    Contents.of(
-                        com.google.ai.edge.litertlm.Content.ImageFile(selectionImageFile!!.absolutePath),
-                        com.google.ai.edge.litertlm.Content.Text(actionPrompt)
-                    )
-                } else {
-                    Contents.of(actionPrompt)
-                }
-                logLong("request.prompt.action requestId=$requestId", actionPrompt)
-                val action = sendRoleplayPhase(requestId, conversation, "action", actionContents)
-                noteConversationMessages(2)
-
-                logLong("request.prompt.summary requestId=$requestId", summaryPrompt)
-                val summary = sendRoleplayPhase(requestId, conversation, "summary", Contents.of(summaryPrompt))
-                noteConversationMessages(2)
-
+                val response = sendModelPhase(requestId, conversation, "message", contents)
                 val elapsedMs = System.currentTimeMillis() - startedAt
-                val response = JSONObject()
-                    .put("mode", "roleplay")
-                    .put("battlefield", battlefield)
-                    .put("reply", opinion)
-                    .put("doctrineWord", doctrine)
-                    .put("actionWord", action)
-                    .put("summary", summary)
-                    .put("elapsedMs", elapsedMs)
-                    .put("conversationMessages", synchronized(ENGINE_LOCK) { sharedConversationMessages })
-                    .toString()
                 logLine("response.ready requestId=$requestId responseChars=${response.length} elapsedMs=$elapsedMs")
                 logLong("response.raw requestId=$requestId", response)
                 postResponse(requestId, response)
-                releaseRoleplayConversation(turnConversation)
-                turnConversation = null
             } catch (t: Throwable) {
                 synchronized(ENGINE_LOCK) {
                     sharedLastError = t.message ?: t.javaClass.simpleName
@@ -334,27 +253,14 @@ class LocalGemmaBridge(
                 postError(requestId, t.message ?: t.javaClass.simpleName)
                 finalStatus = "error"
             } finally {
-                pendingSelectionImages.remove(requestId)
-                if (finalStatus != "ready") releaseRoleplayConversation(turnConversation)
+                closeConversationQuietly(conversation)
                 try { contextImageFile?.delete() } catch (_: Throwable) {}
-                try { selectionImageFile?.delete() } catch (_: Throwable) {}
                 synchronized(ENGINE_LOCK) {
                     sharedBusy = false
                 }
                 postStatus(finalStatus)
             }
         }
-    }
-
-    @JavascriptInterface
-    fun provideSelectionImage(requestId: String, contextImageDataUrl: String?) {
-        val pending = pendingSelectionImages.remove(requestId)
-        if (pending == null) {
-            logLine("request.selection_image_late requestId=$requestId chars=${contextImageDataUrl?.length ?: 0}")
-            return
-        }
-        pending.dataUrl.set(contextImageDataUrl)
-        pending.latch.countDown()
     }
 
     @JavascriptInterface
@@ -493,101 +399,17 @@ class LocalGemmaBridge(
 
     private fun conversationConfig(): ConversationConfig = ConversationConfig()
 
-    private fun roleplayPayload(payloadJson: String): JSONObject {
-        return try {
-            val root = JSONObject(payloadJson)
-            root.optJSONObject("roleplay") ?: JSONObject()
-        } catch (t: Throwable) {
-            logError("request.payload_parse_error", t)
-            JSONObject()
+    private fun cleanPrompt(raw: String): String {
+        val value = raw.replace('\u0000', ' ').trim()
+        val fallback = "You are Gemma, the red enemy general. Reply in exactly two lines: a short message to the player, then one emotion word."
+        val prompt = if (value.isBlank()) fallback else value
+        if (prompt.length > MAX_PROMPT_CHARS) {
+            logLine("request.prompt_truncated promptChars=${prompt.length} capped=$MAX_PROMPT_CHARS")
         }
+        return prompt.take(MAX_PROMPT_CHARS)
     }
 
-    private fun promptField(roleplay: JSONObject, key: String, fallback: String): String {
-        val value = roleplay.optString(key, "").ifBlank { fallback }
-        val trimmed = value.take(MAX_ROLEPLAY_PROMPT_CHARS)
-        if (value.length > MAX_ROLEPLAY_PROMPT_CHARS) {
-            logLine("request.prompt_truncated key=$key promptChars=${value.length} capped=$MAX_ROLEPLAY_PROMPT_CHARS")
-        }
-        return trimmed
-    }
-
-    private fun fallbackBattlefieldPrompt(payloadJson: String): String {
-        val trimmed = payloadJson.take(MAX_PROMPT_PAYLOAD_CHARS)
-        if (payloadJson.length > MAX_PROMPT_PAYLOAD_CHARS) {
-            logLine("request.payload_truncated payloadChars=${payloadJson.length} promptPayloadChars=$MAX_PROMPT_PAYLOAD_CHARS")
-        }
-        return "Gemma, you are the red enemy general in this Age of War match. Use this user-provided game state as context, no JSON needed. Describe the battle from your perspective before choosing a move.\n$trimmed"
-    }
-
-    private fun fallbackOpinionPrompt(): String =
-        "Tell me your opinion of this battle as my opponent. Keep it in character, concise, and do not use JSON."
-
-    private fun fallbackDoctrinePrompt(): String =
-        "Choose your persistent battle doctrine. Reply with only one word: balanced."
-
-    private fun fallbackActionPrompt(): String =
-        "Your turn please. Reply with only one word: none."
-
-    private fun fallbackSummaryPrompt(): String =
-        "Create a compact summary for next turn by blending the previous summary with the current battle, chat, player identity/preferences, visible reply, doctrine, and chosen action. No JSON."
-
-    private fun roleplayConversation(engine: Engine, modelPath: String, sessionId: String, resetChat: Boolean): Conversation {
-        var previous: Conversation? = null
-        synchronized(ENGINE_LOCK) {
-            val needsReset = resetChat ||
-                sharedConversation == null ||
-                sharedConversationModelPath != modelPath ||
-                sharedConversationSession != sessionId ||
-                sharedConversationMessages + ROLEPLAY_TURN_MESSAGE_BUDGET > MAX_CONVERSATION_MESSAGES
-            if (needsReset) {
-                previous = sharedConversation
-                sharedConversation = null
-                sharedConversationModelPath = null
-                sharedConversationSession = null
-                sharedConversationMessages = 0
-            }
-        }
-        closeConversationQuietly(previous)
-
-        synchronized(ENGINE_LOCK) {
-            val existing = sharedConversation
-            if (existing != null && existing.isAlive) return existing
-        }
-
-        val created = engine.createConversation(conversationConfig())
-        synchronized(ENGINE_LOCK) {
-            sharedConversation = created
-            sharedConversationModelPath = modelPath
-            sharedConversationSession = sessionId
-            sharedConversationMessages = 0
-        }
-        logLine("conversation.created session=$sessionId modelPath=${modelPath.takeLast(48)}")
-        return created
-    }
-
-    private fun noteConversationMessages(count: Int) {
-        synchronized(ENGINE_LOCK) {
-            sharedConversationMessages += count
-        }
-    }
-
-    private fun releaseRoleplayConversation(conversation: Conversation?) {
-        if (conversation == null) return
-        var shouldClose = false
-        synchronized(ENGINE_LOCK) {
-            if (sharedConversation === conversation) {
-                sharedConversation = null
-                sharedConversationModelPath = null
-                sharedConversationSession = null
-                sharedConversationMessages = 0
-                shouldClose = true
-            }
-        }
-        if (shouldClose) closeConversationQuietly(conversation)
-    }
-
-    private fun sendRoleplayPhase(
+    private fun sendModelPhase(
         requestId: String,
         conversation: Conversation,
         phase: String,
@@ -621,7 +443,7 @@ class LocalGemmaBridge(
             }
         }, emptyMap<String, Any>())
 
-        if (!latch.await(ROLEPLAY_PHASE_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+        if (!latch.await(MODEL_RESPONSE_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
             try { conversation.cancelProcess() } catch (_: Throwable) {}
             throw RuntimeException("Gemma timed out during $phase")
         }
@@ -636,25 +458,6 @@ class LocalGemmaBridge(
         return message.contents.contents
             .filterIsInstance<com.google.ai.edge.litertlm.Content.Text>()
             .joinToString("") { it.text }
-    }
-
-    private fun requestSelectionImageBytes(requestId: String): ByteArray? {
-        if (!ENABLE_IMAGE_INPUT) return null
-        val pending = SelectionImageRequest(CountDownLatch(1), AtomicReference<String?>(null))
-        pendingSelectionImages[requestId] = pending
-        activity.runOnUiThread {
-            webView.evaluateJavascript(
-                "window.onLocalGemmaSelectionImageRequest && window.onLocalGemmaSelectionImageRequest(${JSONObject.quote(requestId)})",
-                null
-            )
-        }
-        val received = pending.latch.await(SELECTION_IMAGE_TIMEOUT_MS, TimeUnit.MILLISECONDS)
-        pendingSelectionImages.remove(requestId)
-        if (!received) {
-            logLine("request.selection_image requestId=$requestId timeoutMs=$SELECTION_IMAGE_TIMEOUT_MS")
-            return null
-        }
-        return decodeContextImageDataUrl(requestId, pending.dataUrl.get(), "selection_image")
     }
 
     private fun decodeContextImageDataUrl(requestId: String, dataUrl: String?, label: String = "context_image"): ByteArray? {

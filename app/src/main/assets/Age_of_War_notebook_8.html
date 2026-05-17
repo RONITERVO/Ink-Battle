@@ -834,7 +834,7 @@
             }
         }
 
-        #director-tool-log {
+        #director-signal-log {
             min-height: 2.35vmin;
             max-height: 2.35vmin;
             display: flex;
@@ -845,7 +845,7 @@
             margin-top: 0.25vmin;
         }
 
-        .director-tool-msg {
+        .director-signal-msg {
             max-width: 100%;
             color: hsl(var(--muted-foreground) / 0.86);
             font-family: 'Patrick Hand', 'Comic Sans MS', 'Segoe Print', cursive;
@@ -1088,7 +1088,7 @@
                 min-height: 5vmin;
             }
 
-            #director-tool-log {
+            #director-signal-log {
                 min-height: 2.5vmin;
                 max-height: 2.5vmin;
             }
@@ -1251,7 +1251,7 @@
                         <div class="director-writing ai-writing">
                             <div id="director-memory"></div>
                             <div id="director-log"></div>
-                            <div id="director-tool-log"></div>
+                            <div id="director-signal-log"></div>
                             <div id="gemma-card" class="hidden">
                                 <span id="gemma-status"></span>
                                 <button id="btn-gemma-install" onclick="installLocalGemma()">Get</button>
@@ -1715,14 +1715,13 @@
             }
         };
 
-        // --- GEMMA TURN MEMORY AND VISION CONTEXT ---
+        // --- GEMMA EMOTION MEMORY AND VISION CONTEXT ---
         const GemmaMemory = {
             key: 'aow_sketch_gemma_memory_v1',
-            version: 5,
+            version: 6,
             maxRecentTurns: 6,
             maxActions: 10,
             maxEvents: 12,
-            validDoctrines: ['balanced', 'rush', 'tech', 'turtle', 'counter', 'bait', 'allin', 'stall'],
             data: null,
             init() {
                 let stored = null;
@@ -1740,7 +1739,8 @@
                     matchId: '',
                     difficulty: diffKey || 'normal',
                     summary: 'No active match yet.',
-                    doctrine: 'balanced',
+                    emotion: 'Centered',
+                    emotionHistory: [],
                     openLoops: [],
                     recentTurns: [],
                     actionLedger: [],
@@ -1754,18 +1754,16 @@
                 if (!raw || typeof raw !== 'object') return data;
                 data.matchId = this.cleanLine(raw.matchId, 80);
                 data.summary = this.cleanLine(raw.summary || data.summary, 900);
-                data.doctrine = this.normalizeDoctrine(raw.doctrine);
+                data.emotion = normalizeGemmaEmotionWord(raw.emotion || data.emotion);
+                data.emotionHistory = this.normalizeList(raw.emotionHistory, 8, 40)
+                    .map(word => normalizeGemmaEmotionWord(word))
+                    .filter(Boolean);
                 data.openLoops = this.normalizeList(raw.openLoops, 5, 120);
                 data.recentTurns = this.normalizeTurnList(raw.recentTurns);
                 data.actionLedger = this.normalizeActionList(raw.actionLedger);
                 data.eventLog = this.normalizeList(raw.eventLog, this.maxEvents, 180);
                 data.turnCount = Number.isFinite(Number(raw.turnCount)) ? Math.max(0, Number(raw.turnCount)) : 0;
                 return data;
-            },
-            normalizeDoctrine(value) {
-                let clean = String(value || '').toLowerCase().replace(/[^a-z]/g, '').trim();
-                if (clean === 'allin' || clean === 'all-in') clean = 'allin';
-                return this.validDoctrines.includes(clean) ? clean : 'balanced';
             },
             normalizeList(value, maxItems, maxLen) {
                 return (Array.isArray(value) ? value : [])
@@ -1786,7 +1784,7 @@
             normalizeActionList(value) {
                 return (Array.isArray(value) ? value : []).map(action => ({
                     time: Math.round(Number(action && action.time) || 0),
-                    tool: this.cleanLine(action && action.tool, 40) || 'none',
+                    signal: this.cleanLine(action && action.signal, 40) || 'none',
                     applied: !!(action && action.applied),
                     reason: this.cleanLine(action && action.reason, 90),
                     say: this.cleanLine(action && action.say, 120)
@@ -1795,7 +1793,7 @@
             start(diffKey) {
                 this.data = this.freshData(diffKey);
                 this.data.matchId = `m${Date.now()}_${Math.floor(Math.random() * 10000)}`;
-                this.data.summary = `${(DIFFICULTY_SETTINGS[diffKey] || {}).name || diffKey} match opened in Stone Age. Current doctrine balanced until Gemma chooses a new battle doctrine. Track current ages from snapshot.`;
+                this.data.summary = `${(DIFFICULTY_SETTINGS[diffKey] || {}).name || diffKey} match opened in Stone Age. Gemma emotion starts Centered; the offline engine owns all tactical decisions.`;
                 this.save();
                 this.updateInputSuggestion();
             },
@@ -1803,7 +1801,8 @@
                 this.data = this.freshData(currentDifficulty);
                 this.data.matchId = `m${Date.now()}_${Math.floor(Math.random() * 10000)}`;
                 this.data.summary = 'Player cleared Gemma turn memory for this match.';
-                this.data.doctrine = 'balanced';
+                this.data.emotion = 'Centered';
+                this.data.emotionHistory = [];
                 this.save();
                 this.updateInputSuggestion();
             },
@@ -1846,68 +1845,35 @@
                 this.recordEvent(clean);
                 this.save();
             },
-            recordModel(turn, outcome) {
-                let say = this.cleanLine(turn && turn.say ? turn.say : '', 180);
-                let action = outcome || {};
-                let tool = action.requestedTool || ((turn && turn.action && turn.action.tool) || 'none');
-                let reason = this.cleanLine((turn && turn.action && turn.action.reason) || '', 90);
-                this.data.turnCount = (this.data.turnCount || 0) + 1;
-                this.data.openLoops = this.data.openLoops.filter(loop => !String(loop).startsWith('Answer player:'));
-                this.pushTurn({
-                    role: 'model',
-                    time: Math.round(globalTime),
-                    ages: this.ageLine(),
-                    text: say || '(no line)',
-                    action: `${tool}:${action.applied ? 'applied' : 'blocked'}`,
-                    reason
-                });
-                this.data.actionLedger.push({
-                    time: Math.round(globalTime),
-                    tool,
-                    applied: !!action.applied,
-                    reason,
-                    say
-                });
-                this.data.actionLedger = this.data.actionLedger.slice(-this.maxActions);
-                this.recordEvent(`Gemma ${action.applied ? 'applied' : 'could not apply'} ${tool}${reason ? ` because ${reason}` : ''}`);
-                let patch = turn && (turn.memoryPatch || turn.memory || turn.turnMemory);
-                if (!this.applyMemoryPatch(patch)) this.updateLocalDigest('model_turn');
-                this.save();
-                this.updateInputSuggestion();
-            },
-            recordRoleplay(result, selectedChoice, selectedDoctrine, outcome) {
+            recordEmotion(result, outcome) {
                 if (!this.data) this.init();
                 let say = this.cleanLine(result && result.reply ? result.reply : '', 180);
-                let summary = this.cleanLine(result && result.summary ? result.summary : '', 700);
-                let choice = selectedChoice || {};
-                let doctrine = this.normalizeDoctrine(selectedDoctrine && selectedDoctrine.token ? selectedDoctrine.token : (result && result.doctrineWord));
                 let action = outcome || {};
-                let tool = action.requestedTool || choice.tool || 'none';
-                let token = this.cleanLine(choice.token || (result && result.actionWord) || tool, 40);
-                let reason = this.cleanLine(choice.reason || `Gemma chose order ${token || tool}`, 90);
+                let emotion = normalizeGemmaEmotionWord((result && result.emotion) || action.emotion || this.data.emotion || 'Centered');
                 this.data.turnCount = (this.data.turnCount || 0) + 1;
-                this.data.doctrine = doctrine;
+                this.data.emotion = emotion;
+                this.data.emotionHistory.push(emotion);
+                this.data.emotionHistory = this.data.emotionHistory.slice(-8);
                 this.data.openLoops = this.data.openLoops.filter(loop => !String(loop).startsWith('Answer player:'));
                 this.pushTurn({
                     role: 'model',
                     time: Math.round(globalTime),
                     ages: this.ageLine(),
                     text: say || '(no visible reply)',
-                    action: `${doctrine}/${tool}:${action.applied ? 'applied' : 'blocked'}`,
-                    reason
+                    action: `emotion:${emotion}`,
+                    reason: action.reason || 'Gemma emotional state'
                 });
                 this.data.actionLedger.push({
                     time: Math.round(globalTime),
-                    tool,
-                    applied: !!action.applied,
-                    reason,
+                    signal: `emotion:${emotion}`,
+                    applied: true,
+                    reason: action.reason || 'Gemma emotional state',
                     say,
-                    doctrine
+                    emotion
                 });
                 this.data.actionLedger = this.data.actionLedger.slice(-this.maxActions);
-                this.recordEvent(`Gemma doctrine ${doctrine}, order ${action.applied ? 'applied' : 'ignored'} ${token || tool}${reason ? ` because ${reason}` : ''}`);
-                if (summary) this.data.summary = this.cleanLine(summary, 900);
-                else this.updateLocalDigest('roleplay_turn');
+                this.recordEvent(`Gemma felt ${emotion}${say ? ` and said: ${say}` : ''}`);
+                this.updateLocalDigest('emotion_turn');
                 this.save();
                 this.updateInputSuggestion();
             },
@@ -1935,9 +1901,9 @@
             },
             updateLocalDigest(reason) {
                 let pressure = (DirectorMemory.data.agreements || {}).pressure || 'balanced';
-                let doctrine = this.data.doctrine || 'balanced';
+                let emotion = this.data.emotion || 'Centered';
                 let playerTurns = this.data.recentTurns.filter(t => t.role === 'player').slice(-2).map(t => t.text);
-                let actionLine = this.data.actionLedger.slice(-5).map(a => `${a.tool}:${a.applied ? 'applied' : 'blocked'}`).join(', ');
+                let emotionLine = this.data.emotionHistory.slice(-5).join(', ');
                 let highSignal = this.data.eventLog
                     .filter(line => !/^Fallback action spawn_unit/i.test(line))
                     .slice(-5)
@@ -1945,9 +1911,9 @@
                 let parts = [
                     `${this.data.difficulty || currentDifficulty} match at ${this.ageLine() || 'unknown ages'}.`,
                     `Pressure plan: ${pressure}.`,
-                    `Gemma doctrine: ${doctrine}.`,
+                    `Gemma emotion: ${emotion}.`,
+                    emotionLine ? `Recent emotions: ${emotionLine}.` : '',
                     playerTurns.length ? `Recent player: ${playerTurns.join(' / ')}.` : '',
-                    actionLine ? `Recent Gemma tools: ${actionLine}.` : '',
                     highSignal
                 ].filter(Boolean);
                 this.data.summary = this.cleanLine(parts.join(' '), 900);
@@ -1965,6 +1931,67 @@
                 input.placeholder = '...';
             }
         };
+
+        const GEMMA_EMOTION_WORDS = [
+            'Accepting', 'Open', 'Calm', 'Centered', 'Content', 'Fulfilled', 'Patient', 'Peaceful', 'Present',
+            'Relaxed', 'Serene', 'Trusting', 'Aliveness', 'Joy', 'Amazed', 'Awe', 'Bliss', 'Delighted',
+            'Eager', 'Ecstatic', 'Enchanted', 'Energized', 'Engaged', 'Enthusiastic', 'Excited', 'Free',
+            'Happy', 'Inspired', 'Invigorated', 'Lively', 'Passionate', 'Playful', 'Radiant', 'Refreshed',
+            'Rejuvenated', 'Renewed', 'Satisfied', 'Thrilled', 'Vibrant', 'Angry', 'Annoyed', 'Agitated',
+            'Aggravated', 'Bitter', 'Contempt', 'Cynical', 'Disdain', 'Disgruntled', 'Disturbed', 'Edgy',
+            'Exasperated', 'Frustrated', 'Furious', 'Grouchy', 'Hostile', 'Impatient', 'Irritated', 'Irate',
+            'Moody', 'On edge', 'Outraged', 'Pissed', 'Resentful', 'Upset', 'Vindictive', 'Courageous',
+            'Powerful', 'Adventurous', 'Brave', 'Capable', 'Confident', 'Daring', 'Determined', 'Grounded',
+            'Proud', 'Strong', 'Worthy', 'Valiant', 'Connected', 'Loving', 'Affectionate', 'Caring',
+            'Compassion', 'Empathy', 'Safe', 'Warm', 'Curious', 'Exploring', 'Fascinated', 'Interested',
+            'Intrigued', 'Involved', 'Stimulated', 'Despair', 'Sad', 'Anguish', 'Depressed', 'Despondent',
+            'Disappointed', 'Discouraged', 'Forlorn', 'Gloomy', 'Grief', 'Heartbroken', 'Hopeless', 'Lonely',
+            'Longing', 'Melancholy', 'Sorrow', 'Teary', 'Unhappy', 'Weary', 'Yearning', 'Disconnected',
+            'Numb', 'Aloof', 'Bored', 'Confused', 'Distant', 'Empty', 'Indifferent', 'Isolated', 'Lethargic',
+            'Listless', 'Removed', 'Resistant', 'Shut Down', 'Uneasy', 'Withdrawn', 'Embarrassed', 'Shame',
+            'Ashamed', 'Humiliated', 'Inhibited', 'Mortified', 'Self-conscious', 'Useless', 'Weak',
+            'Worthless', 'Fear', 'Afraid', 'Anxious', 'Apprehensive', 'Frightened', 'Hesitant', 'Nervous',
+            'Panic', 'Paralyzed', 'Scared', 'Terrified', 'Worried', 'Fragile', 'Helpless', 'Sensitive',
+            'Grateful', 'Appreciative', 'Blessed', 'Fortunate', 'Grace', 'Humbled', 'Lucky', 'Moved',
+            'Thankful', 'Touched', 'Guilt', 'Regret', 'Remorseful', 'Sorry', 'Hopeful', 'Encouraged',
+            'Expectant', 'Optimistic', 'Powerless', 'Impotent', 'Incapable', 'Resigned', 'Trapped',
+            'Victim', 'Tender', 'Reflective', 'Self-loving', 'Vulnerable', 'Stressed', 'Tense',
+            'Burned out', 'Cranky', 'Depleted', 'Exhausted', 'Frazzled', 'Overwhelm', 'Rattled', 'Rejecting',
+            'Restless', 'Shaken', 'Tight', 'Worn out', 'Unsettled', 'Doubt', 'Concerned', 'Dissatisfied',
+            'Perplexed', 'Questioning', 'Reluctant', 'Shocked', 'Skeptical', 'Suspicious', 'Ungrounded',
+            'Unsure', 'Achy', 'Airy', 'Blocked', 'Breathless', 'Bruised', 'Burning', 'Buzzy', 'Clammy',
+            'Clenched', 'Cold', 'Constricted', 'Contained', 'Contracted', 'Dizzy', 'Drained', 'Dull',
+            'Electric', 'Expanded', 'Flowing', 'Fluid', 'Fluttery', 'Frozen', 'Full', 'Gentle', 'Hard',
+            'Heavy', 'Hollow', 'Hot', 'Icy', 'Itchy', 'Jumpy', 'Knotted', 'Light', 'Loose', 'Nauseous',
+            'Pain', 'Pounding', 'Prickly', 'Pulsing', 'Queasy', 'Radiating', 'Releasing', 'Rigid', 'Settled',
+            'Shaky', 'Shivery', 'Slow', 'Smooth', 'Soft', 'Sore', 'Spacey', 'Spacious', 'Sparkly', 'Stiff',
+            'Still', 'Suffocated', 'Sweaty', 'Throbbing', 'Tingling', 'Trembly', 'Twitchy', 'Vibrating',
+            'Wobbly', 'Wooden'
+        ];
+
+        const GEMMA_EMOTION_LOOKUP = (() => {
+            let lookup = Object.create(null);
+            GEMMA_EMOTION_WORDS.forEach(word => {
+                lookup[String(word).toLowerCase().replace(/[^a-z0-9]+/g, '')] = word;
+            });
+            return lookup;
+        })();
+
+        function normalizeGemmaEmotionWord(value) {
+            let key = String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+            return GEMMA_EMOTION_LOOKUP[key] || 'Centered';
+        }
+
+        function shuffledGemmaEmotionWords() {
+            let out = GEMMA_EMOTION_WORDS.slice();
+            for (let i = out.length - 1; i > 0; i--) {
+                let j = Math.floor(Math.random() * (i + 1));
+                let tmp = out[i];
+                out[i] = out[j];
+                out[j] = tmp;
+            }
+            return out;
+        }
 
         function normalizeGemmaRecentUserMessage(value, maxLen = 120) {
             return String(value || '').replace(/\s+/g, ' ').trim().slice(0, maxLen);
@@ -2082,7 +2109,8 @@
                 `Closest player threat: ${closest}`,
                 `Front gap ${snapshot.frontGap} px`,
                 `Pressure pact: ${snapshot.pressure || 'balanced'}`,
-                `Gemma doctrine: ${snapshot.doctrine || 'balanced'}`,
+                `Gemma emotion: ${snapshot.emotion || 'Centered'}`,
+                `Engine plan: ${snapshot.engineOrder || 'adaptive'}`,
                 `Engine order: ${snapshot.engineOrder || 'adaptive'}`,
                 `Lane pressure ${Math.round(snapshot.lanePressure)}`
             ];
@@ -2316,192 +2344,81 @@
             return String(value || '').replace(/\s+/g, ' ').trim().slice(0, maxLen);
         }
 
-        function buildGemmaActionChoices(ctx) {
-            let agreements = (ctx && ctx.agreements) || {};
-            let choices = [
-                {
-                    token: 'press',
-                    order: 'press',
-                    label: 'temporary order: pressure the lane with live legal spending',
-                    reason: 'Gemma ordered lane pressure'
-                },
-                {
-                    token: 'defend',
-                    order: 'defend',
-                    label: 'temporary order: stabilize the Gemma base first',
-                    reason: 'Gemma ordered defense'
-                },
-                {
-                    token: 'counter',
-                    order: 'counter',
-                    label: 'temporary order: adapt unit mix to the player army',
-                    reason: 'Gemma ordered counterplay'
-                },
-                {
-                    token: 'tech',
-                    order: 'tech',
-                    label: 'temporary order: favor economy, upgrades, and age timing when safe',
-                    reason: 'Gemma ordered tech timing'
-                },
-                {
-                    token: 'swarm',
-                    order: 'swarm',
-                    label: 'temporary order: spend on cheap bodies and constant contact',
-                    reason: 'Gemma ordered swarm pressure'
-                },
-                {
-                    token: 'heavy',
-                    order: 'heavy',
-                    label: 'temporary order: save for and spend on power units',
-                    reason: 'Gemma ordered heavy timing'
-                },
-                {
-                    token: 'hold',
-                    order: 'hold',
-                    label: 'temporary order: spend only to answer danger, otherwise wait',
-                    reason: 'Gemma ordered a hold'
-                }
-            ];
-            if (!agreements.noTurrets) {
-                choices.push({
-                    token: 'fortify',
-                    order: 'fortify',
-                    label: 'temporary order: base hp and turrets when useful',
-                    reason: 'Gemma ordered fortification'
-                });
-            }
-            if (!agreements.noSpecials) {
-                choices.push({
-                    token: 'special',
-                    order: 'special',
-                    label: 'temporary order: look for a live special-ability timing',
-                    reason: 'Gemma ordered special timing'
-                });
-            }
-            choices.push({
-                token: 'none',
-                order: 'none',
-                label: 'no override; let the realtime engine continue its own plan',
-                reason: 'Gemma left the engine plan unchanged'
-            });
-            let seen = Object.create(null);
-            return choices.filter(choice => {
-                if (!choice.token || seen[choice.token]) return false;
-                seen[choice.token] = true;
-                return true;
-            });
-        }
-
-        function buildGemmaDoctrineChoices() {
-            return [
-                { token: 'balanced', label: 'mixed spending and normal lane control' },
-                { token: 'rush', label: 'constant unit pressure and faster attacks' },
-                { token: 'tech', label: 'prefer economy, upgrades, and age progress when safe' },
-                { token: 'turtle', label: 'defend base, turrets, hp, and stabilizing units' },
-                { token: 'counter', label: 'answer the player army type and punish overextension' },
-                { token: 'bait', label: 'spend lightly, draw player forward, then punish danger zone' },
-                { token: 'allin', label: 'aggressive push now, accept weaker economy' },
-                { token: 'stall', label: 'delay, survive, and buy time for income or age timing' }
-            ];
-        }
-
-        function buildGemmaRoleplayPrompts(ctx) {
+        function buildGemmaEmotionPrompt(ctx) {
             let snapshot = ctx.snapshot;
             let enemyAgeData = AGES[gameState.enemy.age];
             let playerAgeData = AGES[gameState.player.age];
             let compactSummary = GemmaMemory.compactSummary(snapshot, ctx.reason, ctx.relayComment ? ctx.relayComment.text : ctx.cleanExtraMessage);
-            let previousSummary = gemmaPromptLine((GemmaMemory.data && GemmaMemory.data.summary) || 'No previous summary.', 900);
             let latestPlayer = gemmaPromptLine(ctx.relayComment ? ctx.relayComment.text : ctx.cleanExtraMessage, 160);
-            let optionTokens = ctx.actionChoices.map(choice => choice.token).join(', ');
-            let optionLines = ctx.actionChoices.map(choice => `${choice.token} = ${choice.label}`).join('\n');
-            let doctrineTokens = ctx.doctrineChoices.map(choice => choice.token).join(', ');
-            let doctrineLines = ctx.doctrineChoices.map(choice => `${choice.token} = ${choice.label}`).join('\n');
-            let currentDoctrine = (GemmaMemory.data && GemmaMemory.data.doctrine) || 'balanced';
-            let battlefieldPrompt = [
-                'Gemma, I am giving you the current self-labeled battlefield image.',
-                'You are Gemma, the red enemy general on the right side. I am the blue player on the left side.',
-                'The image itself explains sides, attack directions, bases, hit lines, front lines, danger zone, unit markers, HP, gold, unit counts, and pressure. Read its labels first.',
-                `Current ages for orientation: you are red Gemma in ${enemyAgeData.name}; the blue player is in ${playerAgeData.name}.`,
-                `Current Gemma battle doctrine before your next choice: ${currentDoctrine}.`,
-                `Current realtime engine order before your next choice: ${snapshot.engineOrder || 'adaptive'}.`,
-                `Current pacts and notes: ${DirectorMemory.tags().join(', ')}.`,
-                'Act as war general for your side. Describe from your perspective the most detailed current war status you can, based on the image labels. The realtime engine is already fighting while you think, so do not choose an order yet. Do not use JSON.'
+            let emotions = shuffledGemmaEmotionWords();
+            let emotionLine = emotions.join(', ');
+            let playerUnitLine = snapshot.playerProfile || `${snapshot.playerUnits} units: ${snapshot.playerMelee} melee, ${snapshot.playerRanged} ranged, ${snapshot.playerHeavy} heavy`;
+            let enemyUnitLine = snapshot.enemyProfile || `${snapshot.enemyUnits} units: ${snapshot.enemyMelee} melee, ${snapshot.enemyRanged} ranged, ${snapshot.enemyHeavy} heavy`;
+            let tacticalLine = [
+                `front gap ${snapshot.frontGap}px`,
+                `threats near your base ${snapshot.threatCount}`,
+                `closest threat ${Math.round(snapshot.closestThreatDist)}px`,
+                `engine plan ${snapshot.engineOrder || 'adaptive'}`
+            ].join(', ');
+            let prompt = [
+                'You are Gemma, the red/right-side enemy general in this offline Age of War match.',
+                'The attached image is a self-labeled tactical map. Read the image first: it shows sides, attack directions, bases, hit lines, front lines, danger zone, unit markers, HP, gold, unit counts, and pressure.',
+                'The game engine already controls every purchase and tactic while you think. Do not choose gameplay commands, upgrades, units, or JSON. Your only job is to sound like the human opponent and expose one emotion word for the engine to feel from.',
+                `Current ages: you are ${enemyAgeData.name}; the blue player is ${playerAgeData.name}.`,
+                `Your HP ${Math.round(snapshot.enemyHpRatio * 100)}%, gold ${Math.floor(snapshot.enemyGold)}. Player HP ${Math.round(snapshot.playerHpRatio * 100)}%, gold ${Math.floor(snapshot.playerGold)}.`,
+                `Player army: ${playerUnitLine}. Your army: ${enemyUnitLine}.`,
+                `Tactical pressure: ${tacticalLine}.`,
+                `Pacts and player preferences: ${DirectorMemory.tags().join(', ')}.`,
+                `Short memory: ${compactSummary}`,
+                latestPlayer ? `Latest player message to answer: "${latestPlayer}"` : 'No new player chat this turn.',
+                'Output exactly two non-empty lines and nothing else.',
+                'Line 1: a direct message to the human player, one or two short sentences, in character as Gemma.',
+                'Line 2: one exact emotion word from this randomized list:',
+                emotionLine
             ].join('\n\n');
-            let opinionPrompt = [
-                '--- COMPACT SUMMARY OF PREVIOUS CHAT ---',
-                compactSummary,
-                '--- END OF COMPACT SUMMARY ---',
-                latestPlayer ? `Latest player message to answer: "${latestPlayer}"` : 'The player did not send a new message this turn.',
-                'Please tell your opinion of this to me as your opponent. This is the visible chat reply. Keep it to one or two strong sentences, in character, and do not use JSON.'
-            ].join('\n');
-            let doctrinePrompt = [
-                'Choose your persistent battle doctrine for the next stretch of this match.',
-                'This doctrine will steer my fast deterministic army spending between Gemma turns, so choose the strategic plan, not just the immediate click.',
-                `Reply with only one word from these exact options: ${doctrineTokens}.`,
-                'Doctrine meanings:',
-                doctrineLines,
-                'Respect player pacts. If the player asked for mercy, do not choose allin or rush unless your base is seriously threatened. No sentence, no JSON.'
-            ].join('\n');
-            let actionPrompt = [
-                'Your turn please. Because your answer can arrive about one minute late, do not choose a single purchase or click.',
-                'I am attaching a fresh tactical image for this order phase when the device can capture one. Compare it to your earlier battlefield status and trust the newer image for changed unit positions.',
-                'Choose one temporary high-level battle order for the realtime AI engine. The engine will interpret it against the live game state when this answer arrives.',
-                'Use the battle status and the doctrine you just chose, but answer with an order option word, not a doctrine word or tool name.',
-                `Reply with only one word from these exact order options: ${optionTokens}.`,
-                'Order meanings:',
-                optionLines,
-                'If your intended order is not listed or a pact blocks it, reply none. No sentence, no JSON.'
-            ].join('\n');
-            let summaryPrompt = [
-                'Write the compact summary text for the next turn. This exact text will be the only model memory I keep.',
-                'Blend the previous compact summary with this current chat turn and the battlefield status you just described.',
-                'Keep stable facts about who the player/user is, their preferences, important pacts, and the running battle story.',
-                'Replace stale tactical details with the current battle state, current player request, your visible reply, the doctrine word you chose, and the temporary order word you chose.',
-                'If your order answer was not one of the listed order option words, remember the order as none.',
-                `Previous compact summary to blend from: ${previousSummary}`,
-                latestPlayer ? `Current player chat/request: ${latestPlayer}` : 'Current player chat/request: none this turn.',
-                'Return only the summary text under 80 words. Do not add labels, JSON, markdown, or bullets.'
-            ].join('\n');
             return {
-                sessionId: (GemmaMemory.data && GemmaMemory.data.matchId) || `m${Date.now()}`,
-                resetChat: false,
-                battlefieldPrompt,
-                opinionPrompt,
-                doctrinePrompt,
-                actionPrompt,
-                summaryPrompt
+                prompt,
+                emotions
             };
         }
 
-        function parseGemmaRoleplayResult(rawText) {
-            try {
-                let parsed = JSON.parse(String(rawText || '').trim());
-                if (parsed && parsed.mode === 'roleplay') return parsed;
-            } catch (e) { }
-            return null;
-        }
-
-        function selectGemmaActionChoice(actionWord, choices) {
-            let raw = String(actionWord || '').toLowerCase().replace(/[^a-z0-9_ -]/g, ' ').trim();
-            let compact = raw.split(/\s+/)[0] || 'none';
-            let available = Array.isArray(choices) ? choices : [];
-            let exact = available.find(choice => String(choice.token || '').toLowerCase() === compact);
-            if (exact) return exact;
-            return available.find(choice => raw.includes(String(choice.token || '').toLowerCase())) ||
-                available.find(choice => choice.token === 'none') ||
-                { token: 'none', tool: 'none', label: 'fallback none', reason: 'unmatched model action' };
-        }
-
-        function selectGemmaDoctrineChoice(doctrineWord, choices) {
-            let raw = String(doctrineWord || '').toLowerCase().replace(/[^a-z0-9_ -]/g, ' ').trim();
-            let compact = raw.split(/\s+/)[0] || 'balanced';
-            if (compact === 'all-in') compact = 'allin';
-            let available = Array.isArray(choices) ? choices : [];
-            let exact = available.find(choice => String(choice.token || '').toLowerCase() === compact);
-            if (exact) return exact;
-            return available.find(choice => raw.includes(String(choice.token || '').toLowerCase())) ||
-                available.find(choice => choice.token === 'balanced') ||
-                { token: 'balanced', label: 'fallback balanced doctrine' };
+        function parseGemmaEmotionReply(rawText, allowedWords = GEMMA_EMOTION_WORDS) {
+            let text = String(rawText || '').replace(/\u0000/g, '').replace(/^```(?:text)?/i, '').replace(/```$/i, '').trim();
+            let lines = text.split(/\r?\n+/).map(line => line.replace(/\s+/g, ' ').trim()).filter(Boolean);
+            let allowed = Array.isArray(allowedWords) && allowedWords.length ? allowedWords : GEMMA_EMOTION_WORDS;
+            let allowedLookup = Object.create(null);
+            allowed.forEach(word => {
+                allowedLookup[String(word).toLowerCase().replace(/[^a-z0-9]+/g, '')] = word;
+            });
+            let emotion = '';
+            let emotionLineIndex = -1;
+            for (let i = lines.length - 1; i >= 0; i--) {
+                let raw = lines[i].replace(/^(emotion|feeling|mood)\s*[:=-]\s*/i, '').trim();
+                let key = raw.toLowerCase().replace(/[^a-z0-9]+/g, '');
+                if (allowedLookup[key] || GEMMA_EMOTION_LOOKUP[key]) {
+                    emotion = allowedLookup[key] || GEMMA_EMOTION_LOOKUP[key];
+                    emotionLineIndex = i;
+                    break;
+                }
+            }
+            if (!emotion) {
+                let haystack = ` ${text.toLowerCase().replace(/[^a-z0-9]+/g, ' ')} `;
+                let sorted = GEMMA_EMOTION_WORDS.slice().sort((a, b) => b.length - a.length);
+                for (let i = 0; i < sorted.length; i++) {
+                    let word = sorted[i];
+                    let key = word.toLowerCase().replace(/[^a-z0-9]+/g, ' ');
+                    if (haystack.includes(` ${key.trim()} `)) {
+                        emotion = word;
+                        break;
+                    }
+                }
+            }
+            emotion = normalizeGemmaEmotionWord(emotion || 'Centered');
+            let replyLines = lines.filter((_, index) => index !== emotionLineIndex);
+            let reply = replyLines.join(' ').replace(/\b(emotion|feeling|mood)\s*[:=-]\s*[\w -]+$/i, '').trim();
+            if (!reply) reply = 'I am watching the line and adjusting.';
+            reply = reply.replace(/\s+/g, ' ').slice(0, 240);
+            return { reply, emotion, rawText: text };
         }
 
         // --- LOCAL GEMMA BRIDGE ---
@@ -2626,30 +2543,6 @@
                 if (this.status.busy || globalTime - this.lastRequestAt < minGap) return false;
 
                 let snapshot = AIDirector.snapshot();
-                let enemyAgeData = AGES[gameState.enemy.age];
-                let agreements = DirectorMemory.data.agreements || {};
-                let nextUpgradeCosts = {};
-                ['dmg', 'hp', 'econ'].forEach(type => {
-                    let level = Math.max(0, Math.min(9, gameState.enemy.upgrades[type] || 0));
-                    nextUpgradeCosts[type] = gameState.enemy.upgrades[type] >= 10 ? null : UPGRADE_COSTS[level];
-                });
-                let enemyGold = Math.floor(gameState.enemy.gold);
-                let affordableUnits = enemyAgeData.units
-                    .map((unit, idx) => ({ typeIndex: idx, name: unit.name, type: unit.type, cost: unit.cost }))
-                    .filter(unit => enemyGold >= unit.cost && !(agreements.meleeOnly && unit.type === 'ranged'));
-                let affordableUpgrades = ['dmg', 'hp', 'econ'].filter(type => gameState.enemy.upgrades[type] < 10 && enemyGold >= nextUpgradeCosts[type]);
-                let openTurretSlots = gameState.enemy.turrets.filter((slot, idx) => slot === null && idx < gameState.enemy.unlockedSlots).length;
-                let affordableTurrets = (!agreements.noTurrets && openTurretSlots > 0)
-                    ? enemyAgeData.turrets.map((turret, idx) => ({ typeIndex: idx, cost: turret.cost })).filter(turret => enemyGold >= turret.cost)
-                    : [];
-                let canBuyTurretSlot = !agreements.noTurrets && gameState.enemy.unlockedSlots < 4 && enemyGold >= gameState.enemy.unlockedSlots * 500;
-                let specialReady = !agreements.noSpecials && gameState.enemy.specialTimer <= 0 && !gameState.specialActive;
-                let affordableTools = [];
-                if (affordableUnits.length) affordableTools.push('spawn_unit');
-                if (affordableUpgrades.length) affordableTools.push('buy_upgrade');
-                if (affordableTurrets.length || canBuyTurretSlot) affordableTools.push('build_turret');
-                if (specialReady) affordableTools.push('use_special');
-                affordableTools.push('none');
                 let cleanExtraMessage = normalizeGemmaRecentUserMessage(extraMessage, 120);
                 let requestedUserLineId = options && options.userLineId ? String(options.userLineId) : '';
                 let relayComment = null;
@@ -2669,47 +2562,19 @@
 
                 let contextImageDataUrl = captureGemmaContextImage(snapshot);
                 let requestId = `g${Date.now()}_${Math.floor(Math.random() * 10000)}`;
-                let actionChoices = buildGemmaActionChoices({
-                    affordableUnits,
-                    affordableUpgrades,
-                    affordableTurrets,
-                    openTurretSlots,
-                    canBuyTurretSlot,
-                    specialReady,
-                    agreements,
-                    snapshot
-                });
-                let doctrineChoices = buildGemmaDoctrineChoices();
-                let roleplay = buildGemmaRoleplayPrompts({
+                let promptBuild = buildGemmaEmotionPrompt({
                     reason,
                     cleanExtraMessage,
                     relayComment,
-                    snapshot,
-                    actionChoices,
-                    doctrineChoices
+                    snapshot
                 });
-                let payload = {
-                    version: RELEASE_VERSION,
-                    mode: 'roleplay_v1',
-                    reason,
-                    difficulty: currentDifficulty,
-                    extraMessage: cleanExtraMessage,
-                    roleplay,
-                    actionChoices,
-                    doctrineChoices,
-                    debug: {
-                        contextImageAttached: !!contextImageDataUrl,
-                        affordableTools,
-                        memorySummaryChars: GemmaMemory.data ? GemmaMemory.data.summary.length : 0
-                    }
-                };
-                let payloadJson = JSON.stringify(payload);
+                let promptText = promptBuild.prompt;
 
                 this.pending[requestId] = {
-                    payload,
                     reason,
                     userLineId: relayComment ? relayComment.lineId : '',
-                    relayedUserMessage: relayComment ? relayComment.text : ''
+                    relayedUserMessage: relayComment ? relayComment.text : '',
+                    emotions: promptBuild.emotions || GEMMA_EMOTION_WORDS
                 };
                 this.lastRequestAt = globalTime;
                 this.status.busy = true;
@@ -2719,16 +2584,17 @@
                     requestId,
                     reason,
                     gameTime: Math.round(globalTime),
-                    payloadChars: payloadJson.length,
+                    promptChars: promptText.length,
                     difficulty: currentDifficulty,
                     memorySummaryChars: GemmaMemory.data ? GemmaMemory.data.summary.length : 0,
-                    contextImageChars: contextImageDataUrl ? contextImageDataUrl.length : 0
+                    contextImageChars: contextImageDataUrl ? contextImageDataUrl.length : 0,
+                    enginePlan: snapshot.engineOrder || ''
                 });
                 try {
                     if (contextImageDataUrl && typeof window.LocalGemmaAndroid.generateDirectorTurnWithImage === 'function') {
-                        window.LocalGemmaAndroid.generateDirectorTurnWithImage(requestId, payloadJson, contextImageDataUrl);
+                        window.LocalGemmaAndroid.generateDirectorTurnWithImage(requestId, promptText, contextImageDataUrl);
                     } else {
-                        window.LocalGemmaAndroid.generateDirectorTurn(requestId, payloadJson);
+                        window.LocalGemmaAndroid.generateDirectorTurn(requestId, promptText);
                     }
                     if (relayComment && relayComment.lineId) {
                         DirectorPanel.markPlayerLineSeen(relayComment.lineId, requestId);
@@ -2756,36 +2622,14 @@
                 delete this.pending[requestId];
                 this.status.busy = false;
                 this.refresh();
-                let roleplayResult = parseGemmaRoleplayResult(rawText);
-                if (roleplayResult) {
-                    this.log('response.roleplay', {
-                        requestId,
-                        doctrineWord: roleplayResult.doctrineWord || '',
-                        actionWord: roleplayResult.actionWord || '',
-                        replyChars: String(roleplayResult.reply || '').length,
-                        summaryChars: String(roleplayResult.summary || '').length,
-                        elapsedMs: roleplayResult.elapsedMs || 0
-                    });
-                    applyGemmaRoleplayTurn(roleplayResult, requestId, pendingMeta);
-                    return;
-                }
-                let parsed = parseGemmaJson(rawText);
-                if (!parsed) {
-                    this.log('response.parse_failed', { requestId, rawText: String(rawText || '') });
-                    DirectorPanel.failModelThoughts(requestId, 'parse failed');
-                    DirectorPanel.addModelRaw(String(rawText || '').trim() || '<<empty model response>>');
-                    return;
-                }
-                if (parsed._recovered) {
-                    delete parsed._recovered;
-                    this.log('response.parse_recovered', { requestId, turn: parsed });
-                }
-                this.log('response.parsed', {
+                let result = parseGemmaEmotionReply(rawText, pendingMeta && pendingMeta.emotions);
+                this.log('response.emotion', {
                     requestId,
-                    turn: parsed,
-                    reason: pendingMeta && pendingMeta.reason ? pendingMeta.reason : ''
+                    emotion: result.emotion || '',
+                    replyChars: String(result.reply || '').length,
+                    rawChars: String(rawText || '').length
                 });
-                applyGemmaDirectorTurn(parsed, requestId);
+                applyGemmaEmotionTurn(result, requestId, pendingMeta);
             },
             error(requestId, message) {
                 delete this.pending[requestId];
@@ -2806,304 +2650,17 @@
             NativeGemma.install();
         }
 
-        function parseGemmaJson(rawText) {
-            let text = String(rawText || '').trim();
-            if (!text) return null;
-
-            let candidates = buildGemmaJsonCandidates(text);
-            for (let i = 0; i < candidates.length; i++) {
-                let parsed = tryParseGemmaCandidate(candidates[i]);
-                if (parsed) return parsed;
-            }
-
-            return recoverGemmaTurnFromText(text);
-        }
-
-        function buildGemmaJsonCandidates(text) {
-            let cleaned = String(text || '').trim();
-            cleaned = cleaned.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
-
-            let seeds = [cleaned];
-            let balanced = extractBalancedJsonObject(cleaned);
-            if (balanced) seeds.push(balanced);
-            let first = cleaned.indexOf('{');
-            if (first !== -1) {
-                let fromFirst = cleaned.slice(first).trim();
-                seeds.push(fromFirst);
-                let last = fromFirst.lastIndexOf('}');
-                if (last > 0) seeds.push(fromFirst.slice(0, last + 1));
-            }
-
-            let unique = [];
-            let seen = Object.create(null);
-            for (let i = 0; i < seeds.length; i++) {
-                let seed = String(seeds[i] || '').replace(/\u0000/g, '').trim();
-                if (!seed || seen[seed]) continue;
-                seen[seed] = true;
-                unique.push(seed);
-
-                let repaired = repairJsonLikeText(seed);
-                if (repaired && !seen[repaired]) {
-                    seen[repaired] = true;
-                    unique.push(repaired);
-                }
-            }
-            return unique;
-        }
-
-        function repairJsonLikeText(text) {
-            let repaired = String(text || '').trim();
-            if (!repaired) return '';
-
-            // Fix common local-model artifacts like ," ,"memoryPatch" and dangling commas/quotes.
-            repaired = repaired.replace(/,\s*"\s*,\s*"/g, ',"');
-            repaired = repaired.replace(/"\s*(memPatch|memory_patch)"\s*:/g, '"memoryPatch":');
-            repaired = repaired.replace(/,\s*"(?=\s*[}\]])/g, '');
-            repaired = repaired.replace(/,\s*([}\]])/g, '$1');
-            repaired = balanceJsonBrackets(repaired);
-            return repaired.trim();
-        }
-
-        function extractBalancedJsonObject(text) {
-            let source = String(text || '');
-            let start = source.indexOf('{');
-            if (start === -1) return '';
-
-            let depth = 0;
-            let inString = false;
-            let escaped = false;
-            for (let i = start; i < source.length; i++) {
-                let ch = source[i];
-                if (inString) {
-                    if (escaped) escaped = false;
-                    else if (ch === '\\') escaped = true;
-                    else if (ch === '"') inString = false;
-                    continue;
-                }
-                if (ch === '"') {
-                    inString = true;
-                    continue;
-                }
-                if (ch === '{') depth++;
-                else if (ch === '}') {
-                    depth--;
-                    if (depth === 0) return source.slice(start, i + 1).trim();
-                }
-            }
-            return source.slice(start).trim();
-        }
-
-        function balanceJsonBrackets(text) {
-            let out = String(text || '');
-            let stack = [];
-            let inString = false;
-            let escaped = false;
-
-            for (let i = 0; i < out.length; i++) {
-                let ch = out[i];
-                if (inString) {
-                    if (escaped) escaped = false;
-                    else if (ch === '\\') escaped = true;
-                    else if (ch === '"') inString = false;
-                    continue;
-                }
-                if (ch === '"') {
-                    inString = true;
-                    continue;
-                }
-                if (ch === '{' || ch === '[') stack.push(ch);
-                else if (ch === '}' && stack[stack.length - 1] === '{') stack.pop();
-                else if (ch === ']' && stack[stack.length - 1] === '[') stack.pop();
-            }
-
-            while (stack.length > 0) {
-                out += stack.pop() === '{' ? '}' : ']';
-            }
-            return out;
-        }
-
-        function tryParseGemmaCandidate(candidate) {
-            if (!candidate) return null;
-            try {
-                let parsed = JSON.parse(candidate);
-                if (!parsed || typeof parsed !== 'object') return null;
-                return normalizeGemmaTurnObject(parsed);
-            } catch (e) {
-                return null;
-            }
-        }
-
-        function cleanGemmaText(value, maxLen = 220) {
-            return String(value || '').replace(/\s+/g, ' ').trim().slice(0, maxLen);
-        }
-
-        function normalizeGemmaList(value, maxItems = 6, maxLen = 120) {
-            return (Array.isArray(value) ? value : [])
-                .map(item => cleanGemmaText(item, maxLen))
-                .filter(Boolean)
-                .slice(0, maxItems);
-        }
-
-        function normalizeGemmaMemoryPatch(patch) {
-            if (!patch || typeof patch !== 'object') return null;
-            let out = {};
-
-            let summary = cleanGemmaText(patch.summary, 700);
-            if (summary) out.summary = summary;
-
-            let openLoops = normalizeGemmaList(patch.openLoops, 5, 120);
-            if (openLoops.length) out.openLoops = openLoops;
-
-            return Object.keys(out).length ? out : null;
-        }
-
-        function normalizeGemmaTurnObject(parsed) {
-            if (!parsed || typeof parsed !== 'object') return null;
-            let raw = (parsed.turn && typeof parsed.turn === 'object') ? parsed.turn : parsed;
-            if (!raw || typeof raw !== 'object') return null;
-
-            let turn = {};
-            let say = cleanGemmaText(raw.say, 240);
-            if (say) turn.say = say;
-
-            let pressure = cleanGemmaText(raw.pressure, 16).toLowerCase();
-            if (['rush', 'balanced', 'mercy'].includes(pressure)) turn.pressure = pressure;
-
-            let actionRaw = raw.action && typeof raw.action === 'object' ? raw.action : null;
-            if (actionRaw) {
-                let action = {};
-                let tool = cleanGemmaText(actionRaw.tool, 24);
-                if (['spawn_unit', 'buy_upgrade', 'build_turret', 'use_special', 'none'].includes(tool)) {
-                    action.tool = tool;
-                }
-                let typeIndex = Number(actionRaw.typeIndex);
-                if (Number.isFinite(typeIndex)) action.typeIndex = Math.max(0, Math.min(2, Math.round(typeIndex)));
-                let upgrade = cleanGemmaText(actionRaw.upgrade, 12).toLowerCase();
-                if (['dmg', 'hp', 'econ'].includes(upgrade)) action.upgrade = upgrade;
-                let reason = cleanGemmaText(actionRaw.reason, 96);
-                if (reason) action.reason = reason;
-                if (Object.keys(action).length > 0) {
-                    if (!action.tool) action.tool = 'none';
-                    turn.action = action;
-                }
-            }
-
-            let patch = normalizeGemmaMemoryPatch(raw.memoryPatch || raw.memory || raw.turnMemory);
-            if (patch) turn.memoryPatch = patch;
-
-            if (!turn.say && !turn.action) return null;
-            if (!turn.say) turn.say = 'I am adjusting the plan.';
-            return turn;
-        }
-
-        function recoverGemmaTurnFromText(text) {
-            let say = extractJsonStringField(text, 'say');
-            let pressure = extractJsonStringField(text, 'pressure');
-            let tool = extractJsonStringField(text, 'tool');
-            let reason = extractJsonStringField(text, 'reason');
-            let upgrade = extractJsonStringField(text, 'upgrade');
-            let typeIndex = extractJsonNumberField(text, 'typeIndex');
-
-            let turn = {};
-            if (say) turn.say = say;
-            if (['rush', 'balanced', 'mercy'].includes(pressure)) turn.pressure = pressure;
-
-            if (tool || reason || upgrade || typeIndex !== null) {
-                turn.action = {};
-                if (['spawn_unit', 'buy_upgrade', 'build_turret', 'use_special', 'none'].includes(tool)) {
-                    turn.action.tool = tool;
-                }
-                if (Number.isFinite(typeIndex)) turn.action.typeIndex = typeIndex;
-                if (upgrade) turn.action.upgrade = upgrade;
-                if (reason) turn.action.reason = reason;
-                if (!turn.action.tool) turn.action.tool = 'none';
-            }
-
-            if (!turn.say && !turn.action) return null;
-            if (!turn.say) turn.say = 'I am adjusting the plan.';
-            let normalized = normalizeGemmaTurnObject(turn);
-            if (!normalized) return null;
-            normalized._recovered = true;
-            return normalized;
-        }
-
-        function extractJsonStringField(text, key) {
-            let escapedKey = String(key || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            let match = String(text || '').match(new RegExp('"' + escapedKey + '"\\s*:\\s*"((?:\\\\.|[^"\\\\])*)"', 'i'));
-            if (!match) return '';
-            return decodeJsonLikeString(match[1]).trim();
-        }
-
-        function extractJsonNumberField(text, key) {
-            let escapedKey = String(key || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            let match = String(text || '').match(new RegExp('"' + escapedKey + '"\\s*:\\s*(-?\\d+|null)', 'i'));
-            if (!match) return null;
-            if (String(match[1]).toLowerCase() === 'null') return null;
-            let value = Number(match[1]);
-            return Number.isFinite(value) ? value : null;
-        }
-
-        function decodeJsonLikeString(value) {
-            return String(value || '')
-                .replace(/\\u([0-9a-fA-F]{4})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
-                .replace(/\\n/g, ' ')
-                .replace(/\\r/g, ' ')
-                .replace(/\\t/g, ' ')
-                .replace(/\\"/g, '"')
-                .replace(/\\\\/g, '\\');
-        }
-
-        function applyGemmaDirectorTurn(turn, requestId = '') {
-            if (turn.pressure && ['rush', 'balanced', 'mercy'].includes(turn.pressure)) {
-                DirectorMemory.setPressure(turn.pressure);
-                DirectorPanel.renderMemory();
-            }
-
-            let action = turn.action || {};
-            let reason = action.reason || 'Gemma plan';
-            let requestedTool = action.tool || 'none';
-            let applied = false;
-            if (requestedTool === 'spawn_unit') applied = AIDirector.trySpawnUnit(Math.max(0, Math.min(2, Number(action.typeIndex) || 0)), reason);
-            else if (requestedTool === 'buy_upgrade') applied = AIDirector.tryUpgrade(['dmg', 'hp', 'econ'].includes(action.upgrade) ? action.upgrade : 'econ', reason);
-            else if (requestedTool === 'build_turret') applied = AIDirector.tryBuildTurret(reason);
-            else if (requestedTool === 'use_special') applied = AIDirector.trySpecial(reason);
-
-            NativeGemma.log('action.result', {
+        function applyGemmaEmotionTurn(result, requestId = '', pendingMeta = null) {
+            let emotion = normalizeGemmaEmotionWord(result && result.emotion);
+            AIDirector.acceptGemmaEmotion(emotion, requestId, result && result.reply ? result.reply : '');
+            GemmaMemory.recordEmotion(result || {}, {
                 requestId,
-                requestedTool,
-                applied,
-                pressure: turn.pressure || null,
-                action
+                emotion,
+                reason: pendingMeta && pendingMeta.reason ? pendingMeta.reason : 'Gemma reply'
             });
-            GemmaMemory.recordModel(turn, { requestId, requestedTool, applied });
-            if (!applied && requestedTool !== 'none') DirectorPanel.addSystem('model move unavailable');
-
-            if (turn.say) DirectorPanel.addModel(turn.say);
-        }
-
-        function applyGemmaRoleplayTurn(result, requestId = '', pendingMeta = null) {
-            let payload = pendingMeta && pendingMeta.payload ? pendingMeta.payload : {};
-            let doctrine = selectGemmaDoctrineChoice(result && result.doctrineWord, payload.doctrineChoices || []);
-            let choice = selectGemmaActionChoice(result && result.actionWord, payload.actionChoices || []);
-            let orderToken = choice.order || choice.token || 'none';
-            let applied = AIDirector.acceptGemmaOrder(choice, doctrine.token || 'balanced', requestId);
-            let requestedTool = applied ? `order:${orderToken}` : 'none';
-
-            NativeGemma.log('action.roleplay_result', {
-                requestId,
-                doctrineWord: result && result.doctrineWord ? result.doctrineWord : '',
-                selectedDoctrine: doctrine.token || 'balanced',
-                actionWord: result && result.actionWord ? result.actionWord : '',
-                selectedToken: choice.token || '',
-                orderToken,
-                orderUntil: applied ? Math.round(AIDirector.gemmaOrderUntil) : 0,
-                requestedTool,
-                applied
-            });
-            GemmaMemory.recordRoleplay(result || {}, choice, doctrine, { requestId, requestedTool, applied });
-            DirectorPanel.finishModelThoughts(requestId, result && result.reply ? result.reply : 'I am watching the line and holding my next move.');
+            DirectorPanel.finishModelThoughts(requestId, result && result.reply ? result.reply : 'I am watching the line and adjusting.');
             DirectorPanel.renderMemory();
-            DirectorPanel.addSystem(`doctrine: ${doctrine.token || 'balanced'} | order: ${orderToken || 'none'}${applied ? '' : ' (engine kept live plan)'}`);
+            DirectorPanel.addSystem(`emotion: ${emotion}`);
         }
 
         window.onLocalGemmaStatus = (json) => {
@@ -3112,33 +2669,6 @@
         window.onLocalGemmaStream = (requestId, phase, text, done) => NativeGemma.stream(requestId, phase, text, done);
         window.onLocalGemmaResponse = (requestId, text) => NativeGemma.receive(requestId, text);
         window.onLocalGemmaError = (requestId, message) => NativeGemma.error(requestId, message);
-        window.onLocalGemmaSelectionImageRequest = (requestId) => {
-            let dataUrl = '';
-            try {
-                dataUrl = captureGemmaContextImage(AIDirector.snapshot()) || '';
-                NativeGemma.log('selection_image.provide', {
-                    requestId,
-                    chars: dataUrl.length,
-                    gameTime: Math.round(globalTime),
-                    order: AIDirector.activeOrderFromState ? AIDirector.activeOrderFromState() : ''
-                });
-            } catch (e) {
-                NativeGemma.log('selection_image.provide_failed', {
-                    requestId,
-                    message: String(e && e.message ? e.message : e)
-                });
-            }
-            try {
-                if (window.LocalGemmaAndroid && typeof window.LocalGemmaAndroid.provideSelectionImage === 'function') {
-                    window.LocalGemmaAndroid.provideSelectionImage(String(requestId || ''), dataUrl);
-                }
-            } catch (e) {
-                NativeGemma.log('selection_image.bridge_failed', {
-                    requestId,
-                    message: String(e && e.message ? e.message : e)
-                });
-            }
-        };
 
         // --- DIRECTOR CHAT SURFACE (COMMANDER HUD) ---
         const DirectorPanel = {
@@ -3150,7 +2680,7 @@
             currentPlayerLine: null,
             thoughtEntries: {},
             init() {
-                ['commander-hud', 'ai-hud', 'director-log', 'director-tool-log', 'director-input', 'director-memory', 'player-last-line', 'btn-pause'].forEach(id => {
+                ['commander-hud', 'ai-hud', 'director-log', 'director-signal-log', 'director-input', 'director-memory', 'player-last-line', 'btn-pause'].forEach(id => {
                     this.els[id] = document.getElementById(id);
                 });
                 this.renderMemory();
@@ -3160,7 +2690,7 @@
                 GemmaMemory.start(diffKey);
                 this.els['ai-hud'].classList.remove('hidden');
                 if (this.els['director-log']) this.els['director-log'].innerHTML = '';
-                if (this.els['director-tool-log']) this.els['director-tool-log'].innerHTML = '';
+                if (this.els['director-signal-log']) this.els['director-signal-log'].innerHTML = '';
                 if (this.els['player-last-line']) {
                     this.els['player-last-line'].innerHTML = '';
                     this.els['player-last-line'].classList.add('hidden');
@@ -3175,7 +2705,7 @@
                     this.addSystem(`Director online. Pacts and notes are active.`);
                 }, 800);
             },
-            add(role, text, tool = false) {
+            add(role, text) {
                 if (!text) return;
                 if (role === 'player') {
                     return this.addPlayerLine(text);
@@ -3342,9 +2872,7 @@
                 let clean = this.normalizeThoughtLine(text);
                 if (clean) entry.phases[phase] = clean;
                 if (done) entry.done[phase] = true;
-                if (phase === 'opinion' && clean) entry.visible = this.normalizeLine(clean, 220);
-                else if (!entry.phases.opinion && phase === 'battlefield' && clean) entry.visible = 'reading the lane...';
-                else if (!entry.phases.opinion && phase === 'action' && clean) entry.visible = 'choosing an order...';
+                if (phase === 'message' && clean) entry.visible = 'writing...';
                 this.renderThoughtEntry(entry);
             },
             finishModelThoughts(requestId, visibleText) {
@@ -3377,14 +2905,10 @@
             },
             buildThoughtLine(entry) {
                 let labels = {
-                    battlefield: 'status',
-                    opinion: 'reply',
-                    doctrine: 'doctrine',
-                    action: 'order',
-                    summary: 'memory',
+                    message: 'reply',
                     error: 'error'
                 };
-                let parts = ['battlefield', 'doctrine', 'action', 'summary', 'error']
+                let parts = ['message', 'error']
                     .map(phase => entry.phases[phase] ? `${labels[phase]}: ${entry.phases[phase]}` : '')
                     .filter(Boolean);
                 if (parts.length === 0) return 'reading map...';
@@ -3394,15 +2918,13 @@
                 let raw = String(text || '').trim();
                 if (!raw) return '';
                 if (!this.looksLikeModelJsonLeak(raw)) return raw;
-                let recovered = recoverGemmaTurnFromText(raw);
-                if (recovered && recovered.say) return recovered.say;
-                return 'I am reworking that move.';
+                return raw.replace(/[{}\[\]"]/g, '').replace(/\s+/g, ' ').slice(0, 220);
             },
             looksLikeModelJsonLeak(text) {
                 let sample = String(text || '').trim();
                 if (!sample) return false;
                 if (/^[\[{]/.test(sample)) return true;
-                return /"say"\s*:|"action"\s*:|"memoryPatch"\s*:|"pressure"\s*:/.test(sample);
+                return /"say"\s*:|"action"\s*:|"pressure"\s*:/.test(sample);
             },
             normalizeRawModelLine(text, maxLen = 1400) {
                 let raw = String(text || '').replace(/\u0000/g, '').trim();
@@ -3440,12 +2962,12 @@
                 }
             },
             addSystem(text) {
-                let host = this.els['director-tool-log'];
+                let host = this.els['director-signal-log'];
                 if (!host || !text) return;
-                this.writeLatest(host, this.normalizeLine(text, 96), 'director-tool-msg', 'system');
+                this.writeLatest(host, this.normalizeLine(text, 96), 'director-signal-msg', 'system');
             },
-            showAction(toolName, reason) {
-                let name = String(toolName || '').toLowerCase();
+            showAction(signalName, reason) {
+                let name = String(signalName || '').toLowerCase();
                 let label = 'move';
                 if (name.includes('order')) label = 'order';
                 else if (name.includes('spawn') || name.includes('unit')) label = 'unit';
@@ -3462,8 +2984,8 @@
                 if (!host) return;
                 host.innerHTML = '';
                 let tags = [];
-                if (GemmaMemory.data && GemmaMemory.data.doctrine) tags.push(`doctrine: ${GemmaMemory.data.doctrine}`);
-                if (typeof AIDirector !== 'undefined' && AIDirector.activeOrderFromState) tags.push(`order: ${AIDirector.activeOrderFromState()}`);
+                if (GemmaMemory.data && GemmaMemory.data.emotion) tags.push(`emotion: ${GemmaMemory.data.emotion}`);
+                if (typeof AIDirector !== 'undefined' && AIDirector.activeOrderFromState) tags.push(`plan: ${AIDirector.activeOrderFromState()}`);
                 tags = tags.concat(DirectorMemory.tags());
                 tags.forEach(tag => {
                     let chip = document.createElement('span');
@@ -3584,9 +3106,9 @@
             lastEnemyAge: 0,
             lastActionNoticeAt: -99,
             lastPlanNoticeAt: -99,
-            gemmaOrder: 'none',
-            gemmaOrderUntil: 0,
-            gemmaOrderReason: '',
+            emotionWord: 'Centered',
+            emotionUntil: 0,
+            emotionReply: '',
             localOrder: 'balanced',
             localOrderUntil: 0,
             lastCommentKey: '',
@@ -3599,9 +3121,9 @@
                 this.lastEnemyAge = 0;
                 this.lastActionNoticeAt = -99;
                 this.lastPlanNoticeAt = -99;
-                this.gemmaOrder = 'none';
-                this.gemmaOrderUntil = 0;
-                this.gemmaOrderReason = '';
+                this.emotionWord = 'Centered';
+                this.emotionUntil = 0;
+                this.emotionReply = '';
                 this.localOrder = 'balanced';
                 this.localOrderUntil = 0;
                 this.lastCommentKey = '';
@@ -3642,40 +3164,42 @@
                 return valid.includes(clean) ? clean : 'none';
             },
             activeOrderFromState() {
-                if (this.gemmaOrder && this.gemmaOrder !== 'none' && globalTime < this.gemmaOrderUntil) return this.gemmaOrder;
                 return this.localOrder || 'balanced';
             },
-            acceptGemmaOrder(choice, doctrineToken, requestId = '') {
-                let order = this.normalizeOrder(choice && (choice.order || choice.token));
-                if (order === 'balanced') order = 'none';
-                if (order === 'none') {
-                    this.gemmaOrder = 'none';
-                    this.gemmaOrderUntil = 0;
-                    this.gemmaOrderReason = '';
-                    return false;
-                }
-                this.gemmaOrder = order;
-                this.gemmaOrderReason = choice.reason || `Gemma order ${order}`;
-                this.gemmaOrderUntil = globalTime + this.orderDuration(order);
-                this.localOrder = order;
-                this.localOrderUntil = Math.max(this.localOrderUntil, globalTime + 8);
+            acceptGemmaEmotion(emotion, requestId = '', reply = '') {
+                this.emotionWord = normalizeGemmaEmotionWord(emotion);
+                this.emotionUntil = globalTime + this.emotionDuration(this.emotionWord);
+                this.emotionReply = String(reply || '').slice(0, 220);
+                this.localOrderUntil = 0;
                 this.actionTimer = Math.min(this.actionTimer, 0.15);
-                this.reportTool(`order:${order}`, this.gemmaOrderReason, true);
-                GemmaMemory.recordSystem(`Gemma order ${order} under ${doctrineToken || 'balanced'} doctrine.`);
-                return true;
+                return this.emotionWord;
             },
-            orderDuration(order) {
-                return {
-                    press: 52,
-                    defend: 42,
-                    counter: 48,
-                    tech: 60,
-                    swarm: 42,
-                    heavy: 55,
-                    hold: 32,
-                    fortify: 50,
-                    special: 36
-                }[order] || 45;
+            emotionDuration(emotion) {
+                let profile = this.emotionProfile(emotion);
+                return 26 + profile.volatility * 18 + Math.random() * 16;
+            },
+            emotionProfile(emotion = null) {
+                let word = normalizeGemmaEmotionWord(emotion || this.emotionWord || (GemmaMemory.data && GemmaMemory.data.emotion) || 'Centered');
+                let key = word.toLowerCase();
+                let hot = ['angry', 'annoyed', 'agitated', 'aggravated', 'bitter', 'contempt', 'cynical', 'disdain', 'disgruntled', 'disturbed', 'edgy', 'exasperated', 'frustrated', 'furious', 'grouchy', 'hostile', 'impatient', 'irritated', 'irate', 'moody', 'on edge', 'outraged', 'pissed', 'resentful', 'upset', 'vindictive'];
+                let brave = ['courageous', 'powerful', 'adventurous', 'brave', 'capable', 'confident', 'daring', 'determined', 'proud', 'strong', 'valiant'];
+                let fear = ['fear', 'afraid', 'anxious', 'apprehensive', 'frightened', 'hesitant', 'nervous', 'panic', 'paralyzed', 'scared', 'terrified', 'worried', 'fragile', 'helpless', 'powerless', 'trapped'];
+                let calm = ['accepting', 'open', 'calm', 'centered', 'content', 'fulfilled', 'patient', 'peaceful', 'present', 'relaxed', 'serene', 'trusting', 'grounded', 'settled'];
+                let joy = ['aliveness', 'joy', 'amazed', 'awe', 'bliss', 'delighted', 'eager', 'ecstatic', 'enchanted', 'energized', 'engaged', 'enthusiastic', 'excited', 'happy', 'inspired', 'invigorated', 'lively', 'passionate', 'playful', 'thrilled', 'vibrant'];
+                let curious = ['curious', 'exploring', 'fascinated', 'interested', 'intrigued', 'involved', 'stimulated', 'questioning', 'skeptical'];
+                let sad = ['despair', 'sad', 'anguish', 'depressed', 'despondent', 'disappointed', 'discouraged', 'forlorn', 'gloomy', 'grief', 'heartbroken', 'hopeless', 'lonely', 'melancholy', 'sorrow', 'unhappy', 'weary'];
+                let tired = ['disconnected', 'numb', 'aloof', 'bored', 'empty', 'indifferent', 'lethargic', 'listless', 'removed', 'shut down', 'burned out', 'depleted', 'exhausted', 'worn out', 'slow', 'wooden'];
+                let tense = ['stressed', 'tense', 'cranky', 'frazzled', 'overwhelm', 'rattled', 'restless', 'shaken', 'tight', 'unsettled', 'doubt', 'concerned', 'dissatisfied', 'disturbed', 'hesitant', 'perplexed', 'reluctant', 'shocked', 'suspicious', 'unsure'];
+                let has = list => list.includes(key);
+                let profile = { aggression: 0, caution: 0, tech: 0, patience: 0, volatility: 0.25, special: 0, greed: 0 };
+                if (has(hot)) Object.assign(profile, { aggression: 0.55, caution: -0.18, volatility: 0.9, special: 0.22 });
+                else if (has(brave)) Object.assign(profile, { aggression: 0.38, caution: -0.08, volatility: 0.45, special: 0.12 });
+                else if (has(fear) || has(tense)) Object.assign(profile, { aggression: -0.18, caution: 0.55, tech: -0.08, patience: 0.2, volatility: 0.75, special: 0.18 });
+                else if (has(calm)) Object.assign(profile, { aggression: -0.04, caution: 0.18, tech: 0.18, patience: 0.32, volatility: 0.12 });
+                else if (has(joy)) Object.assign(profile, { aggression: 0.24, caution: -0.03, tech: 0.08, volatility: 0.5, greed: 0.1 });
+                else if (has(curious)) Object.assign(profile, { aggression: -0.02, caution: 0.1, tech: 0.35, patience: 0.2, volatility: 0.25 });
+                else if (has(sad) || has(tired)) Object.assign(profile, { aggression: -0.28, caution: 0.34, tech: 0.06, patience: 0.42, volatility: 0.38 });
+                return profile;
             },
             updateLocalOrder(snapshot) {
                 if (globalTime < this.localOrderUntil) return;
@@ -3688,49 +3212,43 @@
             pickLocalOrder(snapshot) {
                 let ai = gameState.enemy;
                 let pressure = (DirectorMemory.data.agreements || {}).pressure || 'balanced';
-                let doctrine = this.effectiveDoctrine(snapshot);
-                if (snapshot.restrained && snapshot.threatCount < 2) return 'tech';
-                if (pressure === 'mercy' && snapshot.playerHpRatio < 0.5 && snapshot.threatCount < 3) return 'hold';
-                if (snapshot.threatCount >= 5 || snapshot.enemyHpRatio < 0.32) return 'defend';
-                if (snapshot.heavyThreat || snapshot.playerRanged > snapshot.enemyRanged + 1 || snapshot.playerUnits > snapshot.enemyUnits + 2) return 'counter';
-                if (ai.age < gameState.player.age && snapshot.threatCount < 3) return 'tech';
-                if (snapshot.enemyXpRatio > 0.82 && snapshot.threatCount < 3) return 'tech';
-                if (snapshot.playerHpRatio < 0.34 && pressure !== 'mercy') return 'press';
-                if (snapshot.frontGap > 620 && snapshot.enemyUnits >= snapshot.playerUnits + 1 && pressure !== 'mercy') return 'press';
-                if (snapshot.enemyGold >= AGES[ai.age].units[2].cost * 1.15 && snapshot.threatCount < 3) return 'heavy';
-                if (ai.upgrades.econ < Math.min(10, 2 + Math.floor(currentConfig.aiAggression * 5)) && snapshot.threatCount < 2) return 'tech';
-                if (doctrine === 'turtle' || doctrine === 'stall') return 'fortify';
-                if (doctrine === 'counter' || doctrine === 'bait') return 'counter';
-                if (doctrine === 'tech') return 'tech';
-                if (doctrine === 'allin' || doctrine === 'rush') return Math.random() < 0.45 ? 'swarm' : 'press';
-                return Math.random() < 0.5 ? 'press' : 'counter';
-            },
-            doctrine() {
-                return (GemmaMemory.data && GemmaMemory.data.doctrine) || 'balanced';
-            },
-            effectiveDoctrine(snapshot = null) {
-                let pressure = (DirectorMemory.data.agreements || {}).pressure || 'balanced';
-                let doctrine = this.doctrine();
-                if (pressure === 'mercy' && (!snapshot || (snapshot.playerHpRatio < 0.55 && snapshot.threatCount < 3))) {
-                    return doctrine === 'turtle' || doctrine === 'stall' || doctrine === 'tech' ? doctrine : 'stall';
+                let profile = this.emotionProfile();
+                let scores = {
+                    defend: 0.5 + snapshot.threatCount * 0.42 + (1 - snapshot.enemyHpRatio) * 2.2 + profile.caution * 1.2,
+                    counter: 0.8 + Math.max(0, snapshot.playerUnits - snapshot.enemyUnits) * 0.38 + snapshot.playerRanged * 0.18 + snapshot.playerHeavy * 0.25,
+                    tech: 0.9 + profile.tech * 1.4 + Math.max(0, gameState.player.age - ai.age) * 0.8 + snapshot.enemyXpRatio * 0.75,
+                    press: 0.7 + profile.aggression * 1.35 + Math.max(0, 0.55 - snapshot.playerHpRatio) * 2.5 + Math.max(0, snapshot.frontGap - 520) / 360,
+                    swarm: 0.45 + profile.aggression + Math.max(0, snapshot.playerUnits - snapshot.enemyUnits) * 0.22,
+                    heavy: 0.35 + profile.greed + (snapshot.playerRanged > snapshot.playerMelee ? 1.0 : 0) + Math.max(0, snapshot.enemyGold - AGES[ai.age].units[2].cost) / Math.max(1, AGES[ai.age].units[2].cost),
+                    fortify: 0.42 + profile.caution + (snapshot.threatCount >= 2 ? 0.75 : 0) + (snapshot.enemyHpRatio < 0.55 ? 0.7 : 0),
+                    special: 0.2 + profile.special + (snapshot.threatCount >= 4 ? 1.0 : 0) + (snapshot.playerUnits >= 5 ? 0.65 : 0),
+                    hold: 0.18 + profile.patience + (pressure === 'mercy' ? 1.2 : 0)
+                };
+                if (snapshot.restrained && snapshot.threatCount < 2) scores.tech += 3;
+                if (pressure === 'rush') {
+                    scores.press += 1.1;
+                    scores.swarm += 0.8;
+                    scores.hold -= 0.7;
                 }
-                if (pressure === 'rush' && doctrine === 'balanced') return 'rush';
-                return doctrine;
+                if (pressure === 'mercy' && snapshot.playerHpRatio < 0.5 && snapshot.threatCount < 3) {
+                    scores.hold += 3;
+                    scores.press -= 2;
+                    scores.swarm -= 1;
+                }
+                if (snapshot.threatCount >= 5 || snapshot.enemyHpRatio < 0.32) scores.defend += 3;
+                if (snapshot.playerRanged > snapshot.enemyRanged + 1 || snapshot.playerUnits > snapshot.enemyUnits + 2 || snapshot.heavyThreat) scores.counter += 1.7;
+                if (snapshot.threatCount >= 4) {
+                    scores.tech -= 1.6;
+                    scores.heavy -= 0.8;
+                    scores.hold -= 1.1;
+                }
+                return this.pickTopScore(scores, this.localOrder);
             },
             nextThinkDelay() {
                 let pressure = DirectorMemory.data.agreements.pressure;
                 let pressureFactor = pressure === 'rush' ? 0.7 : (pressure === 'mercy' ? 1.7 : 1);
-                let doctrine = this.effectiveDoctrine();
-                let doctrineFactor = {
-                    allin: 0.58,
-                    rush: 0.72,
-                    counter: 0.86,
-                    turtle: 0.95,
-                    balanced: 1,
-                    tech: 1.12,
-                    bait: 1.22,
-                    stall: 1.35
-                }[doctrine] || 1;
+                let profile = this.emotionProfile();
+                let emotionFactor = Math.max(0.62, Math.min(1.45, 1 - profile.aggression * 0.22 + profile.caution * 0.18 + profile.patience * 0.14));
                 let order = this.activeOrderFromState();
                 let orderFactor = {
                     swarm: 0.58,
@@ -3744,7 +3262,13 @@
                     hold: 1.25
                 }[order] || 1;
                 let difficultyFactor = 1 - (currentConfig.aiAggression * 0.12);
-                return Math.max(0.22, (currentConfig.thinkRate * pressureFactor * doctrineFactor * orderFactor * difficultyFactor) + Math.random() * 0.35);
+                return Math.max(0.22, (currentConfig.thinkRate * pressureFactor * emotionFactor * orderFactor * difficultyFactor) + Math.random() * 0.35);
+            },
+            pickTopScore(scores, current = '') {
+                let entries = Object.keys(scores).map(key => ({ key, score: scores[key] + (key === current ? 0.22 : 0) }));
+                entries.sort((a, b) => b.score - a.score);
+                if (entries.length > 1 && entries[1].score > entries[0].score - 0.18 && Math.random() < 0.32) return entries[1].key;
+                return entries[0] ? entries[0].key : 'balanced';
             },
             snapshot() {
                 let ai = gameState.enemy;
@@ -3752,36 +3276,58 @@
                 let playerUnits = 0, enemyUnits = 0, threatCount = 0;
                 let playerMelee = 0, playerRanged = 0, playerHeavy = 0;
                 let enemyMelee = 0, enemyRanged = 0, enemyHeavy = 0;
-                let heavyThreat = false, closestThreatDist = Infinity;
+                let playerValue = 0, enemyValue = 0, threatValue = 0;
+                let playerNames = Object.create(null), enemyNames = Object.create(null);
+                let heavyThreat = false, closestThreatDist = Infinity, closestThreatType = 'none';
                 let playerFront = BASE_WIDTH, enemyFront = CANVAS_WIDTH - BASE_WIDTH;
 
                 for (let i = 0; i < gameState.units.pool.length; i++) {
                     let u = gameState.units.pool[i];
                     if (!u.active || u.hp <= 0 || u.drawProgress < 0.5) continue;
+                    let unitData = AGES[u.age] && AGES[u.age].units ? AGES[u.age].units[u.uType] : null;
+                    let value = unitData ? unitData.cost : (u.maxHp || 1);
                     if (u.team === 1) {
                         playerUnits++;
                         if (u.type === 'ranged') playerRanged++;
                         else if (u.type === 'heavy') playerHeavy++;
                         else playerMelee++;
+                        playerValue += value;
+                        playerNames[u.name || u.type] = (playerNames[u.name || u.type] || 0) + 1;
                         playerFront = Math.max(playerFront, u.x);
                         let dist = (CANVAS_WIDTH - BASE_WIDTH) - u.x;
-                        if (dist < closestThreatDist) closestThreatDist = dist;
-                        if (dist < 620) threatCount++;
+                        if (dist < closestThreatDist) {
+                            closestThreatDist = dist;
+                            closestThreatType = u.type || 'unit';
+                        }
+                        if (dist < 620) {
+                            threatCount++;
+                            threatValue += value;
+                        }
                         if (dist < 620 && u.type === 'heavy') heavyThreat = true;
                     } else {
                         enemyUnits++;
                         if (u.type === 'ranged') enemyRanged++;
                         else if (u.type === 'heavy') enemyHeavy++;
                         else enemyMelee++;
+                        enemyValue += value;
+                        enemyNames[u.name || u.type] = (enemyNames[u.name || u.type] || 0) + 1;
                         enemyFront = Math.min(enemyFront, u.x);
                     }
                 }
                 let evolveNeed = AGES[ai.age] && AGES[ai.age].evolveXP ? AGES[ai.age].evolveXP : 1;
+                let describeNames = names => Object.keys(names)
+                    .sort((a, b) => names[b] - names[a])
+                    .slice(0, 4)
+                    .map(name => `${names[name]} ${name}`)
+                    .join(', ') || 'none';
 
                 return {
                     playerUnits, enemyUnits, threatCount, heavyThreat,
                     playerMelee, playerRanged, playerHeavy,
                     enemyMelee, enemyRanged, enemyHeavy,
+                    playerValue, enemyValue, threatValue, closestThreatType,
+                    playerProfile: describeNames(playerNames),
+                    enemyProfile: describeNames(enemyNames),
                     closestThreatDist: Number.isFinite(closestThreatDist) ? closestThreatDist : 9999,
                     lanePressure: playerFront - (CANVAS_WIDTH - enemyFront),
                     playerFrontX: Math.round(playerFront),
@@ -3795,9 +3341,8 @@
                     playerAge: player.age,
                     enemyXpRatio: ai.age >= AGES.length - 1 ? 1 : Math.max(0, Math.min(1, ai.xp / evolveNeed)),
                     pressure: DirectorMemory.data.agreements.pressure,
-                    doctrine: this.doctrine(),
+                    emotion: this.emotionWord || (GemmaMemory.data && GemmaMemory.data.emotion) || 'Centered',
                     engineOrder: this.activeOrderFromState(),
-                    gemmaOrderActive: this.gemmaOrder !== 'none' && globalTime < this.gemmaOrderUntil,
                     restrained: globalTime < this.restraintUntil
                 };
             },
@@ -3860,7 +3405,6 @@
                 if (this.tryEvolve()) return;
                 this.updateLocalOrder(snapshot);
                 snapshot.engineOrder = this.activeOrderFromState();
-                let doctrine = this.effectiveDoctrine(snapshot);
                 let order = snapshot.engineOrder || 'balanced';
 
                 if (snapshot.restrained && snapshot.threatCount < 2) {
@@ -3871,32 +3415,112 @@
 
                 if (this.tryEmergencyAction(snapshot)) return;
                 if (this.tryOrderAction(order, snapshot)) return;
-                if (this.tryDoctrineAction(doctrine, snapshot)) return;
-
+                if (this.tryBestScoredAction(order, snapshot)) return;
+                if (this.tryCounterUnit(snapshot, 'fallback counter read')) return;
+                if (this.tryPressureUnit(snapshot, 'fallback lane presence')) return;
+                this.holdAction('saving for a better human-like trade');
+            },
+            tryBestScoredAction(order, snapshot) {
                 let ai = gameState.enemy;
-                let ecoTarget = 2 + Math.floor(currentConfig.aiAggression * 4) + (snapshot.pressure === 'rush' ? 1 : 0);
-                if (ai.upgrades.econ < ecoTarget && snapshot.threatCount < 4 && this.tryUpgrade('econ', 'long game income')) return;
-
-                if (snapshot.pressure === 'mercy' && snapshot.playerHpRatio < 0.45 && snapshot.threatCount < 3) {
-                    if (this.tryUpgrade('dmg', 'holding attacks back')) return;
-                    return;
-                }
-
-                if (snapshot.pressure === 'rush') {
-                    if (this.trySpawnUnit(2, 'rush heavy')) return;
-                    if (this.trySpawnUnit(1, 'rush support')) return;
-                    if (this.trySpawnUnit(0, 'rush filler')) return;
-                }
-
-                if (snapshot.threatCount >= 3) {
-                    if (this.trySpawnUnit(1, 'answer nearby units')) return;
-                    if (this.trySpawnUnit(0, 'stall the lane')) return;
-                }
-
                 let ageData = AGES[ai.age];
-                if (ai.gold >= ageData.units[2].cost * (1.4 - currentConfig.aiAggression * 0.4) && this.trySpawnUnit(2, 'timed power unit')) return;
-                if (snapshot.enemyUnits < Math.max(2, Math.floor(snapshot.playerUnits * 0.9)) && this.trySpawnUnit(1, 'match your army count')) return;
-                if ((currentConfig.aiAggression > 0.45 || ai.gold > ageData.units[0].cost * 5) && this.trySpawnUnit(0, 'keep lane presence')) return;
+                if (!ageData) return false;
+                let profile = this.emotionProfile();
+                let candidates = [];
+                let add = (kind, score, reason, run) => {
+                    if (!Number.isFinite(score)) return;
+                    candidates.push({ kind, score: score + Math.random() * 0.08, reason, run });
+                };
+
+                if (!DirectorMemory.data.agreements.noSpecials && ai.specialTimer <= 0 && !gameState.specialActive) {
+                    add('special', this.scoreSpecial(snapshot, order, profile), 'scored special timing', () => this.trySpecial('scored special timing'));
+                }
+                if (!DirectorMemory.data.agreements.noTurrets) {
+                    let openSlot = ai.turrets.some((slot, idx) => slot === null && idx < ai.unlockedSlots);
+                    let canSlot = ai.unlockedSlots < 4 && ai.gold >= ai.unlockedSlots * 500;
+                    if (openSlot || canSlot) add('turret', this.scoreTurret(snapshot, order, profile), 'scored base defense', () => this.tryBuildTurret('scored base defense'));
+                }
+                ['econ', 'dmg', 'hp'].forEach(type => {
+                    let lvl = ai.upgrades[type] || 0;
+                    if (lvl < 10 && ai.gold >= UPGRADE_COSTS[lvl]) {
+                        add(`upgrade:${type}`, this.scoreUpgrade(type, snapshot, order, profile), `scored ${type} upgrade`, () => this.tryUpgrade(type, `scored ${type} upgrade`));
+                    }
+                });
+                for (let i = 0; i < ageData.units.length; i++) {
+                    let unit = ageData.units[i];
+                    if (!unit || ai.gold < unit.cost) continue;
+                    if (DirectorMemory.data.agreements.meleeOnly && unit.type === 'ranged') continue;
+                    add(`unit:${unit.name}`, this.scoreUnitType(i, snapshot, order, profile), `scored ${unit.name}`, () => this.trySpawnUnit(i, `scored ${unit.name}`));
+                }
+                add('hold', this.scoreHold(snapshot, order, profile), 'scored patience', () => this.holdAction('scored patience'));
+                candidates.sort((a, b) => b.score - a.score);
+                let best = candidates[0];
+                if (!best || best.score < 0.15) return false;
+                return best.run();
+            },
+            scoreUnitType(typeIdx, snapshot, order, profile) {
+                let unit = AGES[gameState.enemy.age].units[typeIdx];
+                if (!unit) return -999;
+                let score = 0.25 + currentConfig.aiAggression * 0.45 + profile.aggression * 0.8 - profile.patience * 0.18;
+                let countNeed = Math.max(0, snapshot.playerUnits - snapshot.enemyUnits);
+                score += Math.min(1.7, countNeed * 0.34);
+                if (order === 'swarm' && typeIdx === 0) score += 1.1;
+                if (order === 'press') score += typeIdx === 2 ? 0.65 : 0.35;
+                if (order === 'heavy' && typeIdx === 2) score += 1.55;
+                if (order === 'defend' && snapshot.threatCount > 0) score += typeIdx === 0 ? 0.6 : 0.35;
+                if (order === 'counter') score += 0.45;
+                if (snapshot.playerRanged > snapshot.playerMelee && unit.type === 'melee' && snapshot.closestThreatDist > 180) score -= 2.4;
+                if (snapshot.playerRanged > snapshot.playerMelee && unit.type === 'heavy') score += 1.85;
+                if (snapshot.playerHeavy > 0 && unit.type === 'ranged') score += 1.35;
+                if (snapshot.playerMelee >= snapshot.playerRanged + 2 && unit.type === 'ranged') score += 0.9;
+                if (snapshot.heavyThreat && unit.type === 'ranged') score += 1.1;
+                if (snapshot.threatCount >= 3 && unit.type === 'heavy' && snapshot.enemyGold < unit.cost * 1.8) score -= 0.7;
+                if (snapshot.playerHpRatio < 0.36 && unit.type === 'heavy' && snapshot.pressure !== 'mercy') score += 1.1;
+                if (snapshot.pressure === 'mercy' && snapshot.playerHpRatio < 0.5) score -= unit.type === 'heavy' ? 1.5 : 0.6;
+                return score;
+            },
+            scoreUpgrade(type, snapshot, order, profile) {
+                let ai = gameState.enemy;
+                let lvl = ai.upgrades[type] || 0;
+                let score = 0.2 - lvl * 0.05;
+                if (type === 'econ') {
+                    score += 1.1 + profile.tech + profile.patience * 0.5;
+                    if (snapshot.threatCount > 2) score -= 1.6;
+                    if (order === 'tech' || order === 'hold') score += 0.8;
+                    if (gameState.player.age > ai.age) score += 0.45;
+                } else if (type === 'dmg') {
+                    score += 0.65 + snapshot.enemyUnits * 0.12 + profile.aggression * 0.55;
+                    if (order === 'press' || order === 'counter' || order === 'swarm') score += 0.5;
+                    if (snapshot.playerUnits >= 3) score += 0.35;
+                } else if (type === 'hp') {
+                    score += (1 - snapshot.enemyHpRatio) * 1.8 + snapshot.threatCount * 0.24 + profile.caution * 0.9;
+                    if (order === 'defend' || order === 'fortify') score += 0.7;
+                }
+                return score;
+            },
+            scoreTurret(snapshot, order, profile) {
+                let score = 0.2 + profile.caution * 1.0;
+                score += snapshot.threatCount * 0.35 + Math.max(0, 0.62 - snapshot.enemyHpRatio) * 1.3;
+                if (order === 'defend' || order === 'fortify') score += 1.0;
+                if (snapshot.closestThreatDist < 420) score += 0.9;
+                if (snapshot.threatCount === 0 && profile.aggression > 0.2) score -= 0.6;
+                return score;
+            },
+            scoreSpecial(snapshot, order, profile) {
+                let score = -0.2 + profile.special + profile.volatility * 0.25;
+                if (snapshot.threatCount >= 5) score += 2.2;
+                if (snapshot.heavyThreat && snapshot.threatCount >= 2) score += 1.4;
+                if (snapshot.playerUnits >= 5) score += 0.9;
+                if (snapshot.playerHpRatio < 0.45 && snapshot.pressure !== 'mercy') score += 0.5;
+                if (order === 'special') score += 1.0;
+                return score;
+            },
+            scoreHold(snapshot, order, profile) {
+                let score = 0.05 + profile.patience * 0.8;
+                if (order === 'hold' || order === 'tech' || order === 'heavy') score += 0.45;
+                if (snapshot.threatCount > 1) score -= 1.4;
+                if (snapshot.enemyUnits < snapshot.playerUnits) score -= 0.8;
+                if (snapshot.pressure === 'mercy' && snapshot.playerHpRatio < 0.5) score += 1.2;
+                return score;
             },
             tryEmergencyAction(snapshot) {
                 if ((snapshot.threatCount >= 6 || (snapshot.heavyThreat && snapshot.threatCount >= 2)) && this.trySpecial('emergency clear')) return true;
@@ -3949,6 +3573,8 @@
                 }
 
                 if (order === 'swarm') {
+                    if (snapshot.playerRanged > snapshot.playerMelee && this.trySpawnUnit(2, 'order swarm punish ranged')) return true;
+                    if (snapshot.playerHeavy > 0 && this.trySpawnUnit(1, 'order swarm screen heavy')) return true;
                     if (this.trySpawnUnit(0, 'order swarm body')) return true;
                     if (this.trySpawnUnit(1, 'order swarm ranged')) return true;
                     if (this.tryUpgrade('dmg', 'order swarm damage')) return true;
@@ -4001,68 +3627,6 @@
                 }
                 return true;
             },
-            tryDoctrineAction(doctrine, snapshot) {
-                let ai = gameState.enemy;
-                let ageData = AGES[ai.age];
-                if (!ageData) return false;
-
-                if (doctrine === 'tech') {
-                    let ecoTarget = Math.min(10, 4 + Math.floor(currentConfig.aiAggression * 4));
-                    if (ai.upgrades.econ < ecoTarget && snapshot.threatCount < 3 && this.tryUpgrade('econ', 'doctrine tech economy')) return true;
-                    if (snapshot.threatCount < 2 && this.tryUpgrade('dmg', 'doctrine tech damage')) return true;
-                    if (snapshot.enemyUnits < Math.max(1, Math.floor(snapshot.playerUnits * 0.65)) && this.trySpawnUnit(1, 'tech screen')) return true;
-                    return false;
-                }
-
-                if (doctrine === 'turtle') {
-                    if (this.tryBuildTurret('doctrine turtle fort')) return true;
-                    if (this.tryUpgrade('hp', 'doctrine turtle base hp')) return true;
-                    if (snapshot.enemyUnits < snapshot.playerUnits + 1 && this.trySpawnUnit(1, 'turtle ranged cover')) return true;
-                    if (this.trySpawnUnit(0, 'turtle stall body')) return true;
-                    return false;
-                }
-
-                if (doctrine === 'counter') {
-                    if (snapshot.heavyThreat && this.trySpecial('counter heavy threat')) return true;
-                    if (snapshot.threatCount >= 2 && this.trySpawnUnit(1, 'counter ranged pressure')) return true;
-                    if (snapshot.playerUnits > snapshot.enemyUnits && this.trySpawnUnit(2, 'counter power unit')) return true;
-                    if (this.tryUpgrade('dmg', 'counter damage timing')) return true;
-                    return false;
-                }
-
-                if (doctrine === 'bait') {
-                    if (snapshot.threatCount >= 4 && this.trySpecial('bait punish wave')) return true;
-                    if (snapshot.threatCount >= 2 && this.tryBuildTurret('bait punish near base')) return true;
-                    if (snapshot.threatCount === 0 && this.tryUpgrade('econ', 'bait quiet economy')) return true;
-                    if (snapshot.enemyUnits < 2 && this.trySpawnUnit(0, 'bait light screen')) return true;
-                    return false;
-                }
-
-                if (doctrine === 'stall') {
-                    if (this.tryBuildTurret('stall fortify')) return true;
-                    if (this.tryUpgrade('hp', 'stall survival')) return true;
-                    if (snapshot.threatCount < 3 && this.tryUpgrade('econ', 'stall income')) return true;
-                    if (this.trySpawnUnit(0, 'stall cheap blocker')) return true;
-                    return false;
-                }
-
-                if (doctrine === 'allin') {
-                    if (snapshot.threatCount < 5 && this.trySpawnUnit(2, 'allin heavy push')) return true;
-                    if (this.trySpawnUnit(1, 'allin support')) return true;
-                    if (this.tryUpgrade('dmg', 'allin damage')) return true;
-                    if (this.trySpawnUnit(0, 'allin filler')) return true;
-                    return false;
-                }
-
-                if (doctrine === 'rush') {
-                    if (this.trySpawnUnit(1, 'doctrine rush support')) return true;
-                    if (this.trySpawnUnit(0, 'doctrine rush filler')) return true;
-                    if (snapshot.threatCount < 3 && this.trySpawnUnit(2, 'doctrine rush heavy')) return true;
-                    return false;
-                }
-
-                return false;
-            },
             tryEvolve() {
                 let ai = gameState.enemy;
                 if (ai.age >= AGES.length - 1 || ai.xp < AGES[ai.age].evolveXP) return false;
@@ -4110,9 +3674,7 @@
                 }
 
                 let ageData = AGES[ai.age];
-                let typeIdx = 0;
-                if (ai.gold >= ageData.turrets[2].cost && currentConfig.aiAggression > 0.45) typeIdx = 2;
-                else if (ai.gold >= ageData.turrets[1].cost) typeIdx = 1;
+                let typeIdx = this.bestTurretIndex(ageData, ai.gold);
                 let cost = ageData.turrets[typeIdx].cost;
                 if (ai.gold < cost) return false;
                 ai.gold -= cost;
@@ -4120,6 +3682,27 @@
                 ai.turretProgress[emptySlot] = 0;
                 this.reportTool(`build_turret:${ageData.turrets[typeIdx].name}`, reason);
                 return true;
+            },
+            bestTurretIndex(ageData, gold) {
+                let snapshot = this.snapshot();
+                let best = 0;
+                let bestScore = -Infinity;
+                for (let i = 0; i < ageData.turrets.length; i++) {
+                    let turret = ageData.turrets[i];
+                    if (!turret || gold < turret.cost) continue;
+                    let dps = turret.dmg / Math.max(0.1, turret.attackSpeed || 1);
+                    let score = dps * 0.018 + turret.range * 0.004 - turret.cost / Math.max(1, gold) * 0.25;
+                    if (snapshot.threatCount >= 3) score += dps * 0.012;
+                    if (snapshot.closestThreatDist < 340 && turret.range >= 300) score += 0.7;
+                    if (snapshot.playerHeavy > 0) score += turret.dmg * 0.004;
+                    if (snapshot.playerRanged > snapshot.playerMelee) score += turret.range * 0.002;
+                    if (currentConfig.aiAggression > 0.7 && i === 2) score += 0.35;
+                    if (score > bestScore) {
+                        bestScore = score;
+                        best = i;
+                    }
+                }
+                return best;
             },
             trySpecial(reason) {
                 let a = DirectorMemory.data.agreements;
@@ -4147,7 +3730,7 @@
                 if (force || globalTime - this.lastActionNoticeAt > 1.8) {
                     DirectorPanel.showAction(name, reason);
                     if (force || /special|evolve|age/i.test(name)) {
-                        GemmaMemory.recordSystem(`Fallback action ${name}: ${reason}`);
+                        GemmaMemory.recordSystem(`Engine action ${name}: ${reason}`);
                     }
                     this.lastActionNoticeAt = globalTime;
                 }
