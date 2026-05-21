@@ -3656,12 +3656,54 @@
                 }
 
                 if (this.tryEmergencyAction(snapshot)) return;
+
+                // NEW TACTICAL BEHAVIOR: Prevents trickling against Ranged/Deathball exploits
+                if (this.tryTacticalHold(snapshot, order)) return;
+
                 if (this.tryHumanTimingHold(order, snapshot)) return;
                 if (this.tryOrderAction(order, snapshot)) return;
                 if (this.tryBestScoredAction(order, snapshot)) return;
                 if (this.tryCounterUnit(snapshot, 'fallback counter read')) return;
                 if (this.tryPressureUnit(snapshot, 'fallback lane presence')) return;
+
                 this.holdAction('saving for a better human-like trade');
+            },
+            tryTacticalHold(snapshot, order) {
+                let ai = gameState.enemy;
+                let ageData = AGES[ai.age];
+                if (!ageData) return false;
+
+                let heavy = ageData.units[2];
+                let ranged = ageData.units[1];
+                let melee = ageData.units[0];
+                if (!heavy) return false;
+
+                let isRangedWall = snapshot.playerRanged >= 2 && snapshot.playerRanged > snapshot.playerMelee;
+                let playerOverwhelming = snapshot.playerValue > snapshot.enemyValue + (heavy.cost * 0.8);
+
+                // When vastly out-massed or facing a kiting/ranged wall, trickling single units is a mistake.
+                if ((isRangedWall || playerOverwhelming) && snapshot.enemyHpRatio > 0.22) {
+
+                    // Pulling mechanic: If they are far away, let them enter our turret zone while we save gold
+                    if (snapshot.closestThreatDist > 320 && snapshot.enemyUnits <= 1) {
+                        let targetGold = heavy.cost + (ranged ? ranged.cost : melee.cost);
+                        if (ai.gold < targetGold) {
+                            return this.holdAction('drawing enemy in & banking for combo');
+                        }
+                    }
+
+                    // Executing the anti-exploit combo
+                    // Step 1: Deploy heavy shield tank
+                    if (this.lastSpawnType !== 2 && ai.gold >= heavy.cost) {
+                        return this.trySpawnUnit(2, 'tactical combo: heavy shield deploy');
+                    }
+
+                    // Step 2: Immediately follow up with ranged DPS using the heavy's cover
+                    if (this.lastSpawnType === 2 && ranged && ai.gold >= ranged.cost) {
+                        return this.trySpawnUnit(1, 'tactical combo: ranged follow-up');
+                    }
+                }
+                return false;
             },
             tryHumanTimingHold(order, snapshot) {
                 let ai = gameState.enemy;
@@ -3670,19 +3712,25 @@
                 let heavy = ageData.units[2];
                 let support = ageData.units[1];
                 let profile = this.emotionProfile();
-                if (snapshot.threatCount >= 3 || snapshot.enemyHpRatio < 0.38) return false;
-                if ((this.macroPlan === 'bankHeavy' || order === 'heavy' || (snapshot.playerRanged > snapshot.playerMelee && snapshot.frontGap > 280)) &&
-                    heavy && ai.gold >= heavy.cost * 0.58 && ai.gold < heavy.cost) {
+
+                if (snapshot.threatCount >= 4 || snapshot.enemyHpRatio < 0.18) return false;
+
+                let wantsHeavy = this.macroPlan === 'bankHeavy' || order === 'heavy' || (snapshot.playerRanged > snapshot.playerMelee && snapshot.frontGap > 200);
+
+                if (wantsHeavy && heavy && ai.gold < heavy.cost) {
                     return this.holdAction('banking for heavy counter timing');
                 }
+
                 if (this.macroPlan === 'techWindow' && snapshot.threatCount < 2) {
                     let econLevel = ai.upgrades.econ || 0;
                     let econCost = econLevel < 10 ? UPGRADE_COSTS[econLevel] : Infinity;
                     if (ai.gold >= econCost * 0.62 && ai.gold < econCost) return this.holdAction('waiting for economy upgrade');
                 }
-                if (this.lastSpawnType === 2 && globalTime - this.lastSpawnAt < 4.5 && support && ai.gold >= support.cost && snapshot.enemyUnits <= snapshot.playerUnits + 1) {
-                    return this.trySpawnUnit(1, 'human follow-up support after heavy');
+
+                if (this.lastSpawnType === 2 && globalTime - this.lastSpawnAt < 4.5 && support && ai.gold < support.cost && snapshot.enemyUnits <= snapshot.playerUnits + 1) {
+                    return this.holdAction('waiting to follow heavy with support');
                 }
+
                 if (profile.patience > 0.35 && snapshot.enemyUnits >= snapshot.playerUnits + 1 && snapshot.frontGap > 430 && Math.random() < 0.35) {
                     return this.holdAction('not overcommitting into open lane');
                 }
@@ -3731,28 +3779,50 @@
                 let score = 0.25 + currentConfig.aiAggression * 0.45 + profile.aggression * 0.8 - profile.patience * 0.18;
                 let countNeed = Math.max(0, snapshot.playerUnits - snapshot.enemyUnits);
                 score += Math.min(1.7, countNeed * 0.34);
+
+                // Anti-trickle & Anti-Exploit penalties
+                let isRangedWall = snapshot.playerRanged >= 2 && snapshot.playerRanged > snapshot.playerMelee;
+                let playerOverwhelming = snapshot.playerValue > snapshot.enemyValue + (unit.cost * 1.5);
+
+                if (playerOverwhelming && snapshot.enemyUnits === 0 && unit.type !== 'heavy') {
+                    if (snapshot.enemyHpRatio > 0.22) score -= 4.0; // Do not feed cheap units into deathball
+                }
+                if (isRangedWall) {
+                    if (unit.type === 'melee' && snapshot.frontGap > 120) score -= 4.5; // Avoid walking melee into arrows
+                    if (unit.type === 'heavy') score += 2.5; // Heavy is the hard counter
+                }
+                if (this.lastSpawnType === 2 && unit.type === 'ranged' && this.spawnStreak <= 2) {
+                    score += 2.0; // Synergy follow up logic
+                }
+
                 if (order === 'swarm' && typeIdx === 0) score += 1.1;
                 if (order === 'press') score += typeIdx === 2 ? 0.65 : 0.35;
                 if (order === 'heavy' && typeIdx === 2) score += 1.55;
                 if (order === 'defend' && snapshot.threatCount > 0) score += typeIdx === 0 ? 0.6 : 0.35;
                 if (order === 'counter') score += 0.45;
-                if (this.macroPlan === 'punishRanged') score += unit.type === 'heavy' ? 1.4 : (unit.type === 'melee' ? -0.9 : 0.15);
-                if (this.macroPlan === 'screenHeavy') score += unit.type === 'ranged' ? 1.25 : (unit.type === 'heavy' ? -0.45 : 0.25);
+
+                if (this.macroPlan === 'punishRanged') score += unit.type === 'heavy' ? 1.5 : (unit.type === 'melee' ? -1.5 : 0.2);
+                if (this.macroPlan === 'screenHeavy') score += unit.type === 'ranged' ? 1.3 : (unit.type === 'heavy' ? -0.5 : 0.3);
                 if (this.macroPlan === 'flood') score += typeIdx === 0 ? 0.9 : 0.25;
-                if (this.macroPlan === 'killPush') score += unit.type === 'heavy' ? 0.9 : 0.35;
+                if (this.macroPlan === 'killPush') score += unit.type === 'heavy' ? 1.0 : 0.35;
                 if (this.macroPlan === 'stabilize') score += unit.type === 'melee' ? 0.65 : 0.25;
-                if (snapshot.playerRanged > snapshot.playerMelee && unit.type === 'melee' && snapshot.closestThreatDist > 180) score -= 2.4;
-                if (snapshot.playerRanged > snapshot.playerMelee && unit.type === 'heavy') score += 1.85;
-                if (snapshot.playerHeavy > 0 && unit.type === 'ranged') score += 1.35;
-                if (snapshot.playerMelee >= snapshot.playerRanged + 2 && unit.type === 'ranged') score += 0.9;
-                if (snapshot.heavyThreat && unit.type === 'ranged') score += 1.1;
-                if (snapshot.threatCount >= 3 && unit.type === 'heavy' && snapshot.enemyGold < unit.cost * 1.8) score -= 0.7;
-                if (snapshot.playerHpRatio < 0.36 && unit.type === 'heavy' && snapshot.pressure !== 'mercy') score += 1.1;
+
+                if (snapshot.playerHeavy > 0 && unit.type === 'ranged') score += 1.5;
+                if (snapshot.playerMelee >= snapshot.playerRanged + 2 && unit.type === 'ranged') score += 1.0;
+
+                if (snapshot.heavyThreat && unit.type === 'ranged') score += 1.2;
+
+                if (snapshot.threatCount >= 3 && unit.type === 'heavy' && snapshot.enemyGold < unit.cost * 1.5) score -= 0.8;
+
+                if (snapshot.playerHpRatio < 0.36 && unit.type === 'heavy' && snapshot.pressure !== 'mercy') score += 1.2;
                 if (snapshot.pressure === 'mercy' && snapshot.playerHpRatio < 0.5) score -= unit.type === 'heavy' ? 1.5 : 0.6;
-                if (snapshot.playerTurretCount >= 2 && unit.type !== 'heavy' && snapshot.frontGap > 480) score -= 0.55;
-                if (snapshot.playerTurretCount >= 2 && unit.type === 'heavy') score += 0.45;
-                if (this.lastSpawnType === typeIdx) score -= Math.min(0.8, this.spawnStreak * 0.22);
-                if (unit.type === 'melee' && snapshot.enemyMelee > snapshot.enemyRanged + 2 && snapshot.playerRanged > 0) score -= 0.6;
+
+                if (snapshot.playerTurretCount >= 2 && unit.type !== 'heavy' && snapshot.frontGap > 480) score -= 0.8;
+                if (snapshot.playerTurretCount >= 2 && unit.type === 'heavy') score += 0.6;
+
+                if (this.lastSpawnType === typeIdx) score -= Math.min(0.8, this.spawnStreak * 0.25);
+                if (unit.type === 'melee' && snapshot.enemyMelee > snapshot.enemyRanged + 2 && snapshot.playerRanged > 0) score -= 0.8;
+
                 return score;
             },
             scoreUpgrade(type, snapshot, order, profile) {
@@ -3783,6 +3853,9 @@
                 let score = 0.2 + profile.caution * 1.0;
                 score += snapshot.threatCount * 0.35 + Math.max(0, 0.62 - snapshot.enemyHpRatio) * 1.3;
                 if (order === 'defend' || order === 'fortify') score += 1.0;
+
+                if (snapshot.playerValue > snapshot.enemyValue * 1.5) score += 0.8; // High value against death balls
+
                 if (snapshot.closestThreatDist < 420) score += 0.9;
                 if (snapshot.threatCount === 0 && profile.aggression > 0.2) score -= 0.6;
                 if (this.macroPlan === 'fortify' || this.macroPlan === 'stabilize') score += 0.8;
@@ -3798,12 +3871,26 @@
                 if (order === 'special') score += 1.0;
                 if (this.macroPlan === 'killPush') score += 0.55;
                 if (this.macroPlan === 'techWindow' && snapshot.threatCount < 3) score -= 0.55;
+
+                // Do not waste special cooldowns on small or cheap waves
+                if (snapshot.playerValue < 120 && !snapshot.heavyThreat && snapshot.playerUnits < 4) {
+                    score -= 3.0;
+                }
+
                 return score;
             },
             scoreHold(snapshot, order, profile) {
                 let score = 0.05 + profile.patience * 0.8;
                 if (order === 'hold' || order === 'tech' || order === 'heavy') score += 0.45;
                 if (snapshot.threatCount > 1) score -= 1.4;
+
+                let isRangedWall = snapshot.playerRanged >= 2 && snapshot.playerRanged > snapshot.playerMelee;
+                let playerOverwhelming = snapshot.playerValue > snapshot.enemyValue * 1.5;
+                // If we are being death-balled or kited, holding to pull them toward base turrets is good!
+                if ((isRangedWall || playerOverwhelming) && snapshot.closestThreatDist > 300) {
+                    score += 3.0;
+                }
+
                 if (snapshot.enemyUnits < snapshot.playerUnits) score -= 0.8;
                 if (snapshot.pressure === 'mercy' && snapshot.playerHpRatio < 0.5) score += 1.2;
                 if (this.macroPlan === 'bankHeavy' || this.macroPlan === 'techWindow') score += 0.5;
@@ -3814,7 +3901,18 @@
                 if ((snapshot.threatCount >= 6 || (snapshot.heavyThreat && snapshot.threatCount >= 2)) && this.trySpecial('emergency clear')) return true;
                 if (snapshot.threatCount >= 3 && this.tryBuildTurret('live base defense')) return true;
                 if (snapshot.enemyHpRatio < 0.45 && this.tryUpgrade('hp', 'live base stabilize')) return true;
-                if (snapshot.threatCount >= 2 && snapshot.enemyUnits < snapshot.playerUnits && this.tryCounterUnit(snapshot, 'live counter near base')) return true;
+
+                if (snapshot.threatCount >= 2 && snapshot.enemyUnits < snapshot.playerUnits) {
+                    let ai = gameState.enemy;
+                    let ageData = AGES[ai.age];
+                    let heavy = ageData.units[2];
+
+                    if (heavy && ai.gold >= heavy.cost && this.trySpawnUnit(2, 'emergency heavy block')) return true;
+
+                    // Only trickle-feed cheap units if our base is truly at death's door (HP < 22%) 
+                    // Otherwise, taking a few base hits while waiting for Heavy is the statistically smarter play.
+                    if (snapshot.enemyHpRatio <= 0.22 && this.tryCounterUnit(snapshot, 'desperate live counter')) return true;
+                }
                 return false;
             },
             tryOrderAction(order, snapshot) {
@@ -3899,6 +3997,19 @@
                 return false;
             },
             tryCounterUnit(snapshot, reason) {
+                let ai = gameState.enemy;
+                let ageData = AGES[ai.age];
+                let heavy = ageData.units[2];
+                let isRangedWall = snapshot.playerRanged >= 2 && snapshot.playerRanged > snapshot.playerMelee;
+                let facingDeathBall = snapshot.playerValue > (heavy ? heavy.cost * 1.5 : 999);
+
+                // Anti-Feed Mechanism: Forces a hold instead of sending squishy units against a grinder setup
+                if ((facingDeathBall || isRangedWall) && snapshot.enemyValue < (heavy ? heavy.cost * 0.5 : 100)) {
+                    if (snapshot.enemyHpRatio > 0.22) {
+                        return false;
+                    }
+                }
+
                 if (snapshot.heavyThreat && this.trySpawnUnit(1, `${reason} anti-heavy range`)) return true;
                 if (snapshot.playerRanged > snapshot.playerMelee && this.trySpawnUnit(2, `${reason} punish ranged`)) return true;
                 if (snapshot.playerHeavy > 0 && this.trySpawnUnit(1, `${reason} kite heavy`)) return true;
