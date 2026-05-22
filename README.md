@@ -32,7 +32,7 @@ The opponent is not only an economy/army AI. It also has a local "Codex Director
 
 - Chats with the player during the match.
 - Tracks pacts and short memory notes.
-- Adapts spending behavior (rush/balanced/mercy pressure plans).
+- Adapts spending through live tactical scoring, emotion bias, and difficulty settings.
 - Executes tool-style actions like spawning units, buying upgrades, building turrets, and using specials.
 
 Example chat commands:
@@ -40,8 +40,6 @@ Example chat commands:
 - `no specials`
 - `no turrets`
 - `melee only`
-- `go easy`
-- `rush me`
 - `truce for 30 seconds`
 - `remember I like late game`
 - `forget`

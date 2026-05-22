@@ -1492,36 +1492,59 @@
         };
 
         // --- CODEX DIRECTOR MEMORY ---
+        const DIRECTOR_AGREEMENT_DEFAULTS = Object.freeze({
+            noSpecials: false,
+            noTurrets: false,
+            meleeOnly: false
+        });
+        const GEMMA_FIXED_INPUT_PACTS = Object.freeze(['pressure: rush']);
+
+        function directorAgreementDefaults() {
+            return Object.assign({}, DIRECTOR_AGREEMENT_DEFAULTS);
+        }
+
+        function gemmaInputPacts() {
+            return GEMMA_FIXED_INPUT_PACTS.concat(DirectorMemory.tags());
+        }
+
         const DirectorMemory = {
             key: 'aow_sketch_director_memory_v1',
             data: {
                 notes: [],
-                agreements: { noSpecials: false, noTurrets: false, meleeOnly: false, pressure: 'balanced' }
+                agreements: directorAgreementDefaults()
             },
             init() {
+                let migrated = false;
                 try {
                     let stored = localStorage.getItem(this.key);
                     if (stored) {
                         let parsed = JSON.parse(stored);
                         this.data.notes = Array.isArray(parsed.notes) ? parsed.notes.slice(-8) : [];
-                        this.data.agreements = Object.assign({}, this.data.agreements, parsed.agreements || {});
+                        this.data.agreements = this.normalizeAgreements(parsed.agreements);
+                        migrated = !!(parsed.agreements && Object.prototype.hasOwnProperty.call(parsed.agreements, 'pressure'));
                     }
                 } catch (e) { console.warn("Director memory blocked"); }
+                this.data.agreements = this.normalizeAgreements(this.data.agreements);
+                if (migrated) this.save();
             },
             save() {
                 try { localStorage.setItem(this.key, JSON.stringify(this.data)); } catch (e) { }
             },
-            setAgreement(key, value) {
-                this.data.agreements[key] = value;
-                this.save();
+            normalizeAgreements(value) {
+                let source = value && typeof value === 'object' ? value : {};
+                let clean = directorAgreementDefaults();
+                Object.keys(clean).forEach(key => {
+                    clean[key] = !!source[key];
+                });
+                return clean;
             },
-            setPressure(value) {
-                this.data.agreements.pressure = value;
+            setAgreement(key, value) {
+                if (!Object.prototype.hasOwnProperty.call(DIRECTOR_AGREEMENT_DEFAULTS, key)) return;
+                this.data.agreements[key] = !!value;
                 this.save();
             },
             clearAgreement(key) {
-                if (key === 'pressure') this.data.agreements.pressure = 'balanced';
-                else if (Object.prototype.hasOwnProperty.call(this.data.agreements, key)) this.data.agreements[key] = false;
+                if (Object.prototype.hasOwnProperty.call(this.data.agreements, key)) this.data.agreements[key] = false;
                 this.save();
             },
             addNote(note) {
@@ -1541,14 +1564,13 @@
             clear() {
                 this.data = {
                     notes: [],
-                    agreements: { noSpecials: false, noTurrets: false, meleeOnly: false, pressure: 'balanced' }
+                    agreements: directorAgreementDefaults()
                 };
                 this.save();
             },
             agreementItems() {
                 let a = this.data.agreements;
                 let items = [];
-                if (a.pressure && a.pressure !== 'balanced') items.push({ key: 'pressure', label: `pressure: ${a.pressure}` });
                 if (a.noSpecials) items.push({ key: 'noSpecials', label: 'no specials' });
                 if (a.noTurrets) items.push({ key: 'noTurrets', label: 'no turrets' });
                 if (a.meleeOnly) items.push({ key: 'meleeOnly', label: 'melee only' });
@@ -1556,13 +1578,11 @@
                 return items;
             },
             inputAgreementTags() {
-                let items = this.agreementItems().map(item => item.label);
-                if (!items.length && this.data.agreements.pressure === 'balanced') items.push('balanced pressure');
-                return items;
+                return this.agreementItems().map(item => item.label);
             },
             tags() {
                 let a = this.data.agreements;
-                let tags = [`pressure: ${a.pressure}`];
+                let tags = [];
                 if (a.noSpecials) tags.push('no specials');
                 if (a.noTurrets) tags.push('no turrets');
                 if (a.meleeOnly) tags.push('melee only');
@@ -2175,7 +2195,7 @@
                 `Threats near Gemma base ${snapshot.threatCount}`,
                 `Closest player threat: ${closest}`,
                 `Front gap ${snapshot.frontGap} px`,
-                `Pressure pact: ${snapshot.pressure || 'balanced'}`,
+                'Pressure pact: rush',
                 `Gemma emotion: ${snapshot.emotion || 'Centered'}`,
                 `Engine plan: ${snapshot.engineOrder || 'adaptive'}`,
                 `Engine order: ${snapshot.engineOrder || 'adaptive'}`,
@@ -2436,7 +2456,7 @@
                 `Your base is at ${Math.round(snapshot.enemyHpRatio * 100)}% with ${Math.floor(snapshot.enemyGold)} gold. My base is at ${Math.round(snapshot.playerHpRatio * 100)}% with ${Math.floor(snapshot.playerGold)} gold.`,
                 `My army: ${playerUnitLine}. Your army: ${enemyUnitLine}.`,
                 `What matters tactically: ${tacticalLine}.`,
-                `Our table rules and preferences: ${DirectorMemory.tags().join(', ')}.`,
+                `Our table rules and preferences: ${gemmaInputPacts().join(', ')}.`,
                 latestPlayer ? `I just told you: "${latestPlayer}"` : 'I did not say anything new this turn.',
                 'Please answer in exactly two short lines so the phone UI can read it.',
                 'First line: talk directly to me as Gemma, one or two short sentences.',
@@ -3179,18 +3199,6 @@
                     replies.push('All enemy unit types are available again.');
                 }
 
-                if (/go easy|take it easy|mercy|soft/.test(text)) {
-                    DirectorMemory.setPressure('mercy');
-                    replies.push('I will spend slower unless your army reaches my base.');
-                } else if (/rush|aggressive|pressure me|try hard|harder/.test(text)) {
-                    DirectorMemory.setPressure('rush');
-                    AIDirector.restraintUntil = 0;
-                    replies.push('Pressure plan accepted. I will stop hoarding and push.');
-                } else if (/balanced|fair|normal plan/.test(text)) {
-                    DirectorMemory.setPressure('balanced');
-                    replies.push('Balanced plan restored.');
-                }
-
                 if (/truce|pause attacks|give me/.test(text)) {
                     let secondsMatch = text.match(/(\d{1,2})\s*(sec|second)/);
                     let seconds = secondsMatch ? Math.max(10, Math.min(60, parseInt(secondsMatch[1], 10))) : 30;
@@ -3376,14 +3384,9 @@
                     techWindow: (snapshot.threatCount < 2 ? 1.1 : -0.7) + profile.tech + (gameState.player.age > ai.age ? 0.9 : 0) + snapshot.enemyXpRatio * 0.7,
                     bankHeavy: (snapshot.threatCount < 3 ? 0.8 : -0.6) + (snapshot.enemyGold / Math.max(1, heavyCost)) * 1.2 + (snapshot.playerRanged > 0 ? 0.55 : 0),
                     killPush: Math.max(0, 0.5 - snapshot.playerHpRatio) * 2.4 + profile.aggression + (snapshot.frontGap > 560 ? 0.8 : 0),
-                    flood: Math.max(0, snapshot.playerUnits - snapshot.enemyUnits) * 0.35 + profile.aggression * 0.8 + (snapshot.pressure === 'rush' ? 1 : 0),
+                    flood: Math.max(0, snapshot.playerUnits - snapshot.enemyUnits) * 0.35 + profile.aggression * 0.8,
                     fortify: profile.caution * 0.9 + (snapshot.threatCount >= 2 ? 0.7 : 0) + (DirectorMemory.data.agreements.noTurrets ? -2 : 0)
                 };
-                if (snapshot.pressure === 'mercy' && snapshot.playerHpRatio < 0.55 && snapshot.threatCount < 3) {
-                    scores.techWindow += 1.3;
-                    scores.killPush -= 2.2;
-                    scores.flood -= 1.3;
-                }
                 let next = this.pickTopScore(scores, this.macroPlan);
                 if (next !== this.macroPlan) {
                     this.macroPlan = next;
@@ -3402,7 +3405,6 @@
             },
             pickLocalOrder(snapshot) {
                 let ai = gameState.enemy;
-                let pressure = (DirectorMemory.data.agreements || {}).pressure || 'balanced';
                 let profile = this.emotionProfile();
                 let scores = {
                     defend: 0.5 + snapshot.threatCount * 0.42 + (1 - snapshot.enemyHpRatio) * 2.2 + profile.caution * 1.2,
@@ -3413,19 +3415,9 @@
                     heavy: 0.35 + profile.greed + (snapshot.playerRanged > snapshot.playerMelee ? 1.0 : 0) + Math.max(0, snapshot.enemyGold - AGES[ai.age].units[2].cost) / Math.max(1, AGES[ai.age].units[2].cost),
                     fortify: 0.42 + profile.caution + (snapshot.threatCount >= 2 ? 0.75 : 0) + (snapshot.enemyHpRatio < 0.55 ? 0.7 : 0),
                     special: 0.2 + profile.special + (snapshot.threatCount >= 4 ? 1.0 : 0) + (snapshot.playerUnits >= 5 ? 0.65 : 0),
-                    hold: 0.18 + profile.patience + (pressure === 'mercy' ? 1.2 : 0)
+                    hold: 0.18 + profile.patience
                 };
                 if (snapshot.restrained && snapshot.threatCount < 2) scores.tech += 3;
-                if (pressure === 'rush') {
-                    scores.press += 1.1;
-                    scores.swarm += 0.8;
-                    scores.hold -= 0.7;
-                }
-                if (pressure === 'mercy' && snapshot.playerHpRatio < 0.5 && snapshot.threatCount < 3) {
-                    scores.hold += 3;
-                    scores.press -= 2;
-                    scores.swarm -= 1;
-                }
                 if (snapshot.threatCount >= 5 || snapshot.enemyHpRatio < 0.32) scores.defend += 3;
                 if (snapshot.playerRanged > snapshot.enemyRanged + 1 || snapshot.playerUnits > snapshot.enemyUnits + 2 || snapshot.heavyThreat) scores.counter += 1.7;
                 if (snapshot.threatCount >= 4) {
@@ -3465,8 +3457,6 @@
                 return this.pickTopScore(scores, this.localOrder);
             },
             nextThinkDelay() {
-                let pressure = DirectorMemory.data.agreements.pressure;
-                let pressureFactor = pressure === 'rush' ? 0.7 : (pressure === 'mercy' ? 1.7 : 1);
                 let profile = this.emotionProfile();
                 let emotionFactor = Math.max(0.62, Math.min(1.45, 1 - profile.aggression * 0.22 + profile.caution * 0.18 + profile.patience * 0.14));
                 let order = this.activeOrderFromState();
@@ -3482,7 +3472,7 @@
                     hold: 1.25
                 }[order] || 1;
                 let difficultyFactor = 1 - (currentConfig.aiAggression * 0.12);
-                return Math.max(0.22, (currentConfig.thinkRate * pressureFactor * emotionFactor * orderFactor * difficultyFactor) + Math.random() * 0.35);
+                return Math.max(0.22, (currentConfig.thinkRate * emotionFactor * orderFactor * difficultyFactor) + Math.random() * 0.35);
             },
             pickTopScore(scores, current = '') {
                 let entries = Object.keys(scores).map(key => ({ key, score: scores[key] + (key === current ? 0.22 : 0) }));
@@ -3582,7 +3572,6 @@
                     enemyAge: ai.age,
                     playerAge: player.age,
                     enemyXpRatio: ai.age >= AGES.length - 1 ? 1 : Math.max(0, Math.min(1, ai.xp / evolveNeed)),
-                    pressure: DirectorMemory.data.agreements.pressure,
                     emotion: this.emotionWord || (GemmaMemory.data && GemmaMemory.data.emotion) || 'Centered',
                     macroPlan: this.macroPlan || 'balanced',
                     engineOrder: this.activeOrderFromState(),
@@ -3636,10 +3625,6 @@
                     DirectorPanel.add('ai', `Pacts still active: ${DirectorMemory.tags().join(', ')}.`);
                 } else if (snapshot.threatCount >= 4) {
                     DirectorPanel.add('ai', 'Your line is stacked near my base. I am spending defensively.');
-                } else if (snapshot.pressure === 'rush') {
-                    DirectorPanel.add('ai', 'You asked for pressure, so I am converting gold into bodies.');
-                } else if (snapshot.pressure === 'mercy') {
-                    DirectorPanel.add('ai', 'Mercy plan is on. I will not flood the lane while you are behind.');
                 } else {
                     DirectorPanel.add('ai', 'I am watching age timing, gold float, and front-line distance.');
                 }
@@ -3815,8 +3800,7 @@
 
                 if (snapshot.threatCount >= 3 && unit.type === 'heavy' && snapshot.enemyGold < unit.cost * 1.5) score -= 0.8;
 
-                if (snapshot.playerHpRatio < 0.36 && unit.type === 'heavy' && snapshot.pressure !== 'mercy') score += 1.2;
-                if (snapshot.pressure === 'mercy' && snapshot.playerHpRatio < 0.5) score -= unit.type === 'heavy' ? 1.5 : 0.6;
+                if (snapshot.playerHpRatio < 0.36 && unit.type === 'heavy') score += 1.2;
 
                 if (snapshot.playerTurretCount >= 2 && unit.type !== 'heavy' && snapshot.frontGap > 480) score -= 0.8;
                 if (snapshot.playerTurretCount >= 2 && unit.type === 'heavy') score += 0.6;
@@ -3868,7 +3852,7 @@
                 if (snapshot.threatCount >= 5) score += 2.2;
                 if (snapshot.heavyThreat && snapshot.threatCount >= 2) score += 1.4;
                 if (snapshot.playerUnits >= 5) score += 0.9;
-                if (snapshot.playerHpRatio < 0.45 && snapshot.pressure !== 'mercy') score += 0.5;
+                if (snapshot.playerHpRatio < 0.45) score += 0.5;
                 if (order === 'special') score += 1.0;
                 if (this.macroPlan === 'killPush') score += 0.55;
                 if (this.macroPlan === 'techWindow' && snapshot.threatCount < 3) score -= 0.55;
@@ -3893,7 +3877,6 @@
                 }
 
                 if (snapshot.enemyUnits < snapshot.playerUnits) score -= 0.8;
-                if (snapshot.pressure === 'mercy' && snapshot.playerHpRatio < 0.5) score += 1.2;
                 if (this.macroPlan === 'bankHeavy' || this.macroPlan === 'techWindow') score += 0.5;
                 if (this.macroPlan === 'killPush' || this.macroPlan === 'flood') score -= 0.9;
                 return score;

@@ -27,8 +27,6 @@ Useful player messages:
 - `no specials`
 - `no turrets`
 - `melee only`
-- `go easy`
-- `rush me`
 - `truce for 30 seconds`
 - `remember I like late game`
 - `forget`
@@ -64,7 +62,7 @@ used by GitHub Pages.
 - The normal Gemma turn returns only a visible opponent message and one emotion word; all tactics remain inside the deterministic offline engine.
 - Chunked `AgeOfWarGemma` logcat diagnostics are included for prompt/response diagnosis.
 - Deterministic memory hygiene keeps recent player context and game facts without feeding emotion history back into Gemma.
-- The offline engine now uses macro plans, matchup scoring, timing banks, turret pressure, and emotion-biased risk tolerance while still respecting player pacts.
+- The offline engine now uses macro plans, matchup scoring, timing banks, turret pressure, and emotion-biased risk tolerance while still respecting non-pressure player pacts.
 - Gemma director turns include a labeled tactical context image instead of a raw gameplay screenshot. The native bridge configures LiteRT-LM `visionBackend`, sends the image via the documented `ImageFile` path, and keeps those image files alive until the native chat is reset or closed.
 - The LiteRT-LM engine is now process-scoped, so Activity/WebView recreation reuses the loaded Gemma model instead of unloading and reloading it.
 - `Gemma 4 E2B` is the default 6GB+ phone model; `Gemma 4 E4B` is reserved for devices reporting at least 12GB RAM.

@@ -76,4 +76,4 @@ Each local model turn logs:
 - No prompt/game-state upload for cloud inference.
 - No arbitrary code execution from the model.
 - Model output is only a visible message plus an emotion word.
-- Existing player pacts still gate local engine spending.
+- Non-pressure player pacts still gate local engine spending; Gemma receives a fixed `pressure: rush` stability tag only in its prompt/image context.

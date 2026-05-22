@@ -22,7 +22,7 @@ Request:
   "difficulty": "hard",
   "version": "1.0.8",
   "memorySummary": "Player asked for no specials and likes late-game rushes.",
-  "agreements": ["no specials", "pressure: balanced"],
+  "agreements": ["no specials"],
   "snapshot": {
     "time": 123.4,
     "player": { "age": 2, "hpRatio": 0.72, "gold": 430 },
