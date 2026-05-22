@@ -2558,7 +2558,8 @@
                     visible = true;
                 } else if (state === 'downloading') {
                     let pct = Math.max(0, Math.min(100, Math.floor(this.status.progress || 0)));
-                    label = `Gemma download ${pct}%`;
+                    let detail = this.status.message ? ` - ${this.status.message}` : '';
+                    label = `Gemma download ${pct}%${detail}`;
                     action = '';
                     disabled = true;
                     visible = true;

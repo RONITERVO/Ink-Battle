@@ -58,6 +58,7 @@ class LocalGemmaBridge(
         @Volatile private var sharedConversationMessages: Int = 0
         @Volatile private var sharedConversationSerial: Long = 0L
         @Volatile private var sharedConversationTailImageBytes: ByteArray? = null
+        @Volatile private var lastDownloadStatusLog: String = ""
         @Volatile private var carryoverText: String = ""
         @Volatile private var carryoverImageBytes: ByteArray? = null
     }
@@ -132,7 +133,17 @@ class LocalGemmaBridge(
             .setAllowedOverRoaming(false)
             .setDestinationUri(Uri.fromFile(destination))
 
-        val id = downloadManager.enqueue(request)
+        val id = try {
+            downloadManager.enqueue(request)
+        } catch (t: Throwable) {
+            synchronized(ENGINE_LOCK) {
+                sharedLastError = t.message ?: t.javaClass.simpleName
+            }
+            logError("install.enqueue_error model=${spec.key}", t)
+            return buildStatus("error", spec).toString()
+        }
+        lastDownloadStatusLog = ""
+        logLine("install.enqueued model=${spec.key} downloadId=$id")
         prefs.edit()
             .putString("modelKey", spec.key)
             .putString("modelPath", destination.absolutePath)
@@ -403,6 +414,7 @@ class LocalGemmaBridge(
             downloadManager.query(query)?.use { cursor ->
                 if (cursor.moveToFirst()) {
                     val status = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
+                    val reason = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_REASON))
                     val downloaded = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR))
                     val total = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES))
                     progress = if (total > 0) ((downloaded * 100) / total).toInt() else 0
@@ -414,7 +426,13 @@ class LocalGemmaBridge(
                         DownloadManager.STATUS_PENDING -> "downloading"
                         else -> "downloading"
                     }
+                    message = downloadReasonMessage(status, reason, downloaded, total)
+                    logDownloadStatus(downloadId, status, reason, downloaded, total, progress, message)
                     if (state == "installed") prefs.edit().remove("downloadId").apply()
+                } else {
+                    state = "error"
+                    message = "Android lost the download record. Tap retry."
+                    logLine("download.missing downloadId=$downloadId")
                 }
             }
         } else if (modelFile(spec).exists()) {
@@ -433,6 +451,57 @@ class LocalGemmaBridge(
             .put("message", message)
             .put("conversationMessages", synchronized(ENGINE_LOCK) { sharedConversationMessages })
             .put("conversationSerial", synchronized(ENGINE_LOCK) { sharedConversationSerial })
+    }
+
+    private fun logDownloadStatus(
+        downloadId: Long,
+        status: Int,
+        reason: Int,
+        downloaded: Long,
+        total: Long,
+        progress: Int,
+        message: String
+    ) {
+        val line = "id=$downloadId status=${downloadStatusName(status)} reason=$reason downloaded=$downloaded total=$total progress=$progress message=$message"
+        if (line != lastDownloadStatusLog) {
+            lastDownloadStatusLog = line
+            logLine("download.status $line")
+        }
+    }
+
+    private fun downloadStatusName(status: Int): String = when (status) {
+        DownloadManager.STATUS_FAILED -> "FAILED"
+        DownloadManager.STATUS_PAUSED -> "PAUSED"
+        DownloadManager.STATUS_PENDING -> "PENDING"
+        DownloadManager.STATUS_RUNNING -> "RUNNING"
+        DownloadManager.STATUS_SUCCESSFUL -> "SUCCESSFUL"
+        else -> "UNKNOWN_$status"
+    }
+
+    private fun downloadReasonMessage(status: Int, reason: Int, downloaded: Long, total: Long): String = when (status) {
+        DownloadManager.STATUS_FAILED -> when (reason) {
+            DownloadManager.ERROR_CANNOT_RESUME -> "Cannot resume download"
+            DownloadManager.ERROR_DEVICE_NOT_FOUND -> "Storage not available"
+            DownloadManager.ERROR_FILE_ALREADY_EXISTS -> "File already exists"
+            DownloadManager.ERROR_FILE_ERROR -> "File write error"
+            DownloadManager.ERROR_HTTP_DATA_ERROR -> "Network data error"
+            DownloadManager.ERROR_INSUFFICIENT_SPACE -> "Not enough storage"
+            DownloadManager.ERROR_TOO_MANY_REDIRECTS -> "Too many redirects"
+            DownloadManager.ERROR_UNHANDLED_HTTP_CODE -> "Server rejected download"
+            DownloadManager.ERROR_UNKNOWN -> "Unknown download error"
+            in 400..599 -> "HTTP $reason"
+            else -> "Download failed ($reason)"
+        }
+        DownloadManager.STATUS_PAUSED -> when (reason) {
+            DownloadManager.PAUSED_QUEUED_FOR_WIFI -> "Waiting for Wi-Fi"
+            DownloadManager.PAUSED_UNKNOWN -> "Paused by Android"
+            DownloadManager.PAUSED_WAITING_FOR_NETWORK -> "Waiting for network"
+            DownloadManager.PAUSED_WAITING_TO_RETRY -> "Waiting to retry"
+            else -> "Paused ($reason)"
+        }
+        DownloadManager.STATUS_PENDING -> "Queued by Android"
+        DownloadManager.STATUS_RUNNING -> if (total <= 0 && downloaded <= 0) "Waiting for file size" else ""
+        else -> ""
     }
 
     private fun postStatus(forcedState: String? = null) {
