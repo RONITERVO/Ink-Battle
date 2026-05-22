@@ -1443,17 +1443,18 @@
                 title: 'The Evolving Canvas',
                 file: 'evolving_canvas',
                 variants: ['evolving_canvas', 'evolving_canvas_v2', 'evolving_canvas_v3', 'evolving_canvas_v4', 'evolving_canvas_v5', 'evolving_canvas_v6'],
-                scene: 'fallback',
-                roles: ['progression', 'age', 'all-purpose', 'fallback'],
+                scene: 'battle',
+                roles: ['classic-age-of-war', 'active-fight', 'progression', 'age', 'all-purpose', 'fallback'],
                 ageMin: 0,
                 ageMax: 5,
-                tensionMin: 0,
+                tensionMin: 0.18,
                 tensionMax: 1,
                 loop: true,
-                volume: 0.66,
-                minPlaySec: 12,
-                priority: 15,
-                fallback: true
+                volume: 0.68,
+                minPlaySec: 16,
+                priority: 84,
+                fallback: true,
+                classicBattle: true
             },
             {
                 id: 'pencilDawn',
@@ -1475,7 +1476,7 @@
                 id: 'graphiteSkirmish',
                 title: 'Graphite Skirmish',
                 file: 'graphite_skirmish',
-                variants: ['graphite_skirmish', 'graphite_skirmish_v2'],
+                variants: ['graphite_skirmish', 'graphite_skirmish_v2', 'graphite_skirmish_v3', 'graphite_skirmish_v4', 'graphite_skirmish_v5', 'graphite_skirmish_v6', 'graphite_skirmish_v7', 'graphite_skirmish_v8'],
                 scene: 'battle',
                 roles: ['early-game', 'mid-game', 'pressure'],
                 ageMin: 0,
@@ -1491,7 +1492,7 @@
                 id: 'inklineAdvance',
                 title: 'Inkline Advance',
                 file: 'inkline_advance',
-                variants: ['inkline_advance', 'inkline_advance_v2'],
+                variants: ['inkline_advance', 'inkline_advance_v2', 'inkline_advance_v3', 'inkline_advance_v4', 'inkline_advance_v5', 'inkline_advance_v6'],
                 scene: 'pressure',
                 roles: ['early-game', 'lane-pressure', 'fast-units'],
                 ageMin: 0,
@@ -5048,6 +5049,7 @@
                     let score = this.scoreTrack(config, signals);
                     if (config.scene === 'opening' && signals.elapsed < 38) score += 26;
                     if (config.scene === 'opening' && signals.elapsed >= 55) score -= 40;
+                    if (config.scene === 'opening' && signals.activeFight) score -= 34;
                     if (config.urgent && signals.tension > 0.74) score += 35;
                     if (this.recentIds.includes(config.id)) score -= 34 - Math.min(18, this.recentIds.indexOf(config.id) * 6);
                     if (this.activeId === config.id) score += 10;
@@ -5093,6 +5095,15 @@
                 if (signals.specialActive && (config.roles || []).some(role => role === 'specials' || role === 'base-pressure')) score += 10;
                 if (signals.baseDanger > 0.58 && (config.scene === 'siege' || config.urgent)) score += 18;
                 if (signals.troopPressure > 0.58 && (config.scene === 'battle' || config.scene === 'pressure')) score += 9;
+                if (config.classicBattle) {
+                    if (signals.activeFight) {
+                        let classicFightBonus = age >= 3 ? 4 : 30;
+                        score += classicFightBonus + this.clamp((signals.clash || 0) * 10 + (signals.baseDanger || 0) * 8, 0, 14);
+                    } else {
+                        score -= 24;
+                    }
+                }
+                if (signals.activeFight && (config.id === 'graphiteSkirmish' || config.id === 'inklineAdvance')) score -= 16;
                 return score;
             },
             readSignals() {
@@ -5154,6 +5165,8 @@
                     playerHpRatio,
                     enemyHpRatio,
                     baseDanger,
+                    clash,
+                    activeFight: activeUnits >= 2 && (clash > 0.08 || baseDanger > 0.03 || troopPressure > 0.12),
                     tension,
                     specialActive: !!gameState.specialActive,
                     library: MUSIC_LIBRARY_VERSION
