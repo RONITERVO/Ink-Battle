@@ -1424,14 +1424,19 @@
         const RELEASE_VERSION = '1.0.8';
         const LOCAL_GEMMA_IMAGE_INPUT_ENABLED = true;
         const MUSIC_STORAGE_KEY = 'ageOfWarSketch.musicMuted.v1';
-        const MUSIC_LIBRARY_VERSION = 'global-v1';
+        const MUSIC_LIBRARY_VERSION = 'global-v2';
         const MUSIC_DEFAULT_TRACK = 'evolvingCanvas';
         const MUSIC_SOURCE_EXTENSIONS = ['wav', 'mp3', 'ogg'];
+        // Optional per-track variations are supported via:
+        // - variants: ['pencil_dawn', 'pencil_dawn_v2', { file: 'pencil_dawn_alt' }]
+        // - variants: [{ sources: ['assets/audio/custom_intro.ogg'] }, ...]
+        // - files: ['pencil_dawn', 'pencil_dawn_v2']
         const MUSIC_TRACKS = [
             {
                 id: 'evolvingCanvas',
                 title: 'The Evolving Canvas',
                 file: 'evolving_canvas',
+                variants: ['evolving_canvas', 'evolving_canvas_v2', 'evolving_canvas_v3'],
                 scene: 'fallback',
                 roles: ['progression', 'age', 'all-purpose', 'fallback'],
                 ageMin: 0,
@@ -1448,6 +1453,7 @@
                 id: 'pencilDawn',
                 title: 'Pencil Dawn',
                 file: 'pencil_dawn',
+                variants: ['pencil_dawn', 'pencil_dawn_v2', 'pencil_dawn_v3'],
                 scene: 'opening',
                 roles: ['stone-age', 'opening', 'low-tension'],
                 ageMin: 0,
@@ -1463,6 +1469,7 @@
                 id: 'graphiteSkirmish',
                 title: 'Graphite Skirmish',
                 file: 'graphite_skirmish',
+                variants: ['graphite_skirmish', 'graphite_skirmish_v2', 'graphite_skirmish_v3'],
                 scene: 'battle',
                 roles: ['early-game', 'mid-game', 'pressure'],
                 ageMin: 0,
@@ -1478,6 +1485,7 @@
                 id: 'inklineAdvance',
                 title: 'Inkline Advance',
                 file: 'inkline_advance',
+                variants: ['inkline_advance', 'inkline_advance_v2', 'inkline_advance_v3'],
                 scene: 'pressure',
                 roles: ['early-game', 'lane-pressure', 'fast-units'],
                 ageMin: 0,
@@ -1493,6 +1501,7 @@
                 id: 'castleMarch',
                 title: 'Castle March',
                 file: 'castle_march',
+                variants: ['castle_march', 'castle_march_v2', 'castle_march_v3'],
                 scene: 'battle',
                 roles: ['castle-age', 'iron-age', 'steady-battle'],
                 ageMin: 1,
@@ -1508,6 +1517,7 @@
                 id: 'renaissanceRush',
                 title: 'Renaissance Rush',
                 file: 'renaissance_rush',
+                variants: ['renaissance_rush', 'renaissance_rush_v2', 'renaissance_rush_v3'],
                 scene: 'battle',
                 roles: ['renaissance', 'momentum', 'snare-march'],
                 ageMin: 2,
@@ -1523,6 +1533,7 @@
                 id: 'cannonSmoke',
                 title: 'Cannon Smoke',
                 file: 'cannon_smoke',
+                variants: ['cannon_smoke', 'cannon_smoke_v2', 'cannon_smoke_v3'],
                 scene: 'siege',
                 roles: ['turrets', 'specials', 'base-pressure'],
                 ageMin: 2,
@@ -1538,6 +1549,7 @@
                 id: 'modernWarfare',
                 title: 'Modern Warfare',
                 file: 'modern_warfare',
+                variants: ['modern_warfare', 'modern_warfare_v2', 'modern_warfare_v3'],
                 scene: 'battle',
                 roles: ['modern-age', 'electric-guitar', 'orchestral-drop'],
                 ageMin: 3,
@@ -1553,6 +1565,7 @@
                 id: 'futureArpeggio',
                 title: 'Future Arpeggio',
                 file: 'future_arpeggio',
+                variants: ['future_arpeggio', 'future_arpeggio_v2', 'future_arpeggio_v3'],
                 scene: 'future',
                 roles: ['future-age', 'synth', 'tech-window'],
                 ageMin: 4,
@@ -1568,6 +1581,7 @@
                 id: 'neonFront',
                 title: 'Neon Front',
                 file: 'neon_front',
+                variants: ['neon_front', 'neon_front_v2', 'neon_front_v3'],
                 scene: 'pressure',
                 roles: ['future-age', 'high-pressure', 'cyber-drums'],
                 ageMin: 4,
@@ -1583,6 +1597,7 @@
                 id: 'cosmicClash',
                 title: 'Cosmic Clash',
                 file: 'cosmic_clash',
+                variants: ['cosmic_clash', 'cosmic_clash_v2', 'cosmic_clash_v3'],
                 scene: 'cosmic',
                 roles: ['cosmic-age', 'choir', 'final-battle'],
                 ageMin: 5,
@@ -1598,6 +1613,7 @@
                 id: 'lastPageSiege',
                 title: 'Last Page Siege',
                 file: 'last_page_siege',
+                variants: ['last_page_siege', 'last_page_siege_v2', 'last_page_siege_v3'],
                 scene: 'siege',
                 roles: ['critical-base-hp', 'deathball', 'endgame-pressure'],
                 ageMin: 0,
@@ -1614,6 +1630,7 @@
                 id: 'codexGemma',
                 title: 'Codex Gemma',
                 file: 'codex_gemma',
+                variants: ['codex_gemma', 'codex_gemma_v2', 'codex_gemma_v3'],
                 scene: 'menu',
                 roles: ['director', 'pause', 'memory'],
                 ageMin: 0,
@@ -1629,6 +1646,7 @@
                 id: 'victoryCanvas',
                 title: 'Victory Canvas',
                 file: 'victory_canvas',
+                variants: ['victory_canvas', 'victory_canvas_v2', 'victory_canvas_v3'],
                 scene: 'victory',
                 roles: ['victory', 'results'],
                 ageMin: 0,
@@ -1645,6 +1663,7 @@
                 id: 'erasedPages',
                 title: 'Erased Pages',
                 file: 'erased_pages',
+                variants: ['erased_pages', 'erased_pages_v2', 'erased_pages_v3'],
                 scene: 'defeat',
                 roles: ['defeat', 'results'],
                 ageMin: 0,
@@ -4468,7 +4487,12 @@
                     let entry = {
                         config,
                         audio,
-                        sources: this.buildSources(config),
+                        variantSources: this.buildVariantSources(config),
+                        variantBag: [],
+                        failedVariants: new Set(),
+                        activeVariantIndex: -1,
+                        lastVariantIndex: -1,
+                        sources: [],
                         sourceIndex: 0,
                         failed: false,
                         blocked: false,
@@ -4476,18 +4500,120 @@
                     };
                     audio.addEventListener('error', () => {
                         if (this.pendingId === config.id) return;
-                        entry.failed = true;
-                        if (this.activeId === config.id) this.playFallback({ fadeMs: 800, reason: 'active_error' }, config.id);
+                        this.markVariantFailed(entry, entry.activeVariantIndex);
+                        if (!entry.failed && this.activeId === config.id) {
+                            this.play(config.id, { fadeMs: 500, force: true, reason: 'variant_error', newVariant: true });
+                        } else if (entry.failed && this.activeId === config.id) {
+                            this.playFallback({ fadeMs: 800, reason: 'active_error' }, config.id);
+                        }
                         this.updateButton();
                     });
                     this.tracks[config.id] = entry;
                 }
                 this.updateButton();
             },
-            buildSources(config) {
-                if (Array.isArray(config.sources) && config.sources.length) return config.sources.slice();
-                let base = config.file || config.id;
+            buildSourceCandidates(base) {
                 return MUSIC_SOURCE_EXTENSIONS.map(ext => `assets/audio/${base}.${ext}`);
+            },
+            buildVariantSources(config) {
+                let groups = [];
+                let addGroup = sources => {
+                    if (!Array.isArray(sources) || !sources.length) return;
+                    groups.push(sources.slice());
+                };
+
+                if (Array.isArray(config.variants) && config.variants.length) {
+                    for (let i = 0; i < config.variants.length; i++) {
+                        let variant = config.variants[i];
+                        if (typeof variant === 'string' && variant) {
+                            addGroup(this.buildSourceCandidates(variant));
+                            continue;
+                        }
+                        if (Array.isArray(variant) && variant.length) {
+                            addGroup(variant);
+                            continue;
+                        }
+                        if (variant && typeof variant === 'object') {
+                            if (Array.isArray(variant.sources) && variant.sources.length) {
+                                addGroup(variant.sources);
+                                continue;
+                            }
+                            if (typeof variant.file === 'string' && variant.file) {
+                                addGroup(this.buildSourceCandidates(variant.file));
+                            }
+                        }
+                    }
+                } else if (Array.isArray(config.files) && config.files.length) {
+                    for (let i = 0; i < config.files.length; i++) {
+                        if (typeof config.files[i] === 'string' && config.files[i]) {
+                            addGroup(this.buildSourceCandidates(config.files[i]));
+                        }
+                    }
+                } else if (Array.isArray(config.sources) && config.sources.length) {
+                    addGroup(config.sources);
+                }
+
+                if (!groups.length) {
+                    let base = config.file || config.id;
+                    addGroup(this.buildSourceCandidates(base));
+                }
+                return groups;
+            },
+            refillVariantBag(entry) {
+                if (!entry) return;
+                let bag = [];
+                for (let i = 0; i < entry.variantSources.length; i++) {
+                    if (!entry.failedVariants.has(i)) bag.push(i);
+                }
+
+                for (let i = bag.length - 1; i > 0; i--) {
+                    let j = Math.floor(Math.random() * (i + 1));
+                    let temp = bag[i];
+                    bag[i] = bag[j];
+                    bag[j] = temp;
+                }
+
+                if (bag.length > 1 && entry.lastVariantIndex >= 0 && bag[0] === entry.lastVariantIndex) {
+                    let swapIndex = 1 + Math.floor(Math.random() * (bag.length - 1));
+                    let temp = bag[0];
+                    bag[0] = bag[swapIndex];
+                    bag[swapIndex] = temp;
+                }
+                entry.variantBag = bag;
+            },
+            markVariantFailed(entry, variantIndex) {
+                if (!entry || variantIndex === undefined || variantIndex === null || variantIndex < 0) return;
+                entry.failedVariants.add(variantIndex);
+                if (entry.variantBag && entry.variantBag.length) {
+                    entry.variantBag = entry.variantBag.filter(index => index !== variantIndex);
+                }
+                entry.failed = entry.failedVariants.size >= entry.variantSources.length;
+            },
+            chooseVariant(entry, options = {}) {
+                if (!entry || !entry.variantSources.length) return false;
+
+                if (options.keepCurrent && entry.activeVariantIndex >= 0 && !entry.failedVariants.has(entry.activeVariantIndex)) {
+                    entry.sources = entry.variantSources[entry.activeVariantIndex];
+                    entry.sourceIndex = Math.max(0, Math.min(entry.sourceIndex || 0, entry.sources.length - 1));
+                    entry.failed = false;
+                    return entry.sources.length > 0;
+                }
+
+                if (!entry.variantBag || !entry.variantBag.length) this.refillVariantBag(entry);
+                if (!entry.variantBag || !entry.variantBag.length) {
+                    entry.failed = true;
+                    return false;
+                }
+
+                entry.activeVariantIndex = entry.variantBag.shift();
+                entry.lastVariantIndex = entry.activeVariantIndex;
+                entry.sources = entry.variantSources[entry.activeVariantIndex];
+                entry.sourceIndex = 0;
+                entry.failed = false;
+                entry.audio.pause();
+                entry.audio.removeAttribute('src');
+                entry.audio.load();
+                return entry.sources.length > 0;
             },
             start(reason = 'game_start') {
                 this.started = true;
@@ -4543,8 +4669,9 @@
 
                 let previous = this.activeId && this.activeId !== id ? this.tracks[this.activeId] : null;
                 if (previous) this.fadeTo(previous, this.targetVolume(previous), 500);
+                let rotateVariant = options.newVariant === undefined ? this.activeId !== id : !!options.newVariant;
                 this.pendingId = id;
-                this.startEntry(entry).then(ok => {
+                this.startEntry(entry, { newVariant: rotateVariant }).then(ok => {
                     if (this.pendingId !== id) return;
                     if (!ok) {
                         if (this.pendingId === id) this.pendingId = null;
@@ -4601,16 +4728,24 @@
                     this.play(this.activeId, { fadeMs: 700, force: true, reason: 'page_visible' });
                 }
             },
-            startEntry(entry) {
+            startEntry(entry, options = {}) {
                 return new Promise(resolve => {
                     if (!entry || entry.failed || this.muted || this.suspended) {
                         resolve(false);
                         return;
                     }
-                    if (!this.ensureSource(entry)) {
+                    if (!this.chooseVariant(entry, { keepCurrent: !options.newVariant })) {
                         entry.failed = true;
                         resolve(false);
                         return;
+                    }
+                    if (!this.ensureSource(entry)) {
+                        this.markVariantFailed(entry, entry.activeVariantIndex);
+                        if (!this.chooseVariant(entry, { keepCurrent: false }) || !this.ensureSource(entry)) {
+                            entry.failed = true;
+                            resolve(false);
+                            return;
+                        }
                     }
 
                     let audio = entry.audio;
@@ -4627,7 +4762,7 @@
                         retrying = true;
                         audio.removeEventListener('error', onError);
                         if (this.advanceSource(entry)) {
-                            this.startEntry(entry).then(resolve);
+                            this.startEntry(entry, { newVariant: false }).then(resolve);
                         } else {
                             entry.failed = true;
                             settle(false);
@@ -4683,9 +4818,19 @@
                 entry.audio.pause();
                 entry.audio.removeAttribute('src');
                 entry.audio.load();
-                if (entry.sourceIndex >= entry.sources.length) return false;
-                entry.audio.src = entry.sources[entry.sourceIndex];
-                entry.audio.load();
+
+                if (entry.sourceIndex < entry.sources.length) {
+                    entry.audio.src = entry.sources[entry.sourceIndex];
+                    entry.audio.load();
+                    return true;
+                }
+
+                this.markVariantFailed(entry, entry.activeVariantIndex);
+                if (!this.chooseVariant(entry, { keepCurrent: false })) return false;
+                if (!this.ensureSource(entry)) {
+                    this.markVariantFailed(entry, entry.activeVariantIndex);
+                    return this.advanceSource(entry);
+                }
                 return true;
             },
             playFallback(options = {}, blockedId = '') {

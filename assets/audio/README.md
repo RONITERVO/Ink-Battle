@@ -19,6 +19,45 @@ root `assets/` sync task.
   track is an outcome loop.
 - Target 44.1 kHz or 48 kHz stereo, normalized for mobile speakers with peaks
   under -1 dB.
+- The runtime can randomize many variations of the same track. Variants are
+  loaded lazily and each failed variation is skipped without disabling the
+  whole track.
+
+## Adding Track Variations
+
+When Suno generates multiple good versions of one cue, keep them under the
+same role and register them as variations in `MUSIC_TRACKS`.
+
+Recommended naming pattern:
+
+- Base: `graphite_skirmish.wav`
+- Variants: `graphite_skirmish_v2.wav`, `graphite_skirmish_v3.wav`, ...
+
+Example config in `Age_of_War_notebook_8.html`:
+
+```js
+{
+  id: 'graphiteSkirmish',
+  title: 'Graphite Skirmish',
+  variants: ['graphite_skirmish', 'graphite_skirmish_v2', 'graphite_skirmish_v3'],
+  scene: 'battle',
+  // ... keep the same scoring fields (ageMin, tensionMin, priority, etc.)
+}
+```
+
+Supported variation formats:
+
+- `variants: ['base_name', 'base_name_v2']`
+- `variants: [{ file: 'base_name_alt' }, { file: 'base_name_mix2' }]`
+- `variants: [{ sources: ['assets/audio/custom_mix.ogg'] }]`
+- `files: ['base_name', 'base_name_v2']` (alias for base-name variants)
+
+Behavior:
+
+- The director picks a random variation when switching to that track.
+- A shuffle-bag avoids immediate repeats until all available variations cycle.
+- If one variation file is missing/corrupt, it is skipped and other variations
+  remain eligible.
 
 ## Track Catalog
 
