@@ -1301,17 +1301,20 @@
                             </button>
 
                             <!-- Upgrades Tab -->
-                            <button class="btn menu-upgrade hidden sketchy-border-thin" id="btn-up-dmg"
+                            <button class="btn menu-upgrade hidden sketchy-border-thin" id="btn-up-dmg" data-type="upgrade"
+                                data-upgrade="dmg"
                                 onclick="buyUpgrade('dmg')"><span>Sharpened</span>
                                 <div class="upgrade-val" id="val-up-dmg">Lvl 0 (+0%)</div>
                                 <div class="btn-cost text-gold" id="cost-up-dmg">500</div>
                             </button>
-                            <button class="btn menu-upgrade hidden sketchy-border-thin" id="btn-up-hp"
+                            <button class="btn menu-upgrade hidden sketchy-border-thin" id="btn-up-hp" data-type="upgrade"
+                                data-upgrade="hp"
                                 onclick="buyUpgrade('hp')"><span>Thick Paper</span>
                                 <div class="upgrade-val" id="val-up-hp">Lvl 0 (+0%)</div>
                                 <div class="btn-cost text-gold" id="cost-up-hp">500</div>
                             </button>
-                            <button class="btn menu-upgrade hidden sketchy-border-thin" id="btn-up-econ"
+                            <button class="btn menu-upgrade hidden sketchy-border-thin" id="btn-up-econ" data-type="upgrade"
+                                data-upgrade="econ"
                                 onclick="buyUpgrade('econ')"><span>Fast Ink</span>
                                 <div class="upgrade-val" id="val-up-econ">Lvl 0 (+0%)</div>
                                 <div class="btn-cost text-gold" id="cost-up-econ">500</div>
@@ -1439,7 +1442,7 @@
                 id: 'evolvingCanvas',
                 title: 'The Evolving Canvas',
                 file: 'evolving_canvas',
-                variants: ['evolving_canvas', 'evolving_canvas_v2', 'evolving_canvas_v3', 'evolving_canvas_v4'],
+                variants: ['evolving_canvas', 'evolving_canvas_v2', 'evolving_canvas_v3', 'evolving_canvas_v4', 'evolving_canvas_v5', 'evolving_canvas_v6'],
                 scene: 'fallback',
                 roles: ['progression', 'age', 'all-purpose', 'fallback'],
                 ageMin: 0,
@@ -1704,6 +1707,11 @@
         };
 
         const UPGRADE_COSTS = [500, 1500, 3500, 8000, 18000, 35000, 75000, 150000, 350000, 750000];
+        const UPGRADE_INFO = {
+            dmg: { title: 'Sharpened', stat: '+15% damage per level', compact: '+15% DMG/lvl', color: COLORS.accent },
+            hp: { title: 'Thick Paper', stat: '+25% base and unit health', compact: '+25% HP/lvl', color: COLORS.green },
+            econ: { title: 'Fast Ink', stat: '+20% gold income per level', compact: '+20% gold/lvl', color: COLORS.gold }
+        };
 
         // --- ADVANCED DIFFICULTY SETTINGS ---
         const DIFFICULTY_SETTINGS = {
@@ -2065,40 +2073,134 @@
             title: document.getElementById('tt-title'),
             stats: document.getElementById('tt-stats-container'),
             desc: document.getElementById('tt-desc'),
+            finePointerQuery: window.matchMedia ? window.matchMedia('(hover: hover) and (pointer: fine)') : null,
             init() {
                 document.querySelectorAll('[data-type]').forEach(btn => {
-                    btn.addEventListener('mouseenter', (e) => this.show(btn, e));
+                    btn.addEventListener('mouseenter', (e) => {
+                        if (this.usesHoverTooltip()) this.show(btn, e);
+                    });
                     btn.addEventListener('mouseleave', () => this.hide());
-                    btn.addEventListener('mousemove', (e) => this.move(e));
+                    btn.addEventListener('mousemove', (e) => {
+                        if (this.usesHoverTooltip()) this.move(e);
+                    });
+                    btn.addEventListener('pointerdown', (e) => {
+                        if (!this.usesHoverTooltip() || e.pointerType !== 'mouse') this.flash(btn);
+                    });
                 });
             },
+            usesHoverTooltip() {
+                return !!(this.finePointerQuery && this.finePointerQuery.matches);
+            },
             show(btn, e) {
-                if (!gameState.player) return;
-                let type = btn.getAttribute('data-type');
-                let idx = parseInt(btn.getAttribute('data-idx'));
-                let pAge = gameState.player.age;
+                let info = this.readInfo(btn);
+                if (!info) return;
 
-                let data = type === 'unit' ? AGES[pAge].units[idx] : AGES[pAge].turrets[idx];
-                if (!data) return;
-
-                this.title.innerText = data.name;
-                this.desc.innerText = data.desc || "";
+                this.title.innerText = info.title;
+                this.desc.innerText = info.desc || "";
 
                 let html = '';
-                if (type === 'unit') {
-                    html += `<div class="tt-stat"><span>Health:</span> <strong>${data.hp}</strong></div>`;
-                    html += `<div class="tt-stat"><span>Damage:</span> <strong>${data.dmg}</strong></div>`;
-                    html += `<div class="tt-stat"><span>Type:</span> <strong style="text-transform:capitalize">${data.type}</strong></div>`;
-                } else {
-                    html += `<div class="tt-stat"><span>Damage:</span> <strong>${data.dmg}</strong></div>`;
-                    html += `<div class="tt-stat"><span>Fire Rate:</span> <strong>${data.attackSpeed}s</strong></div>`;
-                    html += `<div class="tt-stat"><span>Range:</span> <strong>${data.range}</strong></div>`;
+                for (let i = 0; i < info.stats.length; i++) {
+                    html += `<div class="tt-stat"><span>${info.stats[i].label}:</span> <strong>${info.stats[i].value}</strong></div>`;
                 }
                 this.stats.innerHTML = html;
                 this.el.classList.add('visible');
                 this.move(e);
             },
             hide() { this.el.classList.remove('visible'); },
+            flash(btn) {
+                let info = this.readInfo(btn);
+                if (!info || !gameState.floatingTexts) return;
+                this.hide();
+
+                let point = this.canvasAnchor(btn);
+                spawnCanvasText(info.title, point.x, point.y, info.color || COLORS.pencil, {
+                    life: 1.25,
+                    size: 24,
+                    grow: 4,
+                    rise: 28,
+                    stroke: true
+                });
+                spawnCanvasText(info.shortStats, point.x, point.y + 26, COLORS.pencil, {
+                    life: 1.15,
+                    size: 17,
+                    grow: 2,
+                    rise: 24,
+                    stroke: true
+                });
+            },
+            readInfo(btn) {
+                if (!gameState.player) return null;
+                let type = btn.getAttribute('data-type');
+                let idx = parseInt(btn.getAttribute('data-idx'), 10);
+                let pAge = gameState.player.age;
+                let data = null;
+
+                if (type === 'unit') {
+                    data = AGES[pAge].units[idx];
+                    if (!data) return null;
+                    return {
+                        title: data.name,
+                        desc: data.desc || '',
+                        color: COLORS.accent,
+                        shortStats: `${data.cost}g  HP ${data.hp}  DMG ${data.dmg}  ${data.type}`,
+                        stats: [
+                            { label: 'Cost', value: `${data.cost}g` },
+                            { label: 'Health', value: data.hp },
+                            { label: 'Damage', value: data.dmg },
+                            { label: 'Type', value: data.type }
+                        ]
+                    };
+                }
+
+                if (type === 'turret') {
+                    data = AGES[pAge].turrets[idx];
+                    if (!data) return null;
+                    return {
+                        title: data.name,
+                        desc: data.desc || '',
+                        color: COLORS.blue,
+                        shortStats: `${data.cost}g  DMG ${data.dmg}  RNG ${data.range}  ${data.attackSpeed}s`,
+                        stats: [
+                            { label: 'Cost', value: `${data.cost}g` },
+                            { label: 'Damage', value: data.dmg },
+                            { label: 'Fire Rate', value: `${data.attackSpeed}s` },
+                            { label: 'Range', value: data.range }
+                        ]
+                    };
+                }
+
+                if (type === 'upgrade') {
+                    let upgradeType = btn.getAttribute('data-upgrade');
+                    let info = UPGRADE_INFO[upgradeType];
+                    if (!info) return null;
+                    let level = gameState.player.upgrades[upgradeType] || 0;
+                    let cost = level < UPGRADE_COSTS.length ? `${UPGRADE_COSTS[level]}g` : 'MAX';
+                    return {
+                        title: info.title,
+                        desc: info.stat,
+                        color: info.color,
+                        shortStats: `Lvl ${level}  ${cost}  ${info.compact}`,
+                        stats: [
+                            { label: 'Level', value: level },
+                            { label: 'Cost', value: cost },
+                            { label: 'Effect', value: info.stat }
+                        ]
+                    };
+                }
+
+                return null;
+            },
+            canvasAnchor(btn) {
+                let wrapper = document.getElementById('aspect-wrapper');
+                let wrapperRect = wrapper.getBoundingClientRect();
+                let btnRect = btn.getBoundingClientRect();
+                let x = ((btnRect.left + btnRect.width / 2 - wrapperRect.left) / wrapperRect.width) * CANVAS_WIDTH;
+                let y = ((btnRect.top - wrapperRect.top) / wrapperRect.height) * CANVAS_HEIGHT;
+                return {
+                    x: this.clamp(x, 260, CANVAS_WIDTH - 260),
+                    y: this.clamp(y + 220, 320, GROUND_Y - 150)
+                };
+            },
             move(e) {
                 if (!this.el.classList.contains('visible')) return;
                 const rect = document.getElementById('aspect-wrapper').getBoundingClientRect();
@@ -2113,6 +2215,9 @@
 
                 this.el.style.left = `${x}px`;
                 this.el.style.top = `${y - this.el.offsetHeight - 15}px`;
+            },
+            clamp(value, min, max) {
+                return Math.max(min, Math.min(max, value));
             }
         };
 
@@ -5778,8 +5883,8 @@
             for (let i = 0; i < gameState.floatingTexts.pool.length; i++) {
                 let ft = gameState.floatingTexts.pool[i];
                 if (!ft.active) continue;
-                ft.life -= dt * 1.2;
-                ft.y -= dt * 40;
+                ft.life -= dt * (ft.decay || 1.2);
+                ft.y -= dt * (ft.rise === undefined ? 40 : ft.rise);
                 if (ft.life <= 0) ft.active = false;
             }
         }
@@ -6050,8 +6155,21 @@
             }
         }
 
-        function spawnCanvasText(text, x, y, color) {
-            gameState.floatingTexts.spawn({ text, x, y, color, life: 1.0 });
+        function spawnCanvasText(text, x, y, color, options = {}) {
+            let life = options.life === undefined ? 1.0 : options.life;
+            gameState.floatingTexts.spawn({
+                text,
+                x,
+                y,
+                color,
+                life,
+                maxLife: life,
+                size: options.size || 30,
+                grow: options.grow === undefined ? 15 : options.grow,
+                rise: options.rise,
+                decay: options.decay,
+                stroke: !!options.stroke
+            });
         }
 
         function updateUI() {
@@ -6214,10 +6332,17 @@
                     let ft = gameState.floatingTexts.pool[i];
                     if (!ft.active) continue;
 
-                    ctx.globalAlpha = ft.life;
+                    let alpha = Math.max(0, Math.min(1, ft.life / (ft.maxLife || 1)));
+                    let progress = 1 - alpha;
+                    ctx.globalAlpha = alpha;
                     ctx.fillStyle = ft.color;
-                    ctx.font = `bold ${30 + (1 - ft.life) * 15}px 'Caveat', cursive`;
+                    ctx.font = `bold ${(ft.size || 30) + progress * (ft.grow === undefined ? 15 : ft.grow)}px 'Caveat', cursive`;
                     ctx.textAlign = 'center';
+                    if (ft.stroke) {
+                        ctx.lineWidth = 5;
+                        ctx.strokeStyle = 'rgba(255, 250, 235, 0.82)';
+                        ctx.strokeText(ft.text, ft.x, ft.y);
+                    }
                     ctx.fillText(ft.text, ft.x, ft.y);
                 }
                 ctx.globalAlpha = 1.0;
