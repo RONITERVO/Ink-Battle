@@ -1424,34 +1424,238 @@
         const RELEASE_VERSION = '1.0.8';
         const LOCAL_GEMMA_IMAGE_INPUT_ENABLED = true;
         const MUSIC_STORAGE_KEY = 'ageOfWarSketch.musicMuted.v1';
+        const MUSIC_LIBRARY_VERSION = 'global-v1';
         const MUSIC_DEFAULT_TRACK = 'evolvingCanvas';
+        const MUSIC_SOURCE_EXTENSIONS = ['wav', 'mp3', 'ogg'];
         const MUSIC_TRACKS = [
             {
                 id: 'evolvingCanvas',
                 title: 'The Evolving Canvas',
-                url: 'assets/audio/evolving_canvas.wav',
-                scene: 'gameplay',
-                roles: ['progression', 'age', 'late-game', 'cosmic'],
+                file: 'evolving_canvas',
+                scene: 'fallback',
+                roles: ['progression', 'age', 'all-purpose', 'fallback'],
+                ageMin: 0,
+                ageMax: 5,
+                tensionMin: 0,
+                tensionMax: 1,
                 loop: true,
-                volume: 0.68
+                volume: 0.66,
+                minPlaySec: 12,
+                priority: 15,
+                fallback: true
+            },
+            {
+                id: 'pencilDawn',
+                title: 'Pencil Dawn',
+                file: 'pencil_dawn',
+                scene: 'opening',
+                roles: ['stone-age', 'opening', 'low-tension'],
+                ageMin: 0,
+                ageMax: 1,
+                tensionMin: 0,
+                tensionMax: 0.38,
+                loop: true,
+                volume: 0.58,
+                minPlaySec: 28,
+                priority: 80
             },
             {
                 id: 'graphiteSkirmish',
                 title: 'Graphite Skirmish',
-                url: 'assets/audio/graphite_skirmish.wav',
+                file: 'graphite_skirmish',
                 scene: 'battle',
                 roles: ['early-game', 'mid-game', 'pressure'],
+                ageMin: 0,
+                ageMax: 2,
+                tensionMin: 0.22,
+                tensionMax: 0.72,
                 loop: true,
-                volume: 0.62
+                volume: 0.62,
+                minPlaySec: 32,
+                priority: 82
+            },
+            {
+                id: 'inklineAdvance',
+                title: 'Inkline Advance',
+                file: 'inkline_advance',
+                scene: 'pressure',
+                roles: ['early-game', 'lane-pressure', 'fast-units'],
+                ageMin: 0,
+                ageMax: 2,
+                tensionMin: 0.52,
+                tensionMax: 1,
+                loop: true,
+                volume: 0.64,
+                minPlaySec: 30,
+                priority: 86
+            },
+            {
+                id: 'castleMarch',
+                title: 'Castle March',
+                file: 'castle_march',
+                scene: 'battle',
+                roles: ['castle-age', 'iron-age', 'steady-battle'],
+                ageMin: 1,
+                ageMax: 2,
+                tensionMin: 0.16,
+                tensionMax: 0.68,
+                loop: true,
+                volume: 0.62,
+                minPlaySec: 34,
+                priority: 78
+            },
+            {
+                id: 'renaissanceRush',
+                title: 'Renaissance Rush',
+                file: 'renaissance_rush',
+                scene: 'battle',
+                roles: ['renaissance', 'momentum', 'snare-march'],
+                ageMin: 2,
+                ageMax: 3,
+                tensionMin: 0.28,
+                tensionMax: 0.82,
+                loop: true,
+                volume: 0.65,
+                minPlaySec: 34,
+                priority: 84
+            },
+            {
+                id: 'cannonSmoke',
+                title: 'Cannon Smoke',
+                file: 'cannon_smoke',
+                scene: 'siege',
+                roles: ['turrets', 'specials', 'base-pressure'],
+                ageMin: 2,
+                ageMax: 4,
+                tensionMin: 0.58,
+                tensionMax: 1,
+                loop: true,
+                volume: 0.68,
+                minPlaySec: 34,
+                priority: 90
+            },
+            {
+                id: 'modernWarfare',
+                title: 'Modern Warfare',
+                file: 'modern_warfare',
+                scene: 'battle',
+                roles: ['modern-age', 'electric-guitar', 'orchestral-drop'],
+                ageMin: 3,
+                ageMax: 3,
+                tensionMin: 0.26,
+                tensionMax: 1,
+                loop: true,
+                volume: 0.68,
+                minPlaySec: 36,
+                priority: 86
+            },
+            {
+                id: 'futureArpeggio',
+                title: 'Future Arpeggio',
+                file: 'future_arpeggio',
+                scene: 'future',
+                roles: ['future-age', 'synth', 'tech-window'],
+                ageMin: 4,
+                ageMax: 4,
+                tensionMin: 0.12,
+                tensionMax: 0.72,
+                loop: true,
+                volume: 0.62,
+                minPlaySec: 34,
+                priority: 82
+            },
+            {
+                id: 'neonFront',
+                title: 'Neon Front',
+                file: 'neon_front',
+                scene: 'pressure',
+                roles: ['future-age', 'high-pressure', 'cyber-drums'],
+                ageMin: 4,
+                ageMax: 5,
+                tensionMin: 0.52,
+                tensionMax: 1,
+                loop: true,
+                volume: 0.68,
+                minPlaySec: 34,
+                priority: 89
+            },
+            {
+                id: 'cosmicClash',
+                title: 'Cosmic Clash',
+                file: 'cosmic_clash',
+                scene: 'cosmic',
+                roles: ['cosmic-age', 'choir', 'final-battle'],
+                ageMin: 5,
+                ageMax: 5,
+                tensionMin: 0.18,
+                tensionMax: 1,
+                loop: true,
+                volume: 0.7,
+                minPlaySec: 42,
+                priority: 92
+            },
+            {
+                id: 'lastPageSiege',
+                title: 'Last Page Siege',
+                file: 'last_page_siege',
+                scene: 'siege',
+                roles: ['critical-base-hp', 'deathball', 'endgame-pressure'],
+                ageMin: 0,
+                ageMax: 5,
+                tensionMin: 0.76,
+                tensionMax: 1,
+                loop: true,
+                volume: 0.72,
+                minPlaySec: 32,
+                priority: 105,
+                urgent: true
             },
             {
                 id: 'codexGemma',
                 title: 'Codex Gemma',
-                url: 'assets/audio/codex_gemma.wav',
+                file: 'codex_gemma',
                 scene: 'menu',
                 roles: ['director', 'pause', 'memory'],
+                ageMin: 0,
+                ageMax: 5,
+                tensionMin: 0,
+                tensionMax: 0.45,
                 loop: true,
-                volume: 0.5
+                volume: 0.48,
+                minPlaySec: 20,
+                priority: 75
+            },
+            {
+                id: 'victoryCanvas',
+                title: 'Victory Canvas',
+                file: 'victory_canvas',
+                scene: 'victory',
+                roles: ['victory', 'results'],
+                ageMin: 0,
+                ageMax: 5,
+                tensionMin: 0,
+                tensionMax: 1,
+                loop: true,
+                volume: 0.58,
+                minPlaySec: 20,
+                priority: 120,
+                outcome: 'victory'
+            },
+            {
+                id: 'erasedPages',
+                title: 'Erased Pages',
+                file: 'erased_pages',
+                scene: 'defeat',
+                roles: ['defeat', 'results'],
+                ageMin: 0,
+                ageMax: 5,
+                tensionMin: 0,
+                tensionMax: 1,
+                loop: true,
+                volume: 0.54,
+                minPlaySec: 20,
+                priority: 120,
+                outcome: 'defeat'
             }
         ];
         const CANVAS_WIDTH = 1280;
@@ -4237,12 +4441,17 @@
         const MusicDirector = {
             tracks: {},
             activeId: null,
+            pendingId: null,
             started: false,
             muted: false,
             suspended: false,
             ducked: false,
+            outcome: null,
             masterVolume: 0.72,
             fadeMs: 1600,
+            decisionTimer: 0,
+            lastSwitchAt: -999,
+            recentIds: [],
             signals: { tension: 0, playerAge: 0, enemyAge: 0, troopPressure: 0 },
             init() {
                 try {
@@ -4253,59 +4462,104 @@
 
                 for (let i = 0; i < MUSIC_TRACKS.length; i++) {
                     let config = MUSIC_TRACKS[i];
-                    let audio = new Audio(config.url);
-                    audio.preload = 'auto';
+                    let audio = new Audio();
+                    audio.preload = config.preload || 'none';
                     audio.loop = config.loop !== false;
+                    let entry = {
+                        config,
+                        audio,
+                        sources: this.buildSources(config),
+                        sourceIndex: 0,
+                        failed: false,
+                        blocked: false,
+                        fadeToken: 0
+                    };
                     audio.addEventListener('error', () => {
-                        let entry = this.tracks[config.id];
-                        if (entry) entry.failed = true;
-                        if (this.activeId === config.id) this.activeId = null;
+                        if (this.pendingId === config.id) return;
+                        entry.failed = true;
+                        if (this.activeId === config.id) this.playFallback({ fadeMs: 800, reason: 'active_error' }, config.id);
                         this.updateButton();
                     });
-                    this.tracks[config.id] = { config, audio, failed: false, fadeToken: 0 };
+                    this.tracks[config.id] = entry;
                 }
                 this.updateButton();
+            },
+            buildSources(config) {
+                if (Array.isArray(config.sources) && config.sources.length) return config.sources.slice();
+                let base = config.file || config.id;
+                return MUSIC_SOURCE_EXTENSIONS.map(ext => `assets/audio/${base}.${ext}`);
             },
             start(reason = 'game_start') {
                 this.started = true;
                 this.suspended = false;
                 this.ducked = false;
-                this.setSignals({ tension: 0, playerAge: 0, enemyAge: 0, troopPressure: 0 });
-                this.play(MUSIC_DEFAULT_TRACK, { fadeMs: 900, reason });
+                this.outcome = null;
+                this.pendingId = null;
+                this.decisionTimer = 0;
+                this.recentIds = [];
+                this.setSignals(this.readSignals());
+                this.play(MUSIC_DEFAULT_TRACK, { fadeMs: 900, force: true, reason });
+            },
+            update(dt) {
+                if (!this.started || this.outcome || this.muted || this.suspended || !gameState || !gameState.running || gameState.paused) return;
+                this.decisionTimer -= dt;
+                if (this.decisionTimer > 0) return;
+                this.decisionTimer = 2.25;
+                let signals = this.readSignals();
+                this.setSignals(signals);
+                let target = this.chooseTrack(signals, { reason: 'flow' });
+                if (target && target !== this.activeId) {
+                    this.play(target, { reason: 'flow' });
+                } else {
+                    this.refreshActiveVolume();
+                }
             },
             setSignals(partial) {
                 this.signals = Object.assign({}, this.signals, partial || {});
             },
             setScene(scene, reason = 'scene') {
-                for (let i = 0; i < MUSIC_TRACKS.length; i++) {
-                    if (MUSIC_TRACKS[i].scene === scene) {
-                        return this.play(MUSIC_TRACKS[i].id, { reason });
-                    }
-                }
-                return false;
+                let target = this.chooseScene(scene);
+                return target ? this.play(target, { fadeMs: 850, force: true, reason }) : false;
+            },
+            setOutcome(won) {
+                this.outcome = won ? 'victory' : 'defeat';
+                this.ducked = false;
+                this.play(won ? 'victoryCanvas' : 'erasedPages', { fadeMs: 1400, force: true, reason: this.outcome });
             },
             play(id, options = {}) {
                 let entry = this.tracks[id];
-                if (!entry || entry.failed) return false;
+                if (!entry || entry.failed) return this.playFallback(options, id);
+                if (this.pendingId === id) return true;
 
                 let fadeMs = options.fadeMs === undefined ? this.fadeMs : options.fadeMs;
-                if (this.activeId && this.activeId !== id) this.fadeOut(this.tracks[this.activeId], fadeMs, true);
-                this.activeId = id;
+                if (!options.force && !this.canSwitchTo(entry)) return false;
 
                 if (this.muted || this.suspended) {
-                    entry.audio.pause();
-                    entry.audio.volume = 0;
+                    this.activeId = id;
+                    this.fadeOut(entry, 0, true);
                     this.updateButton();
                     return false;
                 }
 
-                entry.audio.loop = entry.config.loop !== false;
-                entry.audio.volume = Math.min(entry.audio.volume || 0, this.targetVolume(entry));
-                let playPromise = entry.audio.play();
-                if (playPromise && typeof playPromise.catch === 'function') {
-                    playPromise.catch(() => this.updateButton());
-                }
-                this.fadeTo(entry, this.targetVolume(entry), fadeMs);
+                let previous = this.activeId && this.activeId !== id ? this.tracks[this.activeId] : null;
+                if (previous) this.fadeTo(previous, this.targetVolume(previous), 500);
+                this.pendingId = id;
+                this.startEntry(entry).then(ok => {
+                    if (this.pendingId !== id) return;
+                    if (!ok) {
+                        if (this.pendingId === id) this.pendingId = null;
+                        this.playFallback(options, id);
+                        return;
+                    }
+
+                    this.pendingId = null;
+                    this.activeId = id;
+                    this.lastSwitchAt = globalTime;
+                    this.rememberTrack(id);
+                    this.fadeTo(entry, this.targetVolume(entry), fadeMs);
+                    if (previous) this.fadeOut(previous, fadeMs, true);
+                    this.updateButton();
+                });
                 this.updateButton();
                 return true;
             },
@@ -4319,16 +4573,21 @@
                 if (this.muted) {
                     this.fadeOut(entry, 350, true);
                 } else if (this.started && this.activeId) {
-                    this.play(this.activeId, { fadeMs: 650, reason: 'unmute' });
+                    this.play(this.activeId, { fadeMs: 650, force: true, reason: 'unmute' });
+                } else if (this.started) {
+                    this.play(this.chooseTrack(this.readSignals(), { force: true, reason: 'unmute' }) || MUSIC_DEFAULT_TRACK, { fadeMs: 650, force: true, reason: 'unmute' });
                 }
                 this.updateButton();
             },
             setDucked(ducked) {
                 this.ducked = !!ducked;
-                let entry = this.activeId ? this.tracks[this.activeId] : null;
-                if (entry && !this.muted && !this.suspended && !entry.audio.paused) {
-                    this.fadeTo(entry, this.targetVolume(entry), 500);
+                if (this.ducked && this.started && !this.suspended && !this.muted) {
+                    if (this.setScene('menu', 'pause')) return;
+                } else if (!this.ducked && this.started && !this.outcome) {
+                    this.decisionTimer = 0;
+                    this.update(0);
                 }
+                this.refreshActiveVolume();
             },
             suspendForPage() {
                 if (this.suspended) return;
@@ -4339,7 +4598,254 @@
                 if (!this.suspended) return;
                 this.suspended = false;
                 if (this.started && this.activeId && !this.muted) {
-                    this.play(this.activeId, { fadeMs: 700, reason: 'page_visible' });
+                    this.play(this.activeId, { fadeMs: 700, force: true, reason: 'page_visible' });
+                }
+            },
+            startEntry(entry) {
+                return new Promise(resolve => {
+                    if (!entry || entry.failed || this.muted || this.suspended) {
+                        resolve(false);
+                        return;
+                    }
+                    if (!this.ensureSource(entry)) {
+                        entry.failed = true;
+                        resolve(false);
+                        return;
+                    }
+
+                    let audio = entry.audio;
+                    let settled = false;
+                    let retrying = false;
+                    let settle = ok => {
+                        if (settled) return;
+                        settled = true;
+                        audio.removeEventListener('error', onError);
+                        resolve(ok);
+                    };
+                    let retry = () => {
+                        if (settled || retrying) return;
+                        retrying = true;
+                        audio.removeEventListener('error', onError);
+                        if (this.advanceSource(entry)) {
+                            this.startEntry(entry).then(resolve);
+                        } else {
+                            entry.failed = true;
+                            settle(false);
+                        }
+                    };
+                    let onError = () => retry();
+
+                    audio.addEventListener('error', onError);
+                    audio.loop = entry.config.loop !== false;
+                    audio.volume = 0;
+
+                    let playPromise = null;
+                    try {
+                        playPromise = audio.play();
+                    } catch (e) {
+                        retry();
+                        return;
+                    }
+
+                    if (playPromise && typeof playPromise.then === 'function') {
+                        playPromise.then(() => {
+                            entry.failed = false;
+                            entry.blocked = false;
+                            settle(true);
+                        }).catch(error => {
+                            if (error && error.name === 'NotAllowedError') {
+                                entry.blocked = true;
+                                settle(false);
+                            } else {
+                                retry();
+                            }
+                        });
+                    } else {
+                        setTimeout(() => settle(!audio.paused || audio.readyState >= 2), 120);
+                    }
+
+                    setTimeout(() => {
+                        if (!settled && audio.readyState >= 2 && !audio.error) settle(true);
+                    }, 2400);
+                });
+            },
+            ensureSource(entry) {
+                if (!entry || !entry.sources.length) return false;
+                if (entry.audio.getAttribute('src')) return true;
+                entry.sourceIndex = Math.max(0, Math.min(entry.sourceIndex || 0, entry.sources.length - 1));
+                entry.audio.src = entry.sources[entry.sourceIndex];
+                entry.audio.load();
+                return true;
+            },
+            advanceSource(entry) {
+                if (!entry) return false;
+                entry.sourceIndex = (entry.sourceIndex || 0) + 1;
+                entry.audio.pause();
+                entry.audio.removeAttribute('src');
+                entry.audio.load();
+                if (entry.sourceIndex >= entry.sources.length) return false;
+                entry.audio.src = entry.sources[entry.sourceIndex];
+                entry.audio.load();
+                return true;
+            },
+            playFallback(options = {}, blockedId = '') {
+                let active = this.activeId ? this.tracks[this.activeId] : null;
+                if (!options.force && active && active.config.id !== blockedId && !active.failed && !active.audio.paused) {
+                    this.refreshActiveVolume();
+                    return false;
+                }
+
+                let fallback = this.tracks[MUSIC_DEFAULT_TRACK] && !this.tracks[MUSIC_DEFAULT_TRACK].failed ? MUSIC_DEFAULT_TRACK : '';
+                if (!fallback) {
+                    for (let i = 0; i < MUSIC_TRACKS.length; i++) {
+                        let id = MUSIC_TRACKS[i].id;
+                        if (id !== blockedId && this.tracks[id] && !this.tracks[id].failed) {
+                            fallback = id;
+                            break;
+                        }
+                    }
+                }
+                if (!fallback || fallback === blockedId) return false;
+                return this.play(fallback, Object.assign({}, options, { force: true, reason: 'fallback' }));
+            },
+            canSwitchTo(entry) {
+                if (!entry || !this.activeId || this.activeId === entry.config.id) return true;
+                if (entry.config.urgent || entry.config.outcome) return true;
+                let active = this.tracks[this.activeId];
+                let minPlay = active && active.config ? active.config.minPlaySec || 24 : 24;
+                return globalTime - this.lastSwitchAt >= minPlay;
+            },
+            chooseTrack(signals, options = {}) {
+                if (this.outcome) return this.outcome === 'victory' ? 'victoryCanvas' : 'erasedPages';
+                let bestId = '';
+                let bestScore = -Infinity;
+                for (let i = 0; i < MUSIC_TRACKS.length; i++) {
+                    let config = MUSIC_TRACKS[i];
+                    let entry = this.tracks[config.id];
+                    if (!entry || entry.failed || entry.blocked || config.outcome || config.scene === 'menu') continue;
+
+                    let score = this.scoreTrack(config, signals);
+                    if (config.scene === 'opening' && signals.elapsed < 38) score += 26;
+                    if (config.scene === 'opening' && signals.elapsed >= 55) score -= 40;
+                    if (config.urgent && signals.tension > 0.74) score += 35;
+                    if (this.recentIds.includes(config.id)) score -= 34 - Math.min(18, this.recentIds.indexOf(config.id) * 6);
+                    if (this.activeId === config.id) score += 10;
+                    if (options.force && config.id === MUSIC_DEFAULT_TRACK) score += 4;
+
+                    if (score > bestScore) {
+                        bestScore = score;
+                        bestId = config.id;
+                    }
+                }
+                return bestId || MUSIC_DEFAULT_TRACK;
+            },
+            chooseScene(scene) {
+                let bestId = '';
+                let bestScore = -Infinity;
+                for (let i = 0; i < MUSIC_TRACKS.length; i++) {
+                    let config = MUSIC_TRACKS[i];
+                    let entry = this.tracks[config.id];
+                    if (!entry || entry.failed || entry.blocked || config.scene !== scene) continue;
+                    let score = (config.priority || 0) - (this.recentIds.includes(config.id) ? 20 : 0);
+                    if (score > bestScore) {
+                        bestScore = score;
+                        bestId = config.id;
+                    }
+                }
+                return bestId || MUSIC_DEFAULT_TRACK;
+            },
+            scoreTrack(config, signals) {
+                let age = signals.maxAge || 0;
+                let tension = signals.tension || 0;
+                let ageMin = config.ageMin === undefined ? 0 : config.ageMin;
+                let ageMax = config.ageMax === undefined ? AGES.length - 1 : config.ageMax;
+                let tensionMin = config.tensionMin === undefined ? 0 : config.tensionMin;
+                let tensionMax = config.tensionMax === undefined ? 1 : config.tensionMax;
+                if (age < ageMin - 0.01 || age > ageMax + 0.01) return -Infinity;
+
+                let ageCenter = (ageMin + ageMax) / 2;
+                let tensionCenter = (tensionMin + tensionMax) / 2;
+                let score = config.priority || 0;
+                score -= Math.abs(age - ageCenter) * 8;
+                score -= Math.max(0, tensionMin - tension, tension - tensionMax) * 95;
+                score -= Math.abs(tension - tensionCenter) * 18;
+                if (signals.specialActive && (config.roles || []).some(role => role === 'specials' || role === 'base-pressure')) score += 10;
+                if (signals.baseDanger > 0.58 && (config.scene === 'siege' || config.urgent)) score += 18;
+                if (signals.troopPressure > 0.58 && (config.scene === 'battle' || config.scene === 'pressure')) score += 9;
+                return score;
+            },
+            readSignals() {
+                if (!gameState || !gameState.player || !gameState.enemy) return this.signals || {};
+                let player = gameState.player;
+                let enemy = gameState.enemy;
+                let playerHpRatio = player.maxHp ? Math.max(0, player.hp / player.maxHp) : 1;
+                let enemyHpRatio = enemy.maxHp ? Math.max(0, enemy.hp / enemy.maxHp) : 1;
+                let activeUnits = 0;
+                let playerUnits = 0;
+                let enemyUnits = 0;
+                let playerFront = BASE_WIDTH;
+                let enemyFront = CANVAS_WIDTH - BASE_WIDTH;
+                let playerBaseThreat = 0;
+                let enemyBaseThreat = 0;
+
+                if (gameState.units && gameState.units.pool) {
+                    for (let i = 0; i < gameState.units.pool.length; i++) {
+                        let unit = gameState.units.pool[i];
+                        if (!unit.active) continue;
+                        activeUnits++;
+                        if (unit.team === 1) {
+                            playerUnits++;
+                            playerFront = Math.max(playerFront, unit.x || BASE_WIDTH);
+                            enemyBaseThreat += this.clamp(((CANVAS_WIDTH - BASE_WIDTH) - (unit.x || 0)) / 280, 0, 1) < 1 ? 1 - this.clamp(((CANVAS_WIDTH - BASE_WIDTH) - (unit.x || 0)) / 280, 0, 1) : 0;
+                        } else {
+                            enemyUnits++;
+                            enemyFront = Math.min(enemyFront, unit.x || (CANVAS_WIDTH - BASE_WIDTH));
+                            playerBaseThreat += this.clamp(((unit.x || CANVAS_WIDTH) - BASE_WIDTH) / 280, 0, 1) < 1 ? 1 - this.clamp(((unit.x || CANVAS_WIDTH) - BASE_WIDTH) / 280, 0, 1) : 0;
+                        }
+                    }
+                }
+
+                let frontGap = Math.max(0, enemyFront - playerFront);
+                let clash = this.clamp(1 - frontGap / 560, 0, 1);
+                let baseDanger = this.clamp(Math.max(playerBaseThreat, enemyBaseThreat) / 3, 0, 1);
+                let lowBaseHp = 1 - Math.min(playerHpRatio, enemyHpRatio);
+                let troopPressure = this.clamp(activeUnits / 16 + Math.abs(playerUnits - enemyUnits) / 18, 0, 1);
+                let tension = this.clamp(
+                    activeUnits * 0.035 +
+                    clash * 0.24 +
+                    baseDanger * 0.36 +
+                    lowBaseHp * 0.32 +
+                    (gameState.specialActive ? 0.18 : 0) +
+                    (gameState.screenShake || 0) * 0.18,
+                    0,
+                    1
+                );
+
+                return {
+                    elapsed: globalTime,
+                    playerAge: player.age || 0,
+                    enemyAge: enemy.age || 0,
+                    maxAge: Math.max(player.age || 0, enemy.age || 0),
+                    activeUnits,
+                    playerUnits,
+                    enemyUnits,
+                    troopPressure,
+                    playerHpRatio,
+                    enemyHpRatio,
+                    baseDanger,
+                    tension,
+                    specialActive: !!gameState.specialActive,
+                    library: MUSIC_LIBRARY_VERSION
+                };
+            },
+            rememberTrack(id) {
+                if (!id) return;
+                this.recentIds = [id].concat(this.recentIds.filter(existing => existing !== id)).slice(0, 5);
+            },
+            refreshActiveVolume() {
+                let entry = this.activeId ? this.tracks[this.activeId] : null;
+                if (entry && !this.muted && !this.suspended && !entry.audio.paused) {
+                    this.fadeTo(entry, this.targetVolume(entry), 500);
                 }
             },
             fadeOut(entry, fadeMs, pauseWhenDone) {
@@ -4380,12 +4886,16 @@
                 if (this.ducked) level *= 0.45;
                 return Math.max(0, Math.min(1, level));
             },
+            clamp(value, min, max) {
+                return Math.max(min, Math.min(max, value));
+            },
             updateButton() {
                 let btn = document.getElementById('btn-music');
                 if (!btn) return;
+                let title = this.activeId && this.tracks[this.activeId] ? this.tracks[this.activeId].config.title : 'Music';
                 btn.classList.toggle('music-muted', this.muted);
                 btn.innerHTML = this.muted ? '&#128263;' : '&#128266;';
-                btn.title = this.muted ? 'Music off' : 'Music on';
+                btn.title = this.muted ? 'Music off' : `Music on: ${title}`;
                 btn.setAttribute('aria-label', this.muted ? 'Turn music on' : 'Turn music off');
             }
         };
@@ -4613,6 +5123,8 @@
 
         // --- UPDATE LOGIC ---
         function update(dt) {
+            MusicDirector.update(dt);
+
             if (gameState.worldProgress < 1.0) {
                 gameState.worldProgress += dt * 0.75;
                 if (gameState.worldProgress > 1.0) gameState.worldProgress = 1.0;
@@ -5225,9 +5737,9 @@
                 gameState.running = false;
                 document.getElementById('game-over-screen').classList.remove('hidden');
                 TooltipManager.hide();
-                MusicDirector.setDucked(true);
 
                 let won = gameState.enemy.hp <= 0;
+                MusicDirector.setOutcome(won);
                 document.getElementById('end-title').innerText = won ? "Victory!" : "Defeat...";
                 document.getElementById('end-desc').innerText = won ? "You have conquered history and filled the sketchbook." : "Your civilization was erased from the pages of history.";
 

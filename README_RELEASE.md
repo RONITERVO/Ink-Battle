@@ -10,7 +10,7 @@ the root `Age_of_War_notebook_8.html` plus `manifest.webmanifest`,
 - `Age_of_War_notebook_8.html`: the playable game with the local Codex Director.
 - `index.html`: a GitHub Pages launcher that redirects to the playable game.
 - `manifest.webmanifest`, `service-worker.js`, `assets/icon.svg`: offline web/PWA shell.
-- `assets/audio/`: generated music asset slot used by the in-game music director.
+- `assets/audio/`: adaptive music catalog and generated tracks used by the in-game music director.
 - `app/`, `settings.gradle`, `build.gradle`: native Android wrapper that packages generated copies of the root web app into app assets.
 - `LOCAL_GEMMA_ANDROID.md`: the local Gemma 4 integration plan and safety notes.
 - `GEMINI_AAB_PROMPT.md`: a compact prompt for Gemini when finalizing the Android Studio AAB build.
@@ -67,12 +67,13 @@ used by GitHub Pages.
 - Gemma director turns include a labeled tactical context image instead of a raw gameplay screenshot. The native bridge configures LiteRT-LM `visionBackend`, sends the image via the documented `ImageFile` path, and keeps those image files alive until the native chat is reset or closed.
 - The LiteRT-LM engine is now process-scoped, so Activity/WebView recreation reuses the loaded Gemma model instead of unloading and reloading it.
 - `Gemma 4 E2B` is the default 6GB+ phone model; `Gemma 4 E4B` is reserved for devices reporting at least 12GB RAM.
-- Music playback starts from the user's difficulty tap, loops through the music director, fades on page/app pause, and keeps future age/tension/troop-pressure switching behind the `MUSIC_TRACKS` registry.
+- Music playback starts from the user's difficulty tap. The music director now selects by age, tension, troop pressure, base danger, pause, and outcome; missing catalog files are skipped safely and `evolving_canvas.wav` remains the required fallback.
 
 ## Final Manual Checks
 
 - Play each difficulty for at least one full age transition.
 - Confirm `assets/audio/evolving_canvas.wav` starts after choosing a difficulty, loops cleanly, and the music toggle persists after reload.
+- Fill the full `assets/audio/README.md` catalog before global release or document intentional omissions; verify missing optional files do not silence the active track.
 - Confirm director pacts persist after reload.
 - On a real phone, tap `Get Gemma`, download the model, go offline, and confirm Gemma director turns still appear.
 - Capture Gemma diagnostics during a real match with `adb logcat -v time -s AgeOfWarGemma:I`.

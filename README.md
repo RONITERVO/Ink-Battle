@@ -25,6 +25,7 @@ Difficulty settings (`Normal`, `Hard`, `Harder`, `Impossible`) change enemy econ
 - Local persistence: beaten difficulty medals and director agreements are stored in localStorage.
 - Tooltips on unit/turret buttons with live stats and descriptions.
 - Pause/resume overlay and auto-pause when tab visibility is lost.
+- Adaptive music director: age, tension, base danger, pause, and outcome cues choose from `assets/audio/` while safely falling back to `evolving_canvas.wav` if a release track is missing.
 
 ## Codex Director (Enemy AI + Chat)
 
@@ -55,6 +56,7 @@ In the Android build, a Local Gemma bridge can be used to install/load an on-dev
 - `Age_of_War_notebook_8.html`: main playable game used by web, PWA installs, and Android WebView.
 - `index.html`: GitHub Pages launcher that redirects to the playable game without duplicating logic.
 - `manifest.webmanifest`, `service-worker.js`, `assets/`: PWA/offline shell assets.
+- `assets/audio/README.md`: music catalog, required filenames, and Gemini/Suno prompt for missing tracks.
 - `app/`: Android WebView wrapper project that packages generated copies of the root web app into app assets.
 - `README_RELEASE.md`: release and packaging notes.
 
