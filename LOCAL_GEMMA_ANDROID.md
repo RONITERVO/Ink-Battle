@@ -5,7 +5,7 @@ The app uses a no-backend opponent:
 - The JavaScript game owns all tactical decisions and remains fully playable offline without Gemma.
 - On Android, the WebView exposes `LocalGemmaAndroid` through `LocalGemmaBridge.kt`.
 - After user consent, the app's own resumable HTTPS downloader saves a `.litertlm` Gemma 4 model into the app's external files directory.
-- LiteRT-LM loads the model locally. Gemma stays in the same no-system chat for two visible turns, then the bridge starts a fresh native chat.
+- LiteRT-LM loads the model locally. Gemma stays in the same system-instructed chat for two visible turns, then the bridge starts a fresh native chat.
 - The fresh native chat carries raw text copied from the previous native chat window and includes the previous chat's tail user image. No generated or local summary is inserted.
 - Gemma receives the labeled tactical context image and is asked to return exactly two lines: a visible opponent message and one emotion word from the randomized emotion vocabulary.
 - The deterministic engine consumes the emotion word as a mood signal only. It never accepts unit, upgrade, turret, special, strategy, or order commands from the model.
@@ -33,7 +33,7 @@ Configured downloads:
   - Raw previous-chat text and the previous tail user image are carried into the next native chat; no summary callback or local summary prompt is used.
   - Empty LiteRT responses reset the native chat before the next request.
   - GPU first, CPU fallback.
-  - No-system `ConversationConfig()` for Gemma 4 default behavior.
+  - `ConversationConfig` uses one system instruction: Gemma is the blue opponent and must reply with one visible line plus one emotion word.
   - One prompt cap, one optional `ImageFile`, one streamed `message` phase, and raw text returned to JavaScript.
 - `Age_of_War_notebook_8.html`
   - Builds the randomized emotion prompt.

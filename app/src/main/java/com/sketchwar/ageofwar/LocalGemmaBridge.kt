@@ -52,6 +52,8 @@ class LocalGemmaBridge(
         const val DOWNLOAD_READ_TIMEOUT_MS = 30_000
         const val DOWNLOAD_LOG_STEP_BYTES = 25L * 1024L * 1024L
         const val BYTES_PER_GB = 1_000_000_000.0
+        const val GEMMA_SYSTEM_PROMPT =
+            "Your name is Gemma. Your only purpose is to reply as the blue opponent in this Age of War match: exactly two lines, first a short in-character message to the player, second one allowed emotion word."
 
         private val ENGINE_LOCK = Any()
         private val downloadExecutor = Executors.newSingleThreadExecutor()
@@ -729,7 +731,7 @@ class LocalGemmaBridge(
         }
     }
 
-    private fun conversationConfig(): ConversationConfig = ConversationConfig()
+    private fun conversationConfig(): ConversationConfig = ConversationConfig(Contents.of(GEMMA_SYSTEM_PROMPT))
 
     private fun chatConversation(engine: Engine, modelPath: String): Conversation {
         var stale: Conversation? = null
@@ -840,7 +842,7 @@ class LocalGemmaBridge(
 
     private fun cleanPrompt(raw: String): String {
         val value = raw.replace('\u0000', ' ').trim()
-        val fallback = "You are Gemma, the red enemy general. Reply in exactly two lines: a short message to the player, then one emotion word."
+        val fallback = "You are Gemma, the blue enemy general. Reply in exactly two lines: a short message to the player, then one emotion word."
         val prompt = if (value.isBlank()) fallback else value
         if (prompt.length > MAX_PROMPT_CHARS) {
             logLine("request.prompt_truncated promptChars=${prompt.length} capped=$MAX_PROMPT_CHARS")

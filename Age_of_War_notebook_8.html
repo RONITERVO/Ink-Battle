@@ -2102,8 +2102,8 @@
         }
 
         function drawGemmaContextImage(g, width, height, snapshot) {
-            const playerColor = '#1d4ed8';
-            const enemyColor = '#b91c1c';
+            const playerColor = '#b91c1c';
+            const enemyColor = '#1d4ed8';
             const ink = '#111827';
             const muted = '#6b7280';
             const paper = '#fffaf0';
@@ -2124,12 +2124,12 @@
             g.fillStyle = ink;
             g.font = '800 24px system-ui, Arial, sans-serif';
             g.textAlign = 'center';
-            g.fillText('MAP FOR GEMMA AI: YOU ARE RED ON THE RIGHT', width / 2, 30);
+            g.fillText('MAP FOR GEMMA AI: YOU ARE BLUE ON THE RIGHT', width / 2, 30);
             g.font = '700 15px system-ui, Arial, sans-serif';
-            g.fillText('BLUE PLAYER is your opponent on the LEFT and attacks RIGHT. RED GEMMA is YOU and attacks LEFT.', width / 2, 54);
+            g.fillText('RED PLAYER is your opponent on the LEFT and attacks RIGHT. BLUE GEMMA is YOU and attacks LEFT.', width / 2, 54);
 
-            drawGemmaContextBase(g, 28, 76, 224, 90, playerColor, 'BLUE PLAYER / OPPONENT', AGES[gameState.player.age].name, pct(snapshot.playerHpRatio), gameState.player);
-            drawGemmaContextBase(g, width - 252, 76, 224, 90, enemyColor, 'RED GEMMA / YOU', AGES[gameState.enemy.age].name, pct(snapshot.enemyHpRatio), gameState.enemy);
+            drawGemmaContextBase(g, 28, 76, 224, 90, playerColor, 'RED PLAYER / OPPONENT', AGES[gameState.player.age].name, pct(snapshot.playerHpRatio), gameState.player);
+            drawGemmaContextBase(g, width - 252, 76, 224, 90, enemyColor, 'BLUE GEMMA / YOU', AGES[gameState.enemy.age].name, pct(snapshot.enemyHpRatio), gameState.enemy);
 
             drawGemmaContextLegend(g, width / 2 - 184, 76, 368, 90, playerColor, enemyColor, ink, muted);
 
@@ -2137,13 +2137,13 @@
             g.font = '800 14px system-ui, Arial, sans-serif';
             g.textAlign = 'center';
             g.fillStyle = ink;
-            g.fillText('READ THE MAP AS RED GEMMA: defend the right base, push left, destroy the blue base.', width / 2, 194);
+            g.fillText('READ THE MAP AS BLUE GEMMA: defend the right base, push left, destroy the red base.', width / 2, 194);
 
-            g.fillStyle = '#dbeafe';
-            g.fillRect(mapX(0), laneY - 82, mapX(BASE_WIDTH) - mapX(0), 164);
             g.fillStyle = '#fee2e2';
+            g.fillRect(mapX(0), laneY - 82, mapX(BASE_WIDTH) - mapX(0), 164);
+            g.fillStyle = '#dbeafe';
             g.fillRect(mapX(CANVAS_WIDTH - BASE_WIDTH), laneY - 82, mapX(CANVAS_WIDTH) - mapX(CANVAS_WIDTH - BASE_WIDTH), 164);
-            g.fillStyle = 'rgba(185, 28, 28, 0.10)';
+            g.fillStyle = 'rgba(29, 78, 216, 0.10)';
             g.fillRect(mapX(CANVAS_WIDTH - BASE_WIDTH - 620), laneY - 88, mapX(CANVAS_WIDTH - BASE_WIDTH) - mapX(CANVAS_WIDTH - BASE_WIDTH - 620), 176);
 
             g.strokeStyle = ink;
@@ -2153,16 +2153,17 @@
             g.lineTo(laneRight, laneY);
             g.stroke();
 
-            drawGemmaContextArrow(g, laneLeft + 132, laneY - 64, laneRight - 132, laneY - 64, playerColor, 'BLUE PLAYER ATTACKS RIGHT ->');
-            drawGemmaContextArrow(g, laneRight - 132, laneY + 64, laneLeft + 132, laneY + 64, enemyColor, '<- YOU ATTACK LEFT AS RED GEMMA');
+            drawGemmaContextArrow(g, laneLeft + 132, laneY - 64, laneRight - 132, laneY - 64, playerColor, 'RED PLAYER ATTACKS RIGHT ->');
+            drawGemmaContextArrow(g, laneRight - 132, laneY + 64, laneLeft + 132, laneY + 64, enemyColor, '<- YOU ATTACK LEFT AS BLUE GEMMA');
 
             drawGemmaContextVertical(g, mapX(BASE_WIDTH), laneY - 94, laneY + 94, '#374151', 'PLAYER HIT LINE', 'left');
             drawGemmaContextVertical(g, mapX(CANVAS_WIDTH - BASE_WIDTH), laneY - 94, laneY + 94, '#374151', 'GEMMA HIT LINE', 'right');
             drawGemmaContextVertical(g, mapX(snapshot.playerFrontX || BASE_WIDTH), laneY - 116, laneY + 116, playerColor, 'PLAYER FRONT', 'left', true);
             drawGemmaContextVertical(g, mapX(snapshot.enemyFrontX || (CANVAS_WIDTH - BASE_WIDTH)), laneY - 116, laneY + 116, enemyColor, 'GEMMA FRONT', 'right', true);
+            drawGemmaContextFrontSpan(g, mapX(snapshot.playerFrontX || BASE_WIDTH), mapX(snapshot.enemyFrontX || (CANVAS_WIDTH - BASE_WIDTH)), laneY, muted);
 
-            drawGemmaContextLabel(g, 'RED SHADE = DANGER TO YOUR GEMMA BASE', mapX(CANVAS_WIDTH - BASE_WIDTH - 310), laneY - 108, {
-                fill: '#fff7ed',
+            drawGemmaContextLabel(g, 'BLUE SHADE = DANGER TO YOUR GEMMA BASE', mapX(CANVAS_WIDTH - BASE_WIDTH - 310), laneY - 108, {
+                fill: '#eff6ff',
                 color: enemyColor,
                 align: 'center',
                 font: '800 12px system-ui, Arial, sans-serif'
@@ -2194,7 +2195,6 @@
                 `Gemma units ${snapshot.enemyUnits}`,
                 `Threats near Gemma base ${snapshot.threatCount}`,
                 `Closest player threat: ${closest}`,
-                `Front gap ${snapshot.frontGap} px`,
                 'Pressure pact: rush',
                 `Gemma emotion: ${snapshot.emotion || 'Centered'}`,
                 `Engine plan: ${snapshot.engineOrder || 'adaptive'}`,
@@ -2245,7 +2245,7 @@
             g.fillText('diamond heavy', x + 170, y + 46);
             g.fillText('dashed vertical = front line', x + 30, y + 68);
             g.fillText('gray vertical = base hit line', x + 170, y + 68);
-            g.fillText('P0/P1/P2 = blue player units; G0/G1/G2 = your red units', x + 30, y + 84);
+            g.fillText('P0/P1/P2 = red player units; G0/G1/G2 = your blue units', x + 30, y + 84);
         }
 
         function collectGemmaContextUnitMarkers() {
@@ -2369,6 +2369,33 @@
             });
         }
 
+        function drawGemmaContextFrontSpan(g, x1, x2, y, color) {
+            let left = Math.min(x1, x2);
+            let right = Math.max(x1, x2);
+            if (right - left < 16) return;
+            g.save();
+            g.fillStyle = 'rgba(17, 24, 39, 0.045)';
+            g.fillRect(left, y - 44, right - left, 88);
+            g.strokeStyle = color;
+            g.fillStyle = color;
+            g.lineWidth = 2;
+            g.setLineDash([6, 5]);
+            g.beginPath();
+            g.moveTo(left + 8, y);
+            g.lineTo(right - 8, y);
+            g.stroke();
+            g.setLineDash([]);
+            [[left + 8, -1], [right - 8, 1]].forEach(([x, dir]) => {
+                g.beginPath();
+                g.moveTo(x, y);
+                g.lineTo(x + dir * 10, y - 6);
+                g.lineTo(x + dir * 10, y + 6);
+                g.closePath();
+                g.fill();
+            });
+            g.restore();
+        }
+
         function drawGemmaContextVertical(g, x, y1, y2, color, label, side, dashed = false) {
             g.save();
             g.strokeStyle = color;
@@ -2441,7 +2468,6 @@
             let playerUnitLine = snapshot.playerProfile || `${snapshot.playerUnits} units: ${snapshot.playerMelee} melee, ${snapshot.playerRanged} ranged, ${snapshot.playerHeavy} heavy`;
             let enemyUnitLine = snapshot.enemyProfile || `${snapshot.enemyUnits} units: ${snapshot.enemyMelee} melee, ${snapshot.enemyRanged} ranged, ${snapshot.enemyHeavy} heavy`;
             let tacticalLine = [
-                `front gap ${snapshot.frontGap}px`,
                 `threats near your base ${snapshot.threatCount}`,
                 `closest threat ${Math.round(snapshot.closestThreatDist)}px`,
                 `my turrets ${snapshot.playerTurretCount}`,
@@ -2449,8 +2475,8 @@
                 `engine plan ${snapshot.macroPlan || 'balanced'} / ${snapshot.engineOrder || 'adaptive'}`
             ].join(', ');
             let prompt = [
-                'Gemma, we are still playing our notebook Age of War match and chatting across the table.',
-                'You are the red general on the right. I am the blue player on the left. I attached the little labeled map again so you can see the bases, front lines, danger zone, unit markers, HP, gold, and pressure.',
+                'Gemma, we are still playing our notebook Age of War match and chatting across the table. Your name is Gemma.',
+                'You are the blue general on the right. I am the red player on the left. I attached the little labeled map again so you can see the bases, front lines, danger zone, unit markers, HP, gold, and pressure.',
                 'I am not asking you to click units or spend gold here; the local game keeps doing that while you think. I only want your in-character reply and the feeling behind it so the match keeps sounding human.',
                 `Right now you are in ${enemyAgeData.name}; I am in ${playerAgeData.name}.`,
                 `Your base is at ${Math.round(snapshot.enemyHpRatio * 100)}% with ${Math.floor(snapshot.enemyGold)} gold. My base is at ${Math.round(snapshot.playerHpRatio * 100)}% with ${Math.floor(snapshot.playerGold)} gold.`,
