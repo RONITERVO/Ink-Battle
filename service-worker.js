@@ -1,4 +1,4 @@
-const CACHE_NAME = 'age-of-war-sketch-v3';
+const CACHE_NAME = 'age-of-war-sketch-v4';
 const APP_SHELL = [
   './',
   './index.html',

@@ -1427,6 +1427,9 @@
         const MUSIC_LIBRARY_VERSION = 'global-v2';
         const MUSIC_DEFAULT_TRACK = 'evolvingCanvas';
         const MUSIC_SOURCE_EXTENSIONS = ['wav', 'mp3', 'ogg'];
+        const MUSIC_CROSSFADE_CURVE_STEPS = 96;
+        const MUSIC_IDLE_RELEASE_MS = 45000;
+        const MUSIC_SILENCE_EPSILON = 0.001;
         // Optional per-track variations are supported via:
         // - variants: ['pencil_dawn', 'pencil_dawn_v2', { file: 'pencil_dawn_alt' }]
         // - variants: [{ sources: ['assets/audio/custom_intro.ogg'] }, ...]
@@ -4468,11 +4471,19 @@
             outcome: null,
             masterVolume: 0.72,
             fadeMs: 1600,
+            idleReleaseMs: MUSIC_IDLE_RELEASE_MS,
             decisionTimer: 0,
             lastSwitchAt: -999,
+            transitionToken: 0,
+            audioContext: null,
+            masterGainNode: null,
+            mixerUnavailable: false,
+            elementMixer: false,
             recentIds: [],
             signals: { tension: 0, playerAge: 0, enemyAge: 0, troopPressure: 0 },
             init() {
+                this.elementMixer = this.shouldUseElementMixer();
+                this.mixerUnavailable = this.elementMixer;
                 try {
                     this.muted = localStorage.getItem(MUSIC_STORAGE_KEY) === '1';
                 } catch (e) {
@@ -4496,7 +4507,19 @@
                         sourceIndex: 0,
                         failed: false,
                         blocked: false,
-                        fadeToken: 0
+                        fadeToken: 0,
+                        playToken: 0,
+                        releaseTimer: 0,
+                        fadeTimer: 0,
+                        fadeFrame: 0,
+                        fadeStartedAt: 0,
+                        fadeDurationMs: 0,
+                        fadeStartVolume: 0,
+                        fadeTargetVolume: 0,
+                        currentVolume: 0,
+                        mediaNode: null,
+                        gainNode: null,
+                        webAudioFailed: false
                     };
                     audio.addEventListener('error', () => {
                         if (this.pendingId === config.id) return;
@@ -4610,6 +4633,9 @@
                 entry.sources = entry.variantSources[entry.activeVariantIndex];
                 entry.sourceIndex = 0;
                 entry.failed = false;
+                this.cancelRelease(entry);
+                this.cancelFade(entry);
+                this.setOutputVolume(entry, 0);
                 entry.audio.pause();
                 entry.audio.removeAttribute('src');
                 entry.audio.load();
@@ -4624,6 +4650,8 @@
                 this.decisionTimer = 0;
                 this.recentIds = [];
                 this.setSignals(this.readSignals());
+                this.resumeMixer();
+                this.fadeOutAll(0, true);
                 this.play(MUSIC_DEFAULT_TRACK, { fadeMs: 900, force: true, reason });
             },
             update(dt) {
@@ -4658,21 +4686,40 @@
                 if (this.pendingId === id) return true;
 
                 let fadeMs = options.fadeMs === undefined ? this.fadeMs : options.fadeMs;
+                if (!options.newVariant && this.activeId === id && !entry.audio.paused) {
+                    this.refreshActiveVolume();
+                    this.updateButton();
+                    return true;
+                }
                 if (!options.force && !this.canSwitchTo(entry)) return false;
 
                 if (this.muted || this.suspended) {
                     this.activeId = id;
-                    this.fadeOut(entry, 0, true);
+                    this.pendingId = null;
+                    this.transitionToken++;
+                    this.fadeOutAll(0, true);
                     this.updateButton();
                     return false;
                 }
 
+                let token = ++this.transitionToken;
+                let previousPending = this.pendingId && this.pendingId !== id ? this.tracks[this.pendingId] : null;
+                this.pendingId = null;
+                if (previousPending && previousPending !== entry && previousPending.config.id !== this.activeId) {
+                    this.cancelEntryStart(previousPending);
+                    this.fadeOut(previousPending, Math.min(300, fadeMs || 300), true);
+                }
+
+                this.resumeMixer();
                 let previous = this.activeId && this.activeId !== id ? this.tracks[this.activeId] : null;
-                if (previous) this.fadeTo(previous, this.targetVolume(previous), 500);
+                if (previous && !previous.audio.paused) this.fadeTo(previous, this.targetVolume(previous), Math.min(500, fadeMs || 500));
                 let rotateVariant = options.newVariant === undefined ? this.activeId !== id : !!options.newVariant;
                 this.pendingId = id;
                 this.startEntry(entry, { newVariant: rotateVariant }).then(ok => {
-                    if (this.pendingId !== id) return;
+                    if (this.transitionToken !== token || this.pendingId !== id) {
+                        if (entry.config.id !== this.activeId) this.fadeOut(entry, Math.min(250, fadeMs || 250), true);
+                        return;
+                    }
                     if (!ok) {
                         if (this.pendingId === id) this.pendingId = null;
                         this.playFallback(options, id);
@@ -4683,6 +4730,7 @@
                     this.activeId = id;
                     this.lastSwitchAt = globalTime;
                     this.rememberTrack(id);
+                    this.cancelRelease(entry);
                     this.fadeTo(entry, this.targetVolume(entry), fadeMs);
                     if (previous) this.fadeOut(previous, fadeMs, true);
                     this.updateButton();
@@ -4696,12 +4744,15 @@
                     localStorage.setItem(MUSIC_STORAGE_KEY, this.muted ? '1' : '0');
                 } catch (e) { }
 
-                let entry = this.activeId ? this.tracks[this.activeId] : null;
                 if (this.muted) {
-                    this.fadeOut(entry, 350, true);
+                    this.transitionToken++;
+                    this.pendingId = null;
+                    this.fadeOutAll(350, true);
                 } else if (this.started && this.activeId) {
+                    this.resumeMixer();
                     this.play(this.activeId, { fadeMs: 650, force: true, reason: 'unmute' });
                 } else if (this.started) {
+                    this.resumeMixer();
                     this.play(this.chooseTrack(this.readSignals(), { force: true, reason: 'unmute' }) || MUSIC_DEFAULT_TRACK, { fadeMs: 650, force: true, reason: 'unmute' });
                 }
                 this.updateButton();
@@ -4717,14 +4768,17 @@
                 this.refreshActiveVolume();
             },
             suspendForPage() {
-                if (this.suspended) return;
+                if (!this.started || this.suspended) return;
                 this.suspended = true;
-                this.fadeOut(this.activeId ? this.tracks[this.activeId] : null, 250, true);
+                this.transitionToken++;
+                this.pendingId = null;
+                this.fadeOutAll(0, true);
             },
             resumeForPage() {
                 if (!this.suspended) return;
                 this.suspended = false;
                 if (this.started && this.activeId && !this.muted) {
+                    this.resumeMixer();
                     this.play(this.activeId, { fadeMs: 700, force: true, reason: 'page_visible' });
                 }
             },
@@ -4734,6 +4788,9 @@
                         resolve(false);
                         return;
                     }
+                    let playToken = ++entry.playToken;
+                    this.cancelRelease(entry);
+                    this.resumeMixer();
                     if (!this.chooseVariant(entry, { keepCurrent: !options.newVariant })) {
                         entry.failed = true;
                         resolve(false);
@@ -4755,13 +4812,22 @@
                         if (settled) return;
                         settled = true;
                         audio.removeEventListener('error', onError);
+                        if (entry.playToken !== playToken) {
+                            resolve(false);
+                            return;
+                        }
                         resolve(ok);
                     };
                     let retry = () => {
                         if (settled || retrying) return;
                         retrying = true;
                         audio.removeEventListener('error', onError);
+                        if (entry.playToken !== playToken) {
+                            settle(false);
+                            return;
+                        }
                         if (this.advanceSource(entry)) {
+                            settled = true;
                             this.startEntry(entry, { newVariant: false }).then(resolve);
                         } else {
                             entry.failed = true;
@@ -4772,7 +4838,8 @@
 
                     audio.addEventListener('error', onError);
                     audio.loop = entry.config.loop !== false;
-                    audio.volume = 0;
+                    this.prepareOutput(entry);
+                    this.setOutputVolume(entry, 0);
 
                     let playPromise = null;
                     try {
@@ -4806,6 +4873,7 @@
             },
             ensureSource(entry) {
                 if (!entry || !entry.sources.length) return false;
+                this.cancelRelease(entry);
                 if (entry.audio.getAttribute('src')) return true;
                 entry.sourceIndex = Math.max(0, Math.min(entry.sourceIndex || 0, entry.sources.length - 1));
                 entry.audio.src = entry.sources[entry.sourceIndex];
@@ -4815,6 +4883,9 @@
             advanceSource(entry) {
                 if (!entry) return false;
                 entry.sourceIndex = (entry.sourceIndex || 0) + 1;
+                this.cancelRelease(entry);
+                this.cancelFade(entry);
+                this.setOutputVolume(entry, 0);
                 entry.audio.pause();
                 entry.audio.removeAttribute('src');
                 entry.audio.load();
@@ -4996,35 +5067,210 @@
             fadeOut(entry, fadeMs, pauseWhenDone) {
                 if (!entry) return;
                 this.fadeTo(entry, 0, fadeMs, () => {
-                    if (pauseWhenDone) entry.audio.pause();
+                    if (pauseWhenDone) {
+                        entry.audio.pause();
+                        this.scheduleRelease(entry);
+                    }
                 });
+            },
+            fadeOutAll(fadeMs, pauseWhenDone, exceptId = '') {
+                for (let id in this.tracks) {
+                    if (id === exceptId) continue;
+                    let entry = this.tracks[id];
+                    if (!entry) continue;
+                    if (entry.config.id !== this.activeId || this.muted || this.suspended) this.cancelEntryStart(entry);
+                    if (!entry.audio.paused || this.currentOutputVolume(entry) > MUSIC_SILENCE_EPSILON) {
+                        this.fadeOut(entry, fadeMs, pauseWhenDone);
+                    }
+                }
             },
             fadeTo(entry, targetVolume, fadeMs, onDone) {
                 if (!entry) return;
-                let audio = entry.audio;
-                let token = ++entry.fadeToken;
-                let startVolume = audio.volume || 0;
+                let startVolume = this.currentOutputVolume(entry);
                 let target = Math.max(0, Math.min(1, targetVolume));
+                let duration = Math.max(0, fadeMs || 0);
+                this.cancelFade(entry);
+                let token = ++entry.fadeToken;
 
-                if (!fadeMs || fadeMs <= 0) {
-                    audio.volume = target;
+                entry.fadeStartVolume = startVolume;
+                entry.fadeTargetVolume = target;
+                entry.fadeStartedAt = performance.now();
+                entry.fadeDurationMs = duration;
+
+                if (!duration || Math.abs(startVolume - target) <= MUSIC_SILENCE_EPSILON) {
+                    this.setOutputVolume(entry, target);
                     if (onDone) onDone();
                     return;
                 }
 
-                let startedAt = performance.now();
+                if (this.prepareOutput(entry)) {
+                    let ctx = this.audioContext;
+                    let gain = entry.gainNode.gain;
+                    let now = ctx.currentTime;
+                    try {
+                        gain.cancelScheduledValues(now);
+                        gain.setValueAtTime(startVolume, now);
+                        gain.setValueCurveAtTime(this.buildEqualPowerCurve(startVolume, target), now, Math.max(0.016, duration / 1000));
+                        entry.audio.volume = 1;
+                        entry.fadeTimer = setTimeout(() => {
+                            if (entry.fadeToken !== token) return;
+                            this.setOutputVolume(entry, target);
+                            if (onDone) onDone();
+                        }, duration + 60);
+                        return;
+                    } catch (e) { }
+                }
+
+                this.writeOutputVolume(entry, startVolume, true);
                 let step = (now) => {
                     if (entry.fadeToken !== token) return;
-                    let progress = Math.min(1, (now - startedAt) / fadeMs);
-                    let eased = progress * progress * (3 - 2 * progress);
-                    audio.volume = Math.max(0, Math.min(1, startVolume + (target - startVolume) * eased));
+                    let progress = Math.min(1, (now - entry.fadeStartedAt) / duration);
+                    this.writeOutputVolume(entry, this.curveVolume(startVolume, target, progress), false);
                     if (progress < 1) {
-                        requestAnimationFrame(step);
-                    } else if (onDone) {
-                        onDone();
+                        entry.fadeFrame = requestAnimationFrame(step);
+                    } else {
+                        this.setOutputVolume(entry, target);
+                        if (onDone) onDone();
                     }
                 };
-                requestAnimationFrame(step);
+                entry.fadeFrame = requestAnimationFrame(step);
+            },
+            cancelEntryStart(entry) {
+                if (!entry) return;
+                entry.playToken++;
+            },
+            cancelFade(entry) {
+                if (!entry) return;
+                entry.fadeToken++;
+                if (entry.fadeTimer) clearTimeout(entry.fadeTimer);
+                if (entry.fadeFrame) cancelAnimationFrame(entry.fadeFrame);
+                entry.fadeTimer = 0;
+                entry.fadeFrame = 0;
+                entry.fadeDurationMs = 0;
+            },
+            scheduleRelease(entry) {
+                if (!entry) return;
+                this.cancelRelease(entry);
+                if (!this.muted && !this.suspended && (this.activeId === entry.config.id || this.pendingId === entry.config.id)) return;
+                entry.releaseTimer = setTimeout(() => this.releaseEntry(entry), this.idleReleaseMs);
+            },
+            cancelRelease(entry) {
+                if (!entry || !entry.releaseTimer) return;
+                clearTimeout(entry.releaseTimer);
+                entry.releaseTimer = 0;
+            },
+            releaseEntry(entry) {
+                if (!entry) return;
+                entry.releaseTimer = 0;
+                if (!this.muted && !this.suspended && (this.activeId === entry.config.id || this.pendingId === entry.config.id)) return;
+                if (!entry.audio.paused) return;
+                this.cancelFade(entry);
+                this.setOutputVolume(entry, 0);
+                entry.audio.removeAttribute('src');
+                entry.audio.load();
+            },
+            shouldUseElementMixer() {
+                // Android WebView can mute file-backed media after createMediaElementSource.
+                let userAgent = navigator.userAgent || '';
+                return !!window.LocalGemmaAndroid || /; wv\)/i.test(userAgent);
+            },
+            getAudioContext() {
+                if (this.audioContext || this.mixerUnavailable) return this.audioContext;
+                let AudioContextCtor = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContextCtor) {
+                    this.mixerUnavailable = true;
+                    return null;
+                }
+                try {
+                    this.audioContext = new AudioContextCtor();
+                    this.masterGainNode = this.audioContext.createGain();
+                    this.masterGainNode.gain.value = 1;
+                    this.masterGainNode.connect(this.audioContext.destination);
+                } catch (e) {
+                    this.mixerUnavailable = true;
+                    this.audioContext = null;
+                    this.masterGainNode = null;
+                }
+                return this.audioContext;
+            },
+            resumeMixer() {
+                let ctx = this.getAudioContext();
+                if (!ctx || ctx.state !== 'suspended') return;
+                try {
+                    let resumed = ctx.resume();
+                    if (resumed && typeof resumed.catch === 'function') resumed.catch(() => { });
+                } catch (e) { }
+            },
+            prepareOutput(entry) {
+                if (!entry) return false;
+                if (entry.gainNode) {
+                    entry.audio.volume = 1;
+                    return true;
+                }
+                if (entry.webAudioFailed) return false;
+                let ctx = this.getAudioContext();
+                if (!ctx || !this.masterGainNode) return false;
+                try {
+                    entry.mediaNode = ctx.createMediaElementSource(entry.audio);
+                    entry.gainNode = ctx.createGain();
+                    entry.gainNode.gain.value = entry.currentVolume || 0;
+                    entry.mediaNode.connect(entry.gainNode);
+                    entry.gainNode.connect(this.masterGainNode);
+                    entry.audio.volume = 1;
+                    return true;
+                } catch (e) {
+                    entry.webAudioFailed = true;
+                    entry.mediaNode = null;
+                    entry.gainNode = null;
+                    entry.audio.volume = entry.currentVolume || 0;
+                    return false;
+                }
+            },
+            setOutputVolume(entry, volume) {
+                if (!entry) return;
+                this.cancelFade(entry);
+                entry.fadeStartVolume = volume;
+                entry.fadeTargetVolume = volume;
+                this.writeOutputVolume(entry, volume, true);
+            },
+            writeOutputVolume(entry, volume, cancelSchedule) {
+                if (!entry) return;
+                let target = this.clamp(volume, 0, 1);
+                entry.currentVolume = target;
+                if (entry.gainNode && this.audioContext) {
+                    try {
+                        let gain = entry.gainNode.gain;
+                        let now = this.audioContext.currentTime;
+                        if (cancelSchedule) gain.cancelScheduledValues(now);
+                        gain.setValueAtTime(target, now);
+                        entry.audio.volume = 1;
+                        return;
+                    } catch (e) { }
+                }
+                entry.audio.volume = target;
+            },
+            currentOutputVolume(entry) {
+                if (!entry) return 0;
+                if (entry.fadeDurationMs > 0) {
+                    let progress = this.clamp((performance.now() - entry.fadeStartedAt) / entry.fadeDurationMs, 0, 1);
+                    return this.curveVolume(entry.fadeStartVolume, entry.fadeTargetVolume, progress);
+                }
+                if (typeof entry.currentVolume === 'number') return entry.currentVolume;
+                return entry.audio.volume || 0;
+            },
+            curveVolume(start, target, progress) {
+                let t = this.clamp(progress, 0, 1);
+                if (target >= start) {
+                    return start + (target - start) * Math.sin(t * Math.PI / 2);
+                }
+                return target + (start - target) * Math.cos(t * Math.PI / 2);
+            },
+            buildEqualPowerCurve(start, target) {
+                let curve = new Float32Array(MUSIC_CROSSFADE_CURVE_STEPS);
+                for (let i = 0; i < curve.length; i++) {
+                    curve[i] = this.curveVolume(start, target, i / (curve.length - 1));
+                }
+                return curve;
             },
             targetVolume(entry) {
                 let level = this.masterVolume * (entry.config.volume || 1);
