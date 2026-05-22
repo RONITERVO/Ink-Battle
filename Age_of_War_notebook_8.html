@@ -2575,7 +2575,7 @@
                     action = 'retry';
                     visible = true;
                 } else {
-                    label = `offline Gemma${ram}`;
+                    label = this.status.message || `offline Gemma${ram}`;
                     action = 'get';
                     visible = this.available;
                 }

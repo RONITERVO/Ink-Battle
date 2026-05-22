@@ -12,7 +12,7 @@ Project summary:
 - AGP 9 has built-in Kotlin support, so Kotlin sources exist without applying `org.jetbrains.kotlin.android`.
 - The WebView Activity is `app/src/main/java/com/sketchwar/ageofwar/MainActivity.java`.
 - Native local model bridge is `app/src/main/java/com/sketchwar/ageofwar/LocalGemmaBridge.kt`.
-- The bridge uses `DownloadManager` and `com.google.ai.edge.litertlm:litertlm-android:0.11.0`.
+- The bridge uses an app-owned resumable HTTPS downloader and `com.google.ai.edge.litertlm:litertlm-android:0.11.0`.
 - Model downloads are Gemma 4 `.litertlm` files from Hugging Face LiteRT Community after user confirmation.
 - E2B is default for 6GB+ phones; E4B is selected only for >=12GB RAM.
 - `Age_of_War_notebook_8.html` calls `window.LocalGemmaAndroid` when present; browser mode keeps a deterministic local fallback.

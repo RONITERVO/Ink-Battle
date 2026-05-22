@@ -4,7 +4,7 @@ The app uses a no-backend opponent:
 
 - The JavaScript game owns all tactical decisions and remains fully playable offline without Gemma.
 - On Android, the WebView exposes `LocalGemmaAndroid` through `LocalGemmaBridge.kt`.
-- After user consent, Android `DownloadManager` downloads a `.litertlm` Gemma 4 model into the app's external files directory.
+- After user consent, the app's own resumable HTTPS downloader saves a `.litertlm` Gemma 4 model into the app's external files directory.
 - LiteRT-LM loads the model locally. Gemma stays in the same no-system chat for two visible turns, then the bridge starts a fresh native chat.
 - The fresh native chat carries raw text copied from the previous native chat window and includes the previous chat's tail user image. No generated or local summary is inserted.
 - Gemma receives the labeled tactical context image and is asked to return exactly two lines: a visible opponent message and one emotion word from the randomized emotion vocabulary.
@@ -26,6 +26,7 @@ Configured downloads:
 
 - `app/src/main/java/com/sketchwar/ageofwar/LocalGemmaBridge.kt`
   - Model recommendation and install flow.
+  - App-owned `.part` file downloader with redirect handling, resume support, and byte-level progress.
   - Process-scoped LiteRT-LM engine reuse across Activity/WebView recreation.
   - Two-turn shared conversation reuse for short-term chat continuity.
   - `ImageFile` paths retained until the shared conversation is reset or closed.
