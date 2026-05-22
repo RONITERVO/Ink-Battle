@@ -14,6 +14,7 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
+@SuppressWarnings("deprecation")
 public class MainActivity extends Activity {
     private WebView webView;
     private LocalGemmaBridge localGemmaBridge;

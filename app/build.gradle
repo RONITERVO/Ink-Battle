@@ -2,10 +2,12 @@ plugins {
     id 'com.android.application'
 }
 
+def generatedWebAssetsDir = layout.buildDirectory.dir('generated/web-assets').get().asFile
+
 android {
-    namespace 'com.sketchwar.ageofwar'
-    compileSdk 36
-    buildToolsVersion '36.0.0'
+    namespace = 'com.sketchwar.ageofwar'
+    compileSdk = 36
+    buildToolsVersion = '36.0.0'
 
     signingConfigs {
         release {
@@ -22,25 +24,31 @@ android {
     }
 
     defaultConfig {
-        applicationId 'com.sketchwar.ageofwar'
-        minSdk 23
-        targetSdk 36
-        versionCode 108
-        versionName '1.0.8'
+        applicationId = 'com.sketchwar.ageofwar'
+        minSdk = 23
+        targetSdk = 36
+        versionCode = 108
+        versionName = '1.0.8'
     }
 
     buildTypes {
         release {
-            minifyEnabled true
-            shrinkResources true
+            minifyEnabled = true
+            shrinkResources = true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            signingConfig signingConfigs.release
+            signingConfig = signingConfigs.release
         }
     }
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    sourceSets {
+        main {
+            assets.srcDir(generatedWebAssetsDir)
+        }
     }
 }
 
@@ -48,16 +56,21 @@ dependencies {
     implementation("com.google.ai.edge.litertlm:litertlm-android:0.11.0")
 }
 
-tasks.register('syncGameAsset', Copy) {
+tasks.register('syncWebAssets', Copy) {
     from(rootProject.file('Age_of_War_notebook_8.html'))
+    from(rootProject.file('index.html'))
     from(rootProject.file('manifest.webmanifest'))
     from(rootProject.file('service-worker.js'))
     from(rootProject.file('assets')) {
         into 'assets'
     }
-    into(layout.projectDirectory.dir('src/main/assets'))
+    into(generatedWebAssetsDir)
 }
 
 tasks.matching { it.name == 'preBuild' }.configureEach {
-    dependsOn(tasks.named('syncGameAsset'))
+    dependsOn(tasks.named('syncWebAssets'))
+}
+
+tasks.matching { it.name.startsWith('merge') && it.name.endsWith('Assets') }.configureEach {
+    dependsOn(tasks.named('syncWebAssets'))
 }

@@ -6,7 +6,7 @@ Use this prompt when asking Gemini to help produce the final signed Android App 
 You are helping finish the Android release build for an existing local-first game project. Do not load or reason through the entire 100KB HTML game unless a specific WebView asset issue appears.
 
 Project summary:
-- Root folder contains `Age_of_War_notebook_8.html`, a standalone canvas game.
+- Root folder contains `Age_of_War_notebook_8.html`, the canonical standalone canvas game. `index.html` is the GitHub Pages launcher.
 - Android wrapper is in `app/`.
 - `app/build.gradle` uses AGP 9.2.0, compileSdk/targetSdk 36, minSdk 23, versionName 1.0.8.
 - AGP 9 has built-in Kotlin support, so Kotlin sources exist without applying `org.jetbrains.kotlin.android`.
@@ -16,7 +16,7 @@ Project summary:
 - Model downloads are Gemma 4 `.litertlm` files from Hugging Face LiteRT Community after user confirmation.
 - E2B is default for 6GB+ phones; E4B is selected only for >=12GB RAM.
 - `Age_of_War_notebook_8.html` calls `window.LocalGemmaAndroid` when present; browser mode keeps a deterministic local fallback.
-- `syncGameAsset` copies the root HTML/PWA assets into `app/src/main/assets` before build.
+- `syncWebAssets` copies the root HTML/PWA assets into `app/build/generated/web-assets` before Android packaging.
 
 Please focus only on release-blocking Android build/package issues:
 1. Confirm Gradle sync requirements: JDK 17, Gradle 9.4.1, Android SDK Platform 36, Build Tools 36.0.0.

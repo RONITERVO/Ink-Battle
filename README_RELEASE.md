@@ -1,13 +1,16 @@
 # Age of War: Sketchbook Edition 1.0.8
 
-This folder now contains the 1.0 web game, offline PWA metadata, and an Android
-WebView shell for Google Play packaging.
+This folder contains the 1.0 web game, offline PWA metadata, and an Android
+WebView shell for Google Play packaging. The web app has one canonical source:
+the root `Age_of_War_notebook_8.html` plus `manifest.webmanifest`,
+`service-worker.js`, and `assets/`.
 
 ## What Shipped
 
 - `Age_of_War_notebook_8.html`: the playable game with the local Codex Director.
+- `index.html`: a GitHub Pages launcher that redirects to the playable game.
 - `manifest.webmanifest`, `service-worker.js`, `assets/icon.svg`: offline web/PWA shell.
-- `app/`, `settings.gradle`, `build.gradle`: native Android wrapper that packages the HTML from the repo root into app assets.
+- `app/`, `settings.gradle`, `build.gradle`: native Android wrapper that packages generated copies of the root web app into app assets.
 - `LOCAL_GEMMA_ANDROID.md`: the local Gemma 4 integration plan and safety notes.
 - `GEMINI_AAB_PROMPT.md`: a compact prompt for Gemini when finalizing the Android Studio AAB build.
 
@@ -41,16 +44,15 @@ Prerequisites:
 Build commands once Gradle/Android SDK are installed:
 
 ```powershell
-gradle :app:assembleDebug
-PS D:\Age of War in Scetch style\Age Of War Notebook Scetch Space> ./gradlew :app:assembleDebug
-PS D:\Age of War in Scetch style\Age Of War Notebook Scetch Space> ./gradlew :app:installDebug
-gradle :app:bundleRelease
-
-PS D:\Age of War in Scetch style\Age Of War Notebook Scetch Space> ./gradlew :app:bundleRelease
+.\gradlew.bat :app:assembleDebug
+.\gradlew.bat :app:installDebug
+.\gradlew.bat :app:bundleRelease
 ```
 
-The Gradle task `syncGameAsset` copies the root HTML, manifest, service worker,
-and assets into `app/src/main/assets` before Android packaging.
+The Gradle task `syncWebAssets` copies the root web app into
+`app/build/generated/web-assets` before Android packaging. Do not edit or commit
+`app/src/main/assets`; the Android app should always consume the same web source
+used by GitHub Pages.
 
 ## Release Notes
 
