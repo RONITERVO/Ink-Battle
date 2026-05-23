@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<!--
+Copyright 2025 Roni Tervo
+
+SPDX-License-Identifier: Apache-2.0
+-->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#ebe3d5">
+    <meta name="author" content="RONITERVO">
+    <title>Privacy Policy - Age of War: Sketchbook Edition</title>
+    <style>
+        :root {
+            --paper: #ebe3d5;
+            --ink: #2f2a26;
+            --muted: #665d55;
+            --line: rgba(47, 42, 38, 0.22);
+            --accent: #9f4f3c;
+            --panel: #fff8ea;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: var(--paper);
+            color: var(--ink);
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            line-height: 1.6;
+        }
+
+        main {
+            width: min(880px, calc(100% - 32px));
+            margin: 0 auto;
+            padding: 40px 0 56px;
+        }
+
+        header,
+        section {
+            border-bottom: 1px dashed var(--line);
+            padding: 22px 0;
+        }
+
+        h1 {
+            margin: 0 0 8px;
+            font-size: clamp(2rem, 7vw, 4rem);
+            line-height: 1;
+        }
+
+        h2 {
+            margin: 0 0 10px;
+            font-size: 1.25rem;
+        }
+
+        p,
+        ul {
+            margin: 0 0 12px;
+        }
+
+        li {
+            margin: 7px 0;
+        }
+
+        a {
+            color: var(--accent);
+            font-weight: 700;
+        }
+
+        .summary {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            padding: 16px;
+            margin-top: 18px;
+        }
+
+        .muted {
+            color: var(--muted);
+        }
+    </style>
+</head>
+<body>
+    <main>
+        <header>
+            <h1>Privacy Policy</h1>
+            <p class="muted">Age of War: Sketchbook Edition / Age of War Sketch</p>
+            <p class="muted">Last updated: May 23, 2026</p>
+            <div class="summary">
+                <p>Age of War Sketch is designed as a local-first game. It does not use developer-run accounts, ads, analytics SDKs, or a hosted gameplay backend.</p>
+            </div>
+        </header>
+
+        <section>
+            <h2>Developer</h2>
+            <p>This app is developed by Roni Tervo. The public project page is <a href="https://github.com/RONITERVO/Scetch-War">github.com/RONITERVO/Scetch-War</a>.</p>
+        </section>
+
+        <section>
+            <h2>Information Stored On Your Device</h2>
+            <p>The game may store the following information locally on your device or in your browser site data:</p>
+            <ul>
+                <li>Game progress, such as completed difficulties.</li>
+                <li>Gameplay preferences, such as music mute state.</li>
+                <li>Director chat pacts, short local notes, recent in-game director memory, and model status used to keep the opponent behavior consistent.</li>
+                <li>Cached web app files used by the Progressive Web App and Android WebView shell.</li>
+                <li>On Android, an optional Gemma model file if you choose to download it for local on-device opponent replies.</li>
+            </ul>
+            <p>This locally stored information is used to run the game, remember settings, and support offline play. The developer does not receive this information from the app.</p>
+        </section>
+
+        <section>
+            <h2>Network Use</h2>
+            <p>The web version can request game files, fonts, and audio files from GitHub Pages or the configured hosting location. The Android version may use the internet permission to download an optional Gemma model file after user confirmation.</p>
+            <p>If you choose the optional Gemma download, the model file is requested from the configured model host. That host may receive normal network request information such as IP address, request time, and user agent under its own privacy practices.</p>
+        </section>
+
+        <section>
+            <h2>AI And Gameplay Text</h2>
+            <p>The deterministic opponent runs locally. When the optional Android Gemma feature is installed and loaded, the app sends in-game tactical context, recent player/director text, and a generated tactical image to the on-device model for local processing. This context is not sent to a developer server.</p>
+        </section>
+
+        <section>
+            <h2>Data Sharing</h2>
+            <p>The app does not sell personal information. The app does not include advertising SDKs or developer-run analytics SDKs. The developer does not share gameplay progress, local chat text, or local model context with third parties.</p>
+        </section>
+
+        <section>
+            <h2>Deletion</h2>
+            <p>You can delete locally stored app data by clearing the browser site data for the GitHub Pages site, clearing Android app storage, or uninstalling the Android app. Clearing Android app storage or uninstalling the app also removes the optional downloaded model file.</p>
+        </section>
+
+        <section>
+            <h2>Children</h2>
+            <p>The app is a strategy game and does not knowingly collect personal information from children. If you believe personal information was provided through a support channel, contact the developer so it can be removed.</p>
+        </section>
+
+        <section>
+            <h2>Changes</h2>
+            <p>This policy may be updated when the app changes. The latest version will be hosted at this page.</p>
+        </section>
+
+        <section>
+            <h2>Contact</h2>
+            <p>For privacy questions, open an issue at <a href="https://github.com/RONITERVO/Scetch-War/issues">github.com/RONITERVO/Scetch-War/issues</a> or contact the developer through <a href="https://github.com/RONITERVO">github.com/RONITERVO</a>.</p>
+            <p><a href="./Age_of_War_notebook_8.html">Back to the game</a></p>
+        </section>
+    </main>
+</body>
+</html>

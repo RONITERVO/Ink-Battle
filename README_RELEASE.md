@@ -1,3 +1,9 @@
+<!--
+Copyright 2025 Roni Tervo
+
+SPDX-License-Identifier: Apache-2.0
+-->
+
 # Age of War: Sketchbook Edition 1.0.8
 
 This folder contains the 1.0 web game, offline PWA metadata, and an Android
@@ -9,6 +15,7 @@ the root `Age_of_War_notebook_8.html` plus `manifest.webmanifest`,
 
 - `Age_of_War_notebook_8.html`: the playable game with the local Codex Director.
 - `index.html`: a GitHub Pages launcher that redirects to the playable game.
+- `privacy-policy.html`: the Google Play privacy policy page for GitHub Pages.
 - `manifest.webmanifest`, `service-worker.js`, `assets/icon.svg`: offline web/PWA shell.
 - `assets/audio/`: adaptive music catalog and generated tracks used by the in-game music director.
 - `app/`, `settings.gradle`, `build.gradle`: native Android wrapper that packages generated copies of the root web app into app assets.

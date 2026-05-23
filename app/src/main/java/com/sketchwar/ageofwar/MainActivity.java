@@ -1,3 +1,7 @@
+// Copyright 2025 Roni Tervo
+//
+// SPDX-License-Identifier: Apache-2.0
+
 package com.sketchwar.ageofwar;
 
 import android.annotation.SuppressLint;

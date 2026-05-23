@@ -1,3 +1,9 @@
+<!--
+Copyright 2025 Roni Tervo
+
+SPDX-License-Identifier: Apache-2.0
+-->
+
 <div align="center">
 
 # Age of War: Sketchbook Edition
@@ -5,6 +11,8 @@
 **A real-time strategy lane war where civilizations evolve from stone clubs to cosmic weapons—all sketched alive on a single, coffee-stained HTML canvas.**
 
 [![Play on GitHub Pages](https://img.shields.io/badge/Play%20Now-GitHub%20Pages-24292F?style=for-the-badge&logo=github&logoColor=white)](https://ronitervo.github.io/Scetch-War/)
+&nbsp;
+[![Privacy Policy](https://img.shields.io/badge/Privacy%20Policy-GitHub%20Pages-6B7280?style=for-the-badge)](https://ronitervo.github.io/Scetch-War/privacy-policy.html)
 &nbsp;
 [![Android Wrapper](https://img.shields.io/badge/Android-WebView%20Build-3DDC84?style=for-the-badge&logo=android&logoColor=white)](app/)
 &nbsp;
