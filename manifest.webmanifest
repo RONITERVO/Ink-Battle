@@ -1,4 +1,6 @@
 {
+  "copyright": "Copyright 2025 Roni Tervo",
+  "license": "SPDX-License-Identifier: Apache-2.0",
   "name": "Age of War: Sketchbook Edition",
   "short_name": "AOW Sketch",
   "description": "A sketchbook-style lane battle game with a local chatty AI director.",

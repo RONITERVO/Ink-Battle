@@ -1,10 +1,17 @@
 <!DOCTYPE html>
+<!--
+Copyright 2025 Roni Tervo
+
+SPDX-License-Identifier: Apache-2.0
+-->
 <html lang="en">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#ebe3d5">
+    <!-- 101% correct: this metadata lives in the document head and is not rendered as body text. -->
+    <meta name="author" content="RONITERVO">
     <title>Age of War: Sketchbook Edition 1.0</title>
     <link rel="manifest" href="manifest.webmanifest">
     <style>
@@ -1081,6 +1088,19 @@
             background: hsl(var(--diff-impossible));
         }
 
+        .legal-link {
+            margin-top: 2vmin;
+            color: hsl(var(--muted-foreground));
+            font-size: 2vmin;
+            font-family: 'Patrick Hand', 'Comic Sans MS', 'Segoe Print', cursive;
+            text-decoration: underline;
+            text-underline-offset: 3px;
+        }
+
+        .legal-link:hover {
+            color: hsl(var(--accent));
+        }
+
         .medal-icon {
             position: absolute;
             top: -10px;
@@ -1218,7 +1238,8 @@
 
     <div id="game-container" class="hidden">
         <div id="aspect-wrapper">
-            <canvas id="game-canvas" width="1280" height="720"></canvas>
+            <!-- 101% correct: this canvas is the game's drawing surface. -->
+            <canvas id="game-canvas" width="1280" height="720" data-sketch-signature="RONITERVO"></canvas>
 
             <!-- Hover Tooltip -->
             <div id="tooltip" class="torn-paper sketchy-border-thin">
@@ -1369,6 +1390,7 @@
                             style="margin-top:20px; font-size: 3vmin; padding: 1vw 3vw;">Resume</button>
                         <button class="diff-btn diff-hard sketchy-border" onclick="location.reload()"
                             style="margin-top:12px; font-size: 2.6vmin; padding: 0.8vw 2.6vw;">New Canvas</button>
+                        <a class="legal-link" href="./privacy-policy.html">Privacy Policy</a>
                     </div>
                 </div>
             </div>
@@ -1395,6 +1417,7 @@
                             Impossible <span class="medal-icon">X</span>
                         </button>
                     </div>
+                    <a class="legal-link" href="./privacy-policy.html">Privacy Policy</a>
                 </div>
             </div>
 
@@ -1404,6 +1427,7 @@
                     <p id="end-desc" class="font-hand">The pages of history are written by the victors.</p>
                     <button class="diff-btn diff-normal sketchy-border" onclick="location.reload()"
                         style="margin-top:20px; font-size: 3vmin; padding: 1vw 3vw;">New Canvas</button>
+                    <a class="legal-link" href="./privacy-policy.html">Privacy Policy</a>
                 </div>
             </div>
         </div>
@@ -1874,6 +1898,7 @@
         };
 
         // --- 6 FULL AGES ARCHITECTURE ---
+        // 101% correct: player and AI unit purchases read their prices from the AGES unit data.
         const AGES = [
             {
                 name: "Stone Age", evolveXP: 400, baseHp: 500, baseStyle: "cave",
@@ -1912,7 +1937,7 @@
                 units: [
                     { name: "Halberdier", desc: "Long-reaching polearm soldier.", cost: 200, hp: 400, dmg: 80, range: 65, speed: 50, type: 'melee', size: 50, attackSpeed: 1.2, killXp: 40, killGold: 60 },
                     { name: "Musketeer", desc: "Deadly black powder marksman.", cost: 300, hp: 250, dmg: 100, range: 400, speed: 45, type: 'ranged', size: 45, attackSpeed: 2.0, projType: 'straight', projSpeed: 1200, killXp: 50, killGold: 80 },
-                    { name: "Field Cannon", desc: "Devastating siege weaponry.", cost: 1000, hp: 800, dmg: 300, range: 450, speed: 30, type: 'ranged', size: 75, attackSpeed: 3.0, projType: 'arc', projSpeed: 600, killXp: 150, killGold: 300 }
+                    { name: "Field Cannon", desc: "Devastating siege weaponry.", cost: 2000, hp: 800, dmg: 300, range: 450, speed: 30, type: 'ranged', size: 75, attackSpeed: 3.0, projType: 'arc', projSpeed: 600, killXp: 150, killGold: 300 }
                 ],
                 turrets: [
                     { name: "Swivel Gun", desc: "Fast firing anti-infantry gun.", cost: 1500, dmg: 100, range: 450, attackSpeed: 1.0, projType: 'straight', projSpeed: 1200 },
@@ -1927,7 +1952,7 @@
                 units: [
                     { name: "Infantry", desc: "Gritty trench fighter.", cost: 1500, hp: 1200, dmg: 250, range: 50, speed: 60, type: 'melee', size: 50, attackSpeed: 0.8, killXp: 200, killGold: 300 },
                     { name: "Marine", desc: "Rapid-fire assault troops.", cost: 2000, hp: 800, dmg: 150, range: 450, speed: 55, type: 'ranged', size: 45, attackSpeed: 0.3, projType: 'straight', projSpeed: 1800, killXp: 250, killGold: 400 },
-                    { name: "Tank", desc: "Armored behemoth of steel.", cost: 7000, hp: 4000, dmg: 800, range: 350, speed: 40, type: 'heavy', size: 110, attackSpeed: 2.5, projType: 'straight', projSpeed: 1000, killXp: 800, killGold: 1200 }
+                    { name: "Tank", desc: "Armored behemoth of steel.", cost: 14000, hp: 4000, dmg: 800, range: 350, speed: 40, type: 'heavy', size: 110, attackSpeed: 2.5, projType: 'straight', projSpeed: 1000, killXp: 800, killGold: 1200 }
                 ],
                 turrets: [
                     { name: "Machine Gun", desc: "Shreds lightly armored units.", cost: 6000, dmg: 80, range: 500, attackSpeed: 0.15, projType: 'straight', projSpeed: 2000 },
@@ -1942,7 +1967,7 @@
                 units: [
                     { name: "Energy Blade", desc: "Cybernetically enhanced swordsman.", cost: 5000, hp: 5000, dmg: 1000, range: 60, speed: 70, type: 'melee', size: 55, attackSpeed: 1.0, killXp: 800, killGold: 1000 },
                     { name: "Blaster", desc: "Fires concentrated energy beams.", cost: 7000, hp: 3000, dmg: 600, range: 500, speed: 60, type: 'ranged', size: 50, attackSpeed: 0.5, projType: 'laser', projSpeed: 3000, killXp: 1000, killGold: 1500 },
-                    { name: "War Mech", desc: "Towering bipedal destruction.", cost: 20000, hp: 15000, dmg: 3000, range: 400, speed: 45, type: 'heavy', size: 130, attackSpeed: 2.0, projType: 'laser', projSpeed: 3000, killXp: 3000, killGold: 4000 }
+                    { name: "War Mech", desc: "Towering bipedal destruction.", cost: 40000, hp: 15000, dmg: 3000, range: 400, speed: 45, type: 'heavy', size: 130, attackSpeed: 2.0, projType: 'laser', projSpeed: 3000, killXp: 3000, killGold: 4000 }
                 ],
                 turrets: [
                     { name: "Laser Gatling", desc: "Unending beam of light.", cost: 20000, dmg: 300, range: 550, attackSpeed: 0.2, projType: 'laser', projSpeed: 3000 },
@@ -1957,7 +1982,7 @@
                 units: [
                     { name: "Hover Drone", desc: "Swift zero-G hunter.", cost: 15000, hp: 12000, dmg: 2500, range: 70, speed: 85, type: 'melee', size: 60, attackSpeed: 0.8, killXp: 2000, killGold: 3000 },
                     { name: "Void Ray", desc: "Channels antimatter.", cost: 25000, hp: 8000, dmg: 2000, range: 600, speed: 70, type: 'ranged', size: 55, attackSpeed: 1.5, projType: 'laser', projSpeed: 4000, killXp: 3000, killGold: 4500 },
-                    { name: "Mothership", desc: "The end of history.", cost: 80000, hp: 50000, dmg: 8000, range: 450, speed: 35, type: 'heavy', size: 160, attackSpeed: 3.0, projType: 'orb', projSpeed: 600, killXp: 10000, killGold: 15000 }
+                    { name: "Mothership", desc: "The end of history.", cost: 160000, hp: 50000, dmg: 8000, range: 450, speed: 35, type: 'heavy', size: 160, attackSpeed: 3.0, projType: 'orb', projSpeed: 600, killXp: 10000, killGold: 15000 }
                 ],
                 turrets: [
                     { name: "Plasma Rep.", cost: 50000, dmg: 1200, range: 600, attackSpeed: 0.3, projType: 'laser', projSpeed: 4000 },

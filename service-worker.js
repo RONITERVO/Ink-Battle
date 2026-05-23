@@ -1,8 +1,13 @@
-const CACHE_NAME = 'age-of-war-sketch-v5';
+// Copyright 2025 Roni Tervo
+//
+// SPDX-License-Identifier: Apache-2.0
+
+const CACHE_NAME = 'age-of-war-sketch-v7';
 const APP_SHELL = [
   './',
   './index.html',
   './Age_of_War_notebook_8.html',
+  './privacy-policy.html',
   './manifest.webmanifest',
   './assets/icon.svg'
 ];

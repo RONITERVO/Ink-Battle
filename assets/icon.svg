@@ -1,3 +1,9 @@
+<!--
+Copyright 2025 Roni Tervo
+
+SPDX-License-Identifier: Apache-2.0
+-->
+
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <rect width="512" height="512" rx="88" fill="#ebe3d5"/>
   <path d="M96 392c48-42 91-63 130-63 48 0 77 33 126 33 25 0 48-9 68-27" fill="none" stroke="#3b332e" stroke-width="18" stroke-linecap="round"/>

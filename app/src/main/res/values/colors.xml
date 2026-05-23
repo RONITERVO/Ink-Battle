@@ -1,3 +1,9 @@
+<!--
+Copyright 2025 Roni Tervo
+
+SPDX-License-Identifier: Apache-2.0
+-->
+
 <resources>
     <color name="paper">#ebe3d5</color>
     <color name="pencil">#3b332e</color>

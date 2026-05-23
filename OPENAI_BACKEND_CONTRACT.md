@@ -1,3 +1,9 @@
+<!--
+Copyright 2025 Roni Tervo
+
+SPDX-License-Identifier: Apache-2.0
+-->
+
 # Optional Cloud Opponent Contract
 
 The client ships with an offline tactical engine. A cloud model, if added later,

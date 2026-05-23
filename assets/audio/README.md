@@ -1,3 +1,9 @@
+<!--
+Copyright 2025 Roni Tervo
+
+SPDX-License-Identifier: Apache-2.0
+-->
+
 # Game Music Assets
 
 This folder is the canonical music source for the web build, PWA build, and

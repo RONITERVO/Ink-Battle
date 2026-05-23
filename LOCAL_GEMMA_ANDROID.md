@@ -1,3 +1,9 @@
+<!--
+Copyright 2025 Roni Tervo
+
+SPDX-License-Identifier: Apache-2.0
+-->
+
 # Local Gemma 4 Android Plan
 
 The app uses a no-backend opponent:

@@ -1,3 +1,7 @@
+// Copyright 2025 Roni Tervo
+//
+// SPDX-License-Identifier: Apache-2.0
+
 plugins {
     id 'com.android.application'
 }
@@ -59,6 +63,7 @@ dependencies {
 tasks.register('syncWebAssets', Copy) {
     from(rootProject.file('Age_of_War_notebook_8.html'))
     from(rootProject.file('index.html'))
+    from(rootProject.file('privacy-policy.html'))
     from(rootProject.file('manifest.webmanifest'))
     from(rootProject.file('service-worker.js'))
     from(rootProject.file('assets')) {
