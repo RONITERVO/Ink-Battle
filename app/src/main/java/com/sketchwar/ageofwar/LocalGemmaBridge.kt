@@ -4,7 +4,6 @@ import android.app.Activity
 import android.app.ActivityManager
 import android.app.DownloadManager
 import android.content.Context
-import android.net.Uri
 import android.util.Base64
 import android.util.Log
 import android.webkit.JavascriptInterface
@@ -20,7 +19,13 @@ import com.google.ai.edge.litertlm.ExperimentalApi
 import com.google.ai.edge.litertlm.LogSeverity
 import com.google.ai.edge.litertlm.Message
 import com.google.ai.edge.litertlm.MessageCallback
+import java.io.BufferedInputStream
 import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
+import java.net.HttpURLConnection
+import java.net.URL
+import java.util.Locale
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -42,8 +47,16 @@ class LocalGemmaBridge(
         const val MAX_TRANSCRIPT_MODEL_CHARS = 280
         const val MAX_CONTEXT_IMAGE_BYTES = 700_000
         const val ENABLE_IMAGE_INPUT = true
+        const val DOWNLOAD_BUFFER_BYTES = 256 * 1024
+        const val DOWNLOAD_CONNECT_TIMEOUT_MS = 30_000
+        const val DOWNLOAD_READ_TIMEOUT_MS = 30_000
+        const val DOWNLOAD_LOG_STEP_BYTES = 25L * 1024L * 1024L
+        const val BYTES_PER_GB = 1_000_000_000.0
+        const val GEMMA_SYSTEM_PROMPT =
+            "Your name is Gemma. Your only purpose is to reply as the blue opponent in this Age of War match: exactly two lines, first a short in-character message to the player, second one allowed emotion word."
 
         private val ENGINE_LOCK = Any()
+        private val downloadExecutor = Executors.newSingleThreadExecutor()
         private val sharedConversationImageFiles = mutableListOf<File>()
         private val sharedConversationTextLog = mutableListOf<String>()
         @Volatile private var sharedEngine: Engine? = null
@@ -58,6 +71,13 @@ class LocalGemmaBridge(
         @Volatile private var sharedConversationMessages: Int = 0
         @Volatile private var sharedConversationSerial: Long = 0L
         @Volatile private var sharedConversationTailImageBytes: ByteArray? = null
+        @Volatile private var sharedDownloadModelPath: String? = null
+        @Volatile private var sharedDownloadState: String = ""
+        @Volatile private var sharedDownloadProgress: Int = 0
+        @Volatile private var sharedDownloadDownloadedBytes: Long = 0L
+        @Volatile private var sharedDownloadTotalBytes: Long = -1L
+        @Volatile private var sharedDownloadMessage: String = ""
+        @Volatile private var lastDownloadStatusLog: String = ""
         @Volatile private var carryoverText: String = ""
         @Volatile private var carryoverImageBytes: ByteArray? = null
     }
@@ -73,7 +93,8 @@ class LocalGemmaBridge(
         val fileName: String,
         val url: String,
         val sizeGb: Double,
-        val minRamGb: Int
+        val minRamGb: Int,
+        val minInstalledBytes: Long
     )
 
     private val models = listOf(
@@ -83,7 +104,8 @@ class LocalGemmaBridge(
             fileName = "gemma-4-E2B-it.litertlm",
             url = "https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it.litertlm?download=true",
             sizeGb = 2.58,
-            minRamGb = 6
+            minRamGb = 6,
+            minInstalledBytes = 2_300_000_000L
         ),
         ModelSpec(
             key = "gemma4-e4b",
@@ -91,14 +113,14 @@ class LocalGemmaBridge(
             fileName = "gemma-4-E4B-it.litertlm",
             url = "https://huggingface.co/litert-community/gemma-4-E4B-it-litert-lm/resolve/main/gemma-4-E4B-it.litertlm?download=true",
             sizeGb = 3.65,
-            minRamGb = 12
+            minRamGb = 12,
+            minInstalledBytes = 3_200_000_000L
         )
     )
 
     private val executor = Executors.newSingleThreadExecutor()
     private val cacheDirPath = activity.applicationContext.cacheDir.absolutePath
     private val prefs = activity.applicationContext.getSharedPreferences("local_gemma_v1", Context.MODE_PRIVATE)
-    private val downloadManager = activity.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
     private val modelDir: File by lazy {
         File(activity.getExternalFilesDir(null) ?: activity.filesDir, "models").apply { mkdirs() }
     }
@@ -110,36 +132,58 @@ class LocalGemmaBridge(
     fun requestInstall(modelKey: String?): String {
         val spec = chooseModel(modelKey)
         val destination = modelFile(spec)
+        val partial = partialModelFile(spec)
         logLine("install.request model=${spec.key} path=${destination.absolutePath}")
-        if (destination.exists() && destination.length() > 100_000_000L) {
+        cancelLegacyDownloadManagerJob()
+        if (isCompleteModelFile(spec, destination)) {
             prefs.edit()
                 .putString("modelKey", spec.key)
                 .putString("modelPath", destination.absolutePath)
                 .remove("downloadId")
                 .apply()
+            updateDownloadState(spec, destination, "installed", 100, destination.length(), destination.length(), "")
             return buildStatus("installed", spec).toString()
         }
 
         if (destination.exists()) {
-            logLine("install.delete_partial model=${spec.key} bytes=${destination.length()}")
-            destination.delete()
+            val destinationBytes = destination.length()
+            if (!partial.exists() || destinationBytes > partial.length()) {
+                partial.parentFile?.mkdirs()
+                if (partial.exists()) partial.delete()
+                if (destination.renameTo(partial)) {
+                    logLine("install.resume_existing_partial model=${spec.key} bytes=$destinationBytes")
+                } else {
+                    logLine("install.delete_unusable_partial model=${spec.key} bytes=$destinationBytes")
+                    destination.delete()
+                }
+            } else {
+                logLine("install.delete_smaller_partial model=${spec.key} bytes=$destinationBytes")
+                destination.delete()
+            }
         }
-        val request = DownloadManager.Request(Uri.parse(spec.url))
-            .setTitle("Downloading ${spec.name}")
-            .setDescription("Age of War local director model")
-            .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-            .setAllowedOverMetered(true)
-            .setAllowedOverRoaming(false)
-            .setDestinationUri(Uri.fromFile(destination))
 
-        val id = downloadManager.enqueue(request)
+        synchronized(ENGINE_LOCK) {
+            if (sharedDownloadState == "downloading") {
+                if (sharedDownloadModelPath == destination.absolutePath) {
+                    return buildStatus(null, spec).toString()
+                }
+                sharedLastError = "Another Gemma download is already running"
+                return buildStatus("error", spec).toString()
+            }
+        }
+
         prefs.edit()
             .putString("modelKey", spec.key)
             .putString("modelPath", destination.absolutePath)
-            .putLong("downloadId", id)
+            .remove("downloadId")
             .apply()
+        updateDownloadState(spec, destination, "downloading", partialProgress(spec, partial), partial.length(), -1L, "Starting download")
+        logLine("install.in_app_start model=${spec.key} partialBytes=${partial.length()}")
+        downloadExecutor.execute {
+            downloadModelFile(spec, destination, partial)
+        }
         postStatus()
-        return buildStatus("downloading", spec).toString()
+        return buildStatus(null, spec).toString()
     }
 
     @JavascriptInterface
@@ -371,6 +415,232 @@ class LocalGemmaBridge(
 
     private fun modelFile(spec: ModelSpec): File = File(modelDir, spec.fileName)
 
+    private fun partialModelFile(spec: ModelSpec): File = File(modelDir, "${spec.fileName}.part")
+
+    private fun cancelLegacyDownloadManagerJob() {
+        val legacyDownloadId = prefs.getLong("downloadId", -1L)
+        if (legacyDownloadId <= 0L) return
+        try {
+            val manager = activity.applicationContext.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+            manager.remove(legacyDownloadId)
+            logLine("install.cancel_legacy_downloadmanager downloadId=$legacyDownloadId")
+        } catch (t: Throwable) {
+            logError("install.cancel_legacy_downloadmanager_error downloadId=$legacyDownloadId", t)
+        } finally {
+            prefs.edit().remove("downloadId").apply()
+        }
+    }
+
+    private fun estimatedModelBytes(spec: ModelSpec): Long = Math.round(spec.sizeGb * BYTES_PER_GB)
+
+    private fun isCompleteModelFile(spec: ModelSpec, file: File): Boolean {
+        return file.exists() && file.length() >= spec.minInstalledBytes
+    }
+
+    private fun partialProgress(spec: ModelSpec, file: File): Int {
+        val estimate = estimatedModelBytes(spec).coerceAtLeast(1L)
+        return ((file.length() * 100L) / estimate).coerceIn(0L, 99L).toInt()
+    }
+
+    private fun updateDownloadState(
+        spec: ModelSpec,
+        destination: File,
+        state: String,
+        progress: Int,
+        downloadedBytes: Long,
+        totalBytes: Long,
+        message: String
+    ) {
+        synchronized(ENGINE_LOCK) {
+            sharedDownloadModelPath = destination.absolutePath
+            sharedDownloadState = state
+            sharedDownloadProgress = progress.coerceIn(0, 100)
+            sharedDownloadDownloadedBytes = downloadedBytes.coerceAtLeast(0L)
+            sharedDownloadTotalBytes = totalBytes
+            sharedDownloadMessage = message
+            if (state == "error" && message.isNotBlank()) {
+                sharedLastError = message
+            }
+        }
+    }
+
+    private fun downloadModelFile(spec: ModelSpec, destination: File, partial: File) {
+        var connection: HttpURLConnection? = null
+        try {
+            modelDir.mkdirs()
+            if (isCompleteModelFile(spec, destination)) {
+                updateDownloadState(spec, destination, "installed", 100, destination.length(), destination.length(), "")
+                logLine("download.already_installed model=${spec.key} bytes=${destination.length()}")
+                return
+            }
+
+            var resumeAt = if (partial.exists()) partial.length() else 0L
+            while (true) {
+                connection = openModelConnection(spec.url, resumeAt)
+                val status = connection.responseCode
+                if (status == 416 && partial.length() >= spec.minInstalledBytes) {
+                    connection.disconnect()
+                    connection = null
+                    break
+                }
+                if (resumeAt > 0L && status == HttpURLConnection.HTTP_OK) {
+                    logLine("download.restart_no_range model=${spec.key} previousBytes=$resumeAt")
+                    connection.disconnect()
+                    connection = null
+                    partial.delete()
+                    resumeAt = 0L
+                    continue
+                }
+                if (status != HttpURLConnection.HTTP_OK && status != HttpURLConnection.HTTP_PARTIAL) {
+                    throw IOException("HTTP $status ${connection.responseMessage ?: ""}".trim())
+                }
+
+                val contentLength = connection.contentLengthLong
+                val totalBytes = when {
+                    status == HttpURLConnection.HTTP_PARTIAL && contentLength > 0L -> resumeAt + contentLength
+                    status == HttpURLConnection.HTTP_OK && contentLength > 0L -> contentLength
+                    else -> estimatedModelBytes(spec)
+                }
+                val append = status == HttpURLConnection.HTTP_PARTIAL && resumeAt > 0L
+                if (!append && partial.exists()) partial.delete()
+
+                var downloaded = if (append) resumeAt else 0L
+                var lastUiUpdateAt = 0L
+                var lastLoggedBytes = downloaded
+                updateDownloadState(
+                    spec,
+                    destination,
+                    "downloading",
+                    downloadProgress(downloaded, totalBytes),
+                    downloaded,
+                    totalBytes,
+                    downloadProgressMessage(downloaded, totalBytes)
+                )
+                logDownloadProgress(spec, downloaded, totalBytes, "start")
+
+                BufferedInputStream(connection.inputStream, DOWNLOAD_BUFFER_BYTES).use { input ->
+                    FileOutputStream(partial, append).use { output ->
+                        val buffer = ByteArray(DOWNLOAD_BUFFER_BYTES)
+                        while (true) {
+                            val read = input.read(buffer)
+                            if (read < 0) break
+                            output.write(buffer, 0, read)
+                            downloaded += read.toLong()
+
+                            val now = System.currentTimeMillis()
+                            if (now - lastUiUpdateAt >= 1_000L) {
+                                lastUiUpdateAt = now
+                                updateDownloadState(
+                                    spec,
+                                    destination,
+                                    "downloading",
+                                    downloadProgress(downloaded, totalBytes),
+                                    downloaded,
+                                    totalBytes,
+                                    downloadProgressMessage(downloaded, totalBytes)
+                                )
+                            }
+                            if (downloaded - lastLoggedBytes >= DOWNLOAD_LOG_STEP_BYTES) {
+                                lastLoggedBytes = downloaded
+                                logDownloadProgress(spec, downloaded, totalBytes, "progress")
+                            }
+                        }
+                    }
+                }
+                connection.disconnect()
+                connection = null
+                break
+            }
+
+            val finalBytes = partial.length()
+            if (finalBytes < spec.minInstalledBytes) {
+                throw IOException("Downloaded file is too small: ${formatBytes(finalBytes)}")
+            }
+            if (destination.exists()) destination.delete()
+            if (!partial.renameTo(destination)) {
+                throw IOException("Could not finalize model file")
+            }
+            prefs.edit()
+                .putString("modelKey", spec.key)
+                .putString("modelPath", destination.absolutePath)
+                .remove("downloadId")
+                .apply()
+            updateDownloadState(spec, destination, "installed", 100, destination.length(), destination.length(), "")
+            logLine("download.complete model=${spec.key} bytes=${destination.length()} path=${destination.absolutePath}")
+        } catch (t: Throwable) {
+            connection?.disconnect()
+            val message = (t.message ?: t.javaClass.simpleName).take(160)
+            updateDownloadState(spec, destination, "error", partialProgress(spec, partial), partial.length(), estimatedModelBytes(spec), message)
+            logError("download.error model=${spec.key} partialBytes=${partial.length()}", t)
+        }
+    }
+
+    private fun openModelConnection(rawUrl: String, resumeAt: Long): HttpURLConnection {
+        var url = URL(rawUrl)
+        var redirects = 0
+        while (true) {
+            val connection = (url.openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                instanceFollowRedirects = false
+                connectTimeout = DOWNLOAD_CONNECT_TIMEOUT_MS
+                readTimeout = DOWNLOAD_READ_TIMEOUT_MS
+                setRequestProperty("Accept", "application/octet-stream,*/*")
+                setRequestProperty("Accept-Encoding", "identity")
+                setRequestProperty("User-Agent", "AgeOfWarSketch/1.0.8 Android")
+                if (resumeAt > 0L) {
+                    setRequestProperty("Range", "bytes=$resumeAt-")
+                }
+            }
+            val status = connection.responseCode
+            if (status == HttpURLConnection.HTTP_MOVED_PERM ||
+                status == HttpURLConnection.HTTP_MOVED_TEMP ||
+                status == HttpURLConnection.HTTP_SEE_OTHER ||
+                status == 307 ||
+                status == 308
+            ) {
+                val location = connection.getHeaderField("Location")
+                    ?: throw IOException("Redirect without Location")
+                connection.disconnect()
+                redirects += 1
+                if (redirects > 8) throw IOException("Too many redirects")
+                url = URL(url, location)
+                continue
+            }
+            return connection
+        }
+    }
+
+    private fun downloadProgress(downloadedBytes: Long, totalBytes: Long): Int {
+        if (totalBytes <= 0L) return 0
+        return ((downloadedBytes * 100L) / totalBytes).coerceIn(0L, 99L).toInt()
+    }
+
+    private fun downloadProgressMessage(downloadedBytes: Long, totalBytes: Long): String {
+        if (downloadedBytes <= 0L) return "Starting download"
+        return if (totalBytes > 0L) {
+            "${formatBytes(downloadedBytes)} / ${formatBytes(totalBytes)}"
+        } else {
+            "Downloaded ${formatBytes(downloadedBytes)}"
+        }
+    }
+
+    private fun logDownloadProgress(spec: ModelSpec, downloadedBytes: Long, totalBytes: Long, label: String) {
+        val line = "download.$label model=${spec.key} downloaded=$downloadedBytes total=$totalBytes progress=${downloadProgress(downloadedBytes, totalBytes)}"
+        if (line != lastDownloadStatusLog) {
+            lastDownloadStatusLog = line
+            logLine(line)
+        }
+    }
+
+    private fun formatBytes(bytes: Long): String {
+        val safeBytes = bytes.coerceAtLeast(0L)
+        return if (safeBytes >= 1_000_000_000L) {
+            String.format(Locale.US, "%.2f GB", safeBytes / 1_000_000_000.0)
+        } else {
+            "${safeBytes / 1_000_000L} MB"
+        }
+    }
+
     private fun totalRamGb(): Int {
         val manager = activity.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
         val info = ActivityManager.MemoryInfo()
@@ -381,9 +651,10 @@ class LocalGemmaBridge(
     private fun buildStatus(forcedState: String? = null, forcedSpec: ModelSpec? = null): JSONObject {
         val spec = forcedSpec ?: currentModel() ?: chooseModel("auto")
         val modelPath = prefs.getString("modelPath", null)
-        val downloadId = prefs.getLong("downloadId", -1L)
         var state = forcedState ?: "available"
         var progress = 0
+        var downloadedBytes = 0L
+        var totalBytes = -1L
         var ready = false
         var loading = false
         var busy = false
@@ -398,27 +669,24 @@ class LocalGemmaBridge(
 
         if (ready && forcedState == null) state = "ready"
         else if (loading && forcedState == null) state = "loading"
-        else if (downloadId > 0 && forcedState == null) {
-            val query = DownloadManager.Query().setFilterById(downloadId)
-            downloadManager.query(query)?.use { cursor ->
-                if (cursor.moveToFirst()) {
-                    val status = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
-                    val downloaded = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR))
-                    val total = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES))
-                    progress = if (total > 0) ((downloaded * 100) / total).toInt() else 0
-                    state = when (status) {
-                        DownloadManager.STATUS_SUCCESSFUL -> "installed"
-                        DownloadManager.STATUS_FAILED -> "error"
-                        DownloadManager.STATUS_RUNNING,
-                        DownloadManager.STATUS_PAUSED,
-                        DownloadManager.STATUS_PENDING -> "downloading"
-                        else -> "downloading"
-                    }
-                    if (state == "installed") prefs.edit().remove("downloadId").apply()
-                }
+        else if (forcedState == null && sharedDownloadModelPath == modelPath && sharedDownloadState.isNotBlank()) {
+            synchronized(ENGINE_LOCK) {
+                state = sharedDownloadState
+                progress = sharedDownloadProgress
+                downloadedBytes = sharedDownloadDownloadedBytes
+                totalBytes = sharedDownloadTotalBytes
+                if (sharedDownloadMessage.isNotBlank()) message = sharedDownloadMessage
             }
-        } else if (modelFile(spec).exists()) {
+        } else if (isCompleteModelFile(spec, modelFile(spec))) {
             state = "installed"
+            progress = 100
+            downloadedBytes = modelFile(spec).length()
+            totalBytes = downloadedBytes
+        } else if (partialModelFile(spec).exists()) {
+            downloadedBytes = partialModelFile(spec).length()
+            totalBytes = estimatedModelBytes(spec)
+            progress = partialProgress(spec, partialModelFile(spec))
+            message = "Tap get to resume ${formatBytes(downloadedBytes)}"
         }
 
         return JSONObject()
@@ -429,6 +697,8 @@ class LocalGemmaBridge(
             .put("minRamGb", spec.minRamGb)
             .put("totalRamGb", totalRamGb())
             .put("progress", progress)
+            .put("downloadedBytes", downloadedBytes)
+            .put("totalBytes", totalBytes)
             .put("busy", busy)
             .put("message", message)
             .put("conversationMessages", synchronized(ENGINE_LOCK) { sharedConversationMessages })
@@ -461,7 +731,7 @@ class LocalGemmaBridge(
         }
     }
 
-    private fun conversationConfig(): ConversationConfig = ConversationConfig()
+    private fun conversationConfig(): ConversationConfig = ConversationConfig(Contents.of(GEMMA_SYSTEM_PROMPT))
 
     private fun chatConversation(engine: Engine, modelPath: String): Conversation {
         var stale: Conversation? = null
@@ -572,7 +842,7 @@ class LocalGemmaBridge(
 
     private fun cleanPrompt(raw: String): String {
         val value = raw.replace('\u0000', ' ').trim()
-        val fallback = "You are Gemma, the red enemy general. Reply in exactly two lines: a short message to the player, then one emotion word."
+        val fallback = "You are Gemma, the blue enemy general. Reply in exactly two lines: a short message to the player, then one emotion word."
         val prompt = if (value.isBlank()) fallback else value
         if (prompt.length > MAX_PROMPT_CHARS) {
             logLine("request.prompt_truncated promptChars=${prompt.length} capped=$MAX_PROMPT_CHARS")

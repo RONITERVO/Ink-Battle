@@ -1,9 +1,12 @@
-const CACHE_NAME = 'age-of-war-sketch-v1';
+const CACHE_NAME = 'age-of-war-sketch-v5';
 const APP_SHELL = [
+  './',
+  './index.html',
   './Age_of_War_notebook_8.html',
   './manifest.webmanifest',
   './assets/icon.svg'
 ];
+const LARGE_MEDIA_PATH = '/assets/audio/';
 
 self.addEventListener('install', event => {
   event.waitUntil(
@@ -23,6 +26,13 @@ self.addEventListener('activate', event => {
 
 self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return;
+  const requestUrl = new URL(event.request.url);
+  if (requestUrl.origin !== self.location.origin) return;
+  if (requestUrl.pathname.includes(LARGE_MEDIA_PATH)) {
+    event.respondWith(fetch(event.request));
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request).then(cached => {
       if (cached) return cached;
@@ -31,6 +41,11 @@ self.addEventListener('fetch', event => {
         const copy = response.clone();
         caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
         return response;
+      }).catch(error => {
+        if (event.request.mode === 'navigate') {
+          return caches.match('./index.html');
+        }
+        throw error;
       });
     })
   );

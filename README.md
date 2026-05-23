@@ -1,90 +1,66 @@
+<div align="center">
+
 # Age of War: Sketchbook Edition
 
-Age of War: Sketchbook Edition is a hand-drawn lane strategy game built around one core playable file: `Age_of_War_notebook_8.html`.
+**A real-time strategy lane war where civilizations evolve from stone clubs to cosmic weapons—all sketched alive on a single, coffee-stained HTML canvas.**
 
-You pick a difficulty, start in the Stone Age, and push through six eras while defending your base and breaking the enemy base. The whole experience is styled like a living notebook page with rough ink lines, watercolor washes, paper texture, and animated sketch effects.
+[![Play on GitHub Pages](https://img.shields.io/badge/Play%20Now-GitHub%20Pages-24292F?style=for-the-badge&logo=github&logoColor=white)](https://ronitervo.github.io/Scetch-War/)
+&nbsp;
+[![Android Wrapper](https://img.shields.io/badge/Android-WebView%20Build-3DDC84?style=for-the-badge&logo=android&logoColor=white)](app/)
+&nbsp;
+[![PWA Ready](https://img.shields.io/badge/PWA-Offline%20Shell-5A0FC8?style=for-the-badge&logo=pwa&logoColor=white)](manifest.webmanifest)
 
-## How It Plays
-
-Each match is real-time and deterministic (fixed timestep):
-
-- Earn gold passively over time.
-- Spend gold on three unit types each age (light/melee, ranged, heavy).
-- Switch tabs to build turrets or buy upgrades (damage, HP, economy).
-- Spend XP to evolve to the next age and unlock new unit/turret sets.
-- Trigger age-specific special abilities when cooldown is ready.
-- Win by reducing enemy base HP to zero before yours falls.
-
-Difficulty settings (`Normal`, `Hard`, `Harder`, `Impossible`) change enemy economy, damage, HP scaling, XP scaling, and AI aggression.
-
-## Signature Features
-
-- Sketchbook visual identity: rough-line rendering, jittered strokes, paper grain, and procedural watercolor backgrounds.
-- Six full ages: Stone, Castle, Renaissance, Modern, Future, Cosmic.
-- Age-specific specials: Meteor Shower, Arrow Volley, Cannon Barrage, Airstrike, Orbital Laser, Void Rift.
-- Local persistence: beaten difficulty medals and director agreements are stored in localStorage.
-- Tooltips on unit/turret buttons with live stats and descriptions.
-- Pause/resume overlay and auto-pause when tab visibility is lost.
-
-## Codex Director (Enemy AI + Chat)
-
-The opponent is not only an economy/army AI. It also has a local "Codex Director" panel that:
-
-- Chats with the player during the match.
-- Tracks pacts and short memory notes.
-- Adapts spending behavior (rush/balanced/mercy pressure plans).
-- Executes tool-style actions like spawning units, buying upgrades, building turrets, and using specials.
-
-Example chat commands:
-
-- `no specials`
-- `no turrets`
-- `melee only`
-- `go easy`
-- `rush me`
-- `truce for 30 seconds`
-- `remember I like late game`
-- `forget`
-
-## Optional Local Gemma (Android)
-
-In browser mode, the director runs with local deterministic logic.
-
-In the Android build, a Local Gemma bridge can be used to install/load an on-device model and request higher-level director turns, while fallback logic keeps matches responsive.
-
-## Project Structure
-
-- `Age_of_War_notebook_8.html`: main playable game (web entry point).
-- `manifest.webmanifest`, `service-worker.js`, `assets/`: PWA/offline shell assets.
-- `app/`: Android WebView wrapper project that packages the game into app assets.
-- `README_RELEASE.md`: release and packaging notes.
-
-## Run Locally
-
-### Web
-
-Quick play:
-
-- Open `Age_of_War_notebook_8.html` directly in a browser.
-
-For service worker/PWA behavior:
-
-- Serve the folder over HTTP (`http://...`) instead of opening `file://...`.
-
-### Android
-
-Prerequisites:
-
-- JDK 17
-- Android SDK platform/build tools required by the Gradle config
-
-Build examples:
-
-```powershell
-gradle :app:assembleDebug
-gradle :app:bundleRelease
-```
+</div>
 
 ---
 
-If you enjoy lane strategy games and stylized visuals, this edition focuses on readable mechanics, expressive presentation, and a surprisingly interactive AI rival.
+## 🖋️ The Canvas Battlefield
+
+> You drop 15 gold on a Clubman. He doesn't just slide across the screen—he *boils*. Every line of his body jitters in rough, procedural "Squigglevision" as he marches right. 
+>
+> In the margins, Opponent is watching. You click the commander HUD and type: *"no ranged units."* The AI reads it, pins a `melee only` pact to its legal pad, and stops building Slingers. But it's not stupid. It immediately counters your squishy infantry by rushing a heavy Dino Rider. Its status updates to `! Aggravated`.
+>
+> Your base takes a hit. The adaptive music swells from a steady beat to a frantic march. You bank 400 XP and hit **Evolve**. 
+>
+> A procedural watercolor wash bleeds across the paper, shifting the era from prehistoric grays to Castle Age blues. You queue a Knight. The arms race accelerates through six ages of history—straight into orbital lasers and cosmic motherships—until someone's base is literally erased from the page.
+
+---
+
+## ⚙️ The Tech (All in one `.html` file)
+
+*   **No Sprites, Pure Code:** Every unit, attack, and watercolor background is drawn mathematically. Lines jitter and warp every few frames to simulate a turbulent, hand-drawn animation style.
+*   **The Codex Director (Live AI):** It analyzes lane pressure, manages an emotional state, and chats with you. Type "truce for 30s" or "no turrets" and it parses the text to alter its build rules in real-time.
+*   **Local LLM Vision (Optional):** Play in a browser for a highly competent deterministic AI, or use the Android wrapper to feed a physical "tactical minimap" into an on-device Gemma LLM, letting the AI actually *see* the board and talk trash based on your unit composition.
+*   **Zero-GC Engine:** Built with strict `1/60s` fixed-timestep physics and pre-allocated object pools. The game stays buttery smooth even when the screen is flooded with 500+ units on **Impossible** difficulty.
+*   **Adaptive Audio:** The music engine crossfades tracks dynamically based on your current Age, lane tension, and base health.
+
+---
+
+## 🚀 Quick Start
+
+**Play Instantly:**
+Since the entire game (rendering, physics, AI) is zero-dependency, you can just open `Age_of_War_notebook_8.html` in any browser.
+
+**Deploy (GitHub Pages):**
+The repo is pre-configured. `index.html` points to the engine, and the included `manifest.webmanifest` + `service-worker.js` makes it an installable, fully offline PWA.
+
+**Native Gemma Build:**
+To unlock the local LLM vision integration, build the Android WebView shell (requires JDK 17 & Android SDK):
+```powershell
+.\gradlew.bat :app:assembleDebug
+```
+*(See `LOCAL_GEMMA_ANDROID.md` for AI setup details).*
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! Please ensure any gameplay, balance, or rendering changes are made directly to `Age_of_War_notebook_8.html` so the Android and Web versions remain perfectly in sync. 
+
+1. Fork it & Branch it.
+2. Test your changes locally.
+3. Submit a PR with a summary of how it impacts the "feel" of the notebook war.
+
+## 📄 License
+
+Distributed under the [Apache 2.0 License](LICENSE).

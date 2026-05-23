@@ -23,6 +23,9 @@ local.properties
 *.ap_
 *.aab
 
+# Android WebView assets are generated from the root web app during Gradle builds
+app/src/main/assets/
+
 # Signing keys and secret config
 *.jks
 *.keystore

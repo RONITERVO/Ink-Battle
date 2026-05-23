@@ -290,7 +290,8 @@
             text-align: center;
         }
 
-        #btn-pause {
+        #btn-pause,
+        #btn-music {
             background: hsl(var(--card));
             font-size: 1.8vmin;
             padding: 4px 12px;
@@ -300,7 +301,20 @@
             transition: all 0.2s;
         }
 
-        #btn-pause:hover {
+        #btn-music {
+            width: 3.2vmin;
+            min-width: 32px;
+            padding-left: 0;
+            padding-right: 0;
+            line-height: 1;
+        }
+
+        #btn-music.music-muted {
+            opacity: 0.58;
+        }
+
+        #btn-pause:hover,
+        #btn-music:hover {
             transform: scale(1.05);
         }
 
@@ -1219,6 +1233,8 @@
                     <div id="top-left-actions">
                         <button id="btn-pause" class="sketchy-border-thin font-sketch"
                             onclick="togglePause()">Pause</button>
+                        <button id="btn-music" class="sketchy-border-thin font-sketch" onclick="toggleMusicMute()"
+                            title="Music" aria-label="Toggle music">&#128266;</button>
                         <div id="diff-badge"></div>
                     </div>
 
@@ -1285,17 +1301,20 @@
                             </button>
 
                             <!-- Upgrades Tab -->
-                            <button class="btn menu-upgrade hidden sketchy-border-thin" id="btn-up-dmg"
+                            <button class="btn menu-upgrade hidden sketchy-border-thin" id="btn-up-dmg" data-type="upgrade"
+                                data-upgrade="dmg"
                                 onclick="buyUpgrade('dmg')"><span>Sharpened</span>
                                 <div class="upgrade-val" id="val-up-dmg">Lvl 0 (+0%)</div>
                                 <div class="btn-cost text-gold" id="cost-up-dmg">500</div>
                             </button>
-                            <button class="btn menu-upgrade hidden sketchy-border-thin" id="btn-up-hp"
+                            <button class="btn menu-upgrade hidden sketchy-border-thin" id="btn-up-hp" data-type="upgrade"
+                                data-upgrade="hp"
                                 onclick="buyUpgrade('hp')"><span>Thick Paper</span>
                                 <div class="upgrade-val" id="val-up-hp">Lvl 0 (+0%)</div>
                                 <div class="btn-cost text-gold" id="cost-up-hp">500</div>
                             </button>
-                            <button class="btn menu-upgrade hidden sketchy-border-thin" id="btn-up-econ"
+                            <button class="btn menu-upgrade hidden sketchy-border-thin" id="btn-up-econ" data-type="upgrade"
+                                data-upgrade="econ"
                                 onclick="buyUpgrade('econ')"><span>Fast Ink</span>
                                 <div class="upgrade-val" id="val-up-econ">Lvl 0 (+0%)</div>
                                 <div class="btn-cost text-gold" id="cost-up-econ">500</div>
@@ -1407,6 +1426,264 @@
         const ctx = canvas.getContext('2d');
         const RELEASE_VERSION = '1.0.8';
         const LOCAL_GEMMA_IMAGE_INPUT_ENABLED = true;
+        const MUSIC_STORAGE_KEY = 'ageOfWarSketch.musicMuted.v1';
+        const MUSIC_LIBRARY_VERSION = 'global-v2';
+        const MUSIC_DEFAULT_TRACK = 'evolvingCanvas';
+        const MUSIC_SOURCE_EXTENSIONS = ['wav', 'mp3', 'ogg'];
+        const MUSIC_CROSSFADE_CURVE_STEPS = 96;
+        const MUSIC_IDLE_RELEASE_MS = 45000;
+        const MUSIC_SILENCE_EPSILON = 0.001;
+        // Optional per-track variations are supported via:
+        // - variants: ['pencil_dawn', 'pencil_dawn_v2', { file: 'pencil_dawn_alt' }]
+        // - variants: [{ sources: ['assets/audio/custom_intro.ogg'] }, ...]
+        // - files: ['pencil_dawn', 'pencil_dawn_v2']
+        const MUSIC_TRACKS = [
+            {
+                id: 'evolvingCanvas',
+                title: 'The Evolving Canvas',
+                file: 'evolving_canvas',
+                variants: ['evolving_canvas', 'evolving_canvas_v2', 'evolving_canvas_v3', 'evolving_canvas_v4', 'evolving_canvas_v5', 'evolving_canvas_v6'],
+                scene: 'battle',
+                roles: ['classic-age-of-war', 'active-fight', 'progression', 'age', 'all-purpose', 'fallback'],
+                ageMin: 0,
+                ageMax: 5,
+                tensionMin: 0.18,
+                tensionMax: 1,
+                loop: true,
+                volume: 0.68,
+                minPlaySec: 16,
+                priority: 84,
+                fallback: true,
+                classicBattle: true
+            },
+            {
+                id: 'pencilDawn',
+                title: 'Pencil Dawn',
+                file: 'pencil_dawn',
+                variants: ['pencil_dawn', 'pencil_dawn_v2'],
+                scene: 'opening',
+                roles: ['stone-age', 'opening', 'low-tension'],
+                ageMin: 0,
+                ageMax: 1,
+                tensionMin: 0,
+                tensionMax: 0.38,
+                loop: true,
+                volume: 0.58,
+                minPlaySec: 28,
+                priority: 80
+            },
+            {
+                id: 'graphiteSkirmish',
+                title: 'Graphite Skirmish',
+                file: 'graphite_skirmish',
+                variants: ['graphite_skirmish', 'graphite_skirmish_v2', 'graphite_skirmish_v3', 'graphite_skirmish_v4', 'graphite_skirmish_v5', 'graphite_skirmish_v6', 'graphite_skirmish_v7', 'graphite_skirmish_v8'],
+                scene: 'battle',
+                roles: ['early-game', 'mid-game', 'pressure'],
+                ageMin: 0,
+                ageMax: 2,
+                tensionMin: 0.22,
+                tensionMax: 0.72,
+                loop: true,
+                volume: 0.62,
+                minPlaySec: 32,
+                priority: 82
+            },
+            {
+                id: 'inklineAdvance',
+                title: 'Inkline Advance',
+                file: 'inkline_advance',
+                variants: ['inkline_advance', 'inkline_advance_v2', 'inkline_advance_v3', 'inkline_advance_v4', 'inkline_advance_v5', 'inkline_advance_v6'],
+                scene: 'pressure',
+                roles: ['early-game', 'lane-pressure', 'fast-units'],
+                ageMin: 0,
+                ageMax: 2,
+                tensionMin: 0.52,
+                tensionMax: 1,
+                loop: true,
+                volume: 0.64,
+                minPlaySec: 30,
+                priority: 86
+            },
+            {
+                id: 'castleMarch',
+                title: 'Castle March',
+                file: 'castle_march',
+                variants: ['castle_march', 'castle_march_v2'],
+                scene: 'battle',
+                roles: ['castle-age', 'iron-age', 'steady-battle'],
+                ageMin: 1,
+                ageMax: 2,
+                tensionMin: 0.16,
+                tensionMax: 0.68,
+                loop: true,
+                volume: 0.62,
+                minPlaySec: 34,
+                priority: 78
+            },
+            {
+                id: 'renaissanceRush',
+                title: 'Renaissance Rush',
+                file: 'renaissance_rush',
+                variants: ['renaissance_rush', 'renaissance_rush_v2'],
+                scene: 'battle',
+                roles: ['renaissance', 'momentum', 'snare-march'],
+                ageMin: 2,
+                ageMax: 3,
+                tensionMin: 0.28,
+                tensionMax: 0.82,
+                loop: true,
+                volume: 0.65,
+                minPlaySec: 34,
+                priority: 84
+            },
+            {
+                id: 'cannonSmoke',
+                title: 'Cannon Smoke',
+                file: 'cannon_smoke',
+                variants: ['cannon_smoke', 'cannon_smoke_v2'],
+                scene: 'siege',
+                roles: ['turrets', 'specials', 'base-pressure'],
+                ageMin: 2,
+                ageMax: 4,
+                tensionMin: 0.58,
+                tensionMax: 1,
+                loop: true,
+                volume: 0.68,
+                minPlaySec: 34,
+                priority: 90
+            },
+            {
+                id: 'modernWarfare',
+                title: 'Modern Warfare',
+                file: 'modern_warfare',
+                variants: ['modern_warfare', 'modern_warfare_v2'],
+                scene: 'battle',
+                roles: ['modern-age', 'electric-guitar', 'orchestral-drop'],
+                ageMin: 3,
+                ageMax: 3,
+                tensionMin: 0.26,
+                tensionMax: 1,
+                loop: true,
+                volume: 0.68,
+                minPlaySec: 36,
+                priority: 86
+            },
+            {
+                id: 'futureArpeggio',
+                title: 'Future Arpeggio',
+                file: 'future_arpeggio',
+                variants: ['future_arpeggio', 'future_arpeggio_v2'],
+                scene: 'future',
+                roles: ['future-age', 'synth', 'tech-window'],
+                ageMin: 4,
+                ageMax: 4,
+                tensionMin: 0.12,
+                tensionMax: 0.72,
+                loop: true,
+                volume: 0.62,
+                minPlaySec: 34,
+                priority: 82
+            },
+            {
+                id: 'neonFront',
+                title: 'Neon Front',
+                file: 'neon_front',
+                variants: ['neon_front', 'neon_front_v2'],
+                scene: 'pressure',
+                roles: ['future-age', 'high-pressure', 'cyber-drums'],
+                ageMin: 4,
+                ageMax: 5,
+                tensionMin: 0.52,
+                tensionMax: 1,
+                loop: true,
+                volume: 0.68,
+                minPlaySec: 34,
+                priority: 89
+            },
+            {
+                id: 'cosmicClash',
+                title: 'Cosmic Clash',
+                file: 'cosmic_clash',
+                variants: ['cosmic_clash', 'cosmic_clash_v2'],
+                scene: 'cosmic',
+                roles: ['cosmic-age', 'choir', 'final-battle'],
+                ageMin: 5,
+                ageMax: 5,
+                tensionMin: 0.18,
+                tensionMax: 1,
+                loop: true,
+                volume: 0.7,
+                minPlaySec: 42,
+                priority: 92
+            },
+            {
+                id: 'lastPageSiege',
+                title: 'Last Page Siege',
+                file: 'last_page_siege',
+                variants: ['last_page_siege', 'last_page_siege_v2'],
+                scene: 'siege',
+                roles: ['critical-base-hp', 'deathball', 'endgame-pressure'],
+                ageMin: 0,
+                ageMax: 5,
+                tensionMin: 0.76,
+                tensionMax: 1,
+                loop: true,
+                volume: 0.72,
+                minPlaySec: 32,
+                priority: 105,
+                urgent: true
+            },
+            {
+                id: 'codexGemma',
+                title: 'Codex Gemma',
+                file: 'codex_gemma',
+                variants: ['codex_gemma', 'codex_gemma_v2'],
+                scene: 'menu',
+                roles: ['director', 'pause', 'memory'],
+                ageMin: 0,
+                ageMax: 5,
+                tensionMin: 0,
+                tensionMax: 0.45,
+                loop: true,
+                volume: 0.48,
+                minPlaySec: 20,
+                priority: 75
+            },
+            {
+                id: 'victoryCanvas',
+                title: 'Victory Canvas',
+                file: 'victory_canvas',
+                variants: ['victory_canvas', 'victory_canvas_v2'],
+                scene: 'victory',
+                roles: ['victory', 'results'],
+                ageMin: 0,
+                ageMax: 5,
+                tensionMin: 0,
+                tensionMax: 1,
+                loop: true,
+                volume: 0.58,
+                minPlaySec: 20,
+                priority: 120,
+                outcome: 'victory'
+            },
+            {
+                id: 'erasedPages',
+                title: 'Erased Pages',
+                file: 'erased_pages',
+                variants: ['erased_pages', 'erased_pages_v2'],
+                scene: 'defeat',
+                roles: ['defeat', 'results'],
+                ageMin: 0,
+                ageMax: 5,
+                tensionMin: 0,
+                tensionMax: 1,
+                loop: true,
+                volume: 0.54,
+                minPlaySec: 20,
+                priority: 120,
+                outcome: 'defeat'
+            }
+        ];
         const CANVAS_WIDTH = 1280;
         const CANVAS_HEIGHT = 720;
         const GROUND_Y = 600;
@@ -1431,6 +1708,11 @@
         };
 
         const UPGRADE_COSTS = [500, 1500, 3500, 8000, 18000, 35000, 75000, 150000, 350000, 750000];
+        const UPGRADE_INFO = {
+            dmg: { title: 'Sharpened', stat: '+15% damage per level', compact: '+15% DMG/lvl', color: COLORS.accent },
+            hp: { title: 'Thick Paper', stat: '+25% base and unit health', compact: '+25% HP/lvl', color: COLORS.green },
+            econ: { title: 'Fast Ink', stat: '+20% gold income per level', compact: '+20% gold/lvl', color: COLORS.gold }
+        };
 
         // --- ADVANCED DIFFICULTY SETTINGS ---
         const DIFFICULTY_SETTINGS = {
@@ -1492,36 +1774,59 @@
         };
 
         // --- CODEX DIRECTOR MEMORY ---
+        const DIRECTOR_AGREEMENT_DEFAULTS = Object.freeze({
+            noSpecials: false,
+            noTurrets: false,
+            meleeOnly: false
+        });
+        const GEMMA_FIXED_INPUT_PACTS = Object.freeze(['pressure: rush']);
+
+        function directorAgreementDefaults() {
+            return Object.assign({}, DIRECTOR_AGREEMENT_DEFAULTS);
+        }
+
+        function gemmaInputPacts() {
+            return GEMMA_FIXED_INPUT_PACTS.concat(DirectorMemory.tags());
+        }
+
         const DirectorMemory = {
             key: 'aow_sketch_director_memory_v1',
             data: {
                 notes: [],
-                agreements: { noSpecials: false, noTurrets: false, meleeOnly: false, pressure: 'balanced' }
+                agreements: directorAgreementDefaults()
             },
             init() {
+                let migrated = false;
                 try {
                     let stored = localStorage.getItem(this.key);
                     if (stored) {
                         let parsed = JSON.parse(stored);
                         this.data.notes = Array.isArray(parsed.notes) ? parsed.notes.slice(-8) : [];
-                        this.data.agreements = Object.assign({}, this.data.agreements, parsed.agreements || {});
+                        this.data.agreements = this.normalizeAgreements(parsed.agreements);
+                        migrated = !!(parsed.agreements && Object.prototype.hasOwnProperty.call(parsed.agreements, 'pressure'));
                     }
                 } catch (e) { console.warn("Director memory blocked"); }
+                this.data.agreements = this.normalizeAgreements(this.data.agreements);
+                if (migrated) this.save();
             },
             save() {
                 try { localStorage.setItem(this.key, JSON.stringify(this.data)); } catch (e) { }
             },
-            setAgreement(key, value) {
-                this.data.agreements[key] = value;
-                this.save();
+            normalizeAgreements(value) {
+                let source = value && typeof value === 'object' ? value : {};
+                let clean = directorAgreementDefaults();
+                Object.keys(clean).forEach(key => {
+                    clean[key] = !!source[key];
+                });
+                return clean;
             },
-            setPressure(value) {
-                this.data.agreements.pressure = value;
+            setAgreement(key, value) {
+                if (!Object.prototype.hasOwnProperty.call(DIRECTOR_AGREEMENT_DEFAULTS, key)) return;
+                this.data.agreements[key] = !!value;
                 this.save();
             },
             clearAgreement(key) {
-                if (key === 'pressure') this.data.agreements.pressure = 'balanced';
-                else if (Object.prototype.hasOwnProperty.call(this.data.agreements, key)) this.data.agreements[key] = false;
+                if (Object.prototype.hasOwnProperty.call(this.data.agreements, key)) this.data.agreements[key] = false;
                 this.save();
             },
             addNote(note) {
@@ -1541,14 +1846,13 @@
             clear() {
                 this.data = {
                     notes: [],
-                    agreements: { noSpecials: false, noTurrets: false, meleeOnly: false, pressure: 'balanced' }
+                    agreements: directorAgreementDefaults()
                 };
                 this.save();
             },
             agreementItems() {
                 let a = this.data.agreements;
                 let items = [];
-                if (a.pressure && a.pressure !== 'balanced') items.push({ key: 'pressure', label: `pressure: ${a.pressure}` });
                 if (a.noSpecials) items.push({ key: 'noSpecials', label: 'no specials' });
                 if (a.noTurrets) items.push({ key: 'noTurrets', label: 'no turrets' });
                 if (a.meleeOnly) items.push({ key: 'meleeOnly', label: 'melee only' });
@@ -1556,13 +1860,11 @@
                 return items;
             },
             inputAgreementTags() {
-                let items = this.agreementItems().map(item => item.label);
-                if (!items.length && this.data.agreements.pressure === 'balanced') items.push('balanced pressure');
-                return items;
+                return this.agreementItems().map(item => item.label);
             },
             tags() {
                 let a = this.data.agreements;
-                let tags = [`pressure: ${a.pressure}`];
+                let tags = [];
                 if (a.noSpecials) tags.push('no specials');
                 if (a.noTurrets) tags.push('no turrets');
                 if (a.meleeOnly) tags.push('melee only');
@@ -1772,40 +2074,134 @@
             title: document.getElementById('tt-title'),
             stats: document.getElementById('tt-stats-container'),
             desc: document.getElementById('tt-desc'),
+            finePointerQuery: window.matchMedia ? window.matchMedia('(hover: hover) and (pointer: fine)') : null,
             init() {
                 document.querySelectorAll('[data-type]').forEach(btn => {
-                    btn.addEventListener('mouseenter', (e) => this.show(btn, e));
+                    btn.addEventListener('mouseenter', (e) => {
+                        if (this.usesHoverTooltip()) this.show(btn, e);
+                    });
                     btn.addEventListener('mouseleave', () => this.hide());
-                    btn.addEventListener('mousemove', (e) => this.move(e));
+                    btn.addEventListener('mousemove', (e) => {
+                        if (this.usesHoverTooltip()) this.move(e);
+                    });
+                    btn.addEventListener('pointerdown', (e) => {
+                        if (!this.usesHoverTooltip() || e.pointerType !== 'mouse') this.flash(btn);
+                    });
                 });
             },
+            usesHoverTooltip() {
+                return !!(this.finePointerQuery && this.finePointerQuery.matches);
+            },
             show(btn, e) {
-                if (!gameState.player) return;
-                let type = btn.getAttribute('data-type');
-                let idx = parseInt(btn.getAttribute('data-idx'));
-                let pAge = gameState.player.age;
+                let info = this.readInfo(btn);
+                if (!info) return;
 
-                let data = type === 'unit' ? AGES[pAge].units[idx] : AGES[pAge].turrets[idx];
-                if (!data) return;
-
-                this.title.innerText = data.name;
-                this.desc.innerText = data.desc || "";
+                this.title.innerText = info.title;
+                this.desc.innerText = info.desc || "";
 
                 let html = '';
-                if (type === 'unit') {
-                    html += `<div class="tt-stat"><span>Health:</span> <strong>${data.hp}</strong></div>`;
-                    html += `<div class="tt-stat"><span>Damage:</span> <strong>${data.dmg}</strong></div>`;
-                    html += `<div class="tt-stat"><span>Type:</span> <strong style="text-transform:capitalize">${data.type}</strong></div>`;
-                } else {
-                    html += `<div class="tt-stat"><span>Damage:</span> <strong>${data.dmg}</strong></div>`;
-                    html += `<div class="tt-stat"><span>Fire Rate:</span> <strong>${data.attackSpeed}s</strong></div>`;
-                    html += `<div class="tt-stat"><span>Range:</span> <strong>${data.range}</strong></div>`;
+                for (let i = 0; i < info.stats.length; i++) {
+                    html += `<div class="tt-stat"><span>${info.stats[i].label}:</span> <strong>${info.stats[i].value}</strong></div>`;
                 }
                 this.stats.innerHTML = html;
                 this.el.classList.add('visible');
                 this.move(e);
             },
             hide() { this.el.classList.remove('visible'); },
+            flash(btn) {
+                let info = this.readInfo(btn);
+                if (!info || !gameState.floatingTexts) return;
+                this.hide();
+
+                let point = this.canvasAnchor(btn);
+                spawnCanvasText(info.title, point.x, point.y, info.color || COLORS.pencil, {
+                    life: 1.25,
+                    size: 24,
+                    grow: 4,
+                    rise: 28,
+                    stroke: true
+                });
+                spawnCanvasText(info.shortStats, point.x, point.y + 26, COLORS.pencil, {
+                    life: 1.15,
+                    size: 17,
+                    grow: 2,
+                    rise: 24,
+                    stroke: true
+                });
+            },
+            readInfo(btn) {
+                if (!gameState.player) return null;
+                let type = btn.getAttribute('data-type');
+                let idx = parseInt(btn.getAttribute('data-idx'), 10);
+                let pAge = gameState.player.age;
+                let data = null;
+
+                if (type === 'unit') {
+                    data = AGES[pAge].units[idx];
+                    if (!data) return null;
+                    return {
+                        title: data.name,
+                        desc: data.desc || '',
+                        color: COLORS.accent,
+                        shortStats: `${data.cost}g  HP ${data.hp}  DMG ${data.dmg}  ${data.type}`,
+                        stats: [
+                            { label: 'Cost', value: `${data.cost}g` },
+                            { label: 'Health', value: data.hp },
+                            { label: 'Damage', value: data.dmg },
+                            { label: 'Type', value: data.type }
+                        ]
+                    };
+                }
+
+                if (type === 'turret') {
+                    data = AGES[pAge].turrets[idx];
+                    if (!data) return null;
+                    return {
+                        title: data.name,
+                        desc: data.desc || '',
+                        color: COLORS.blue,
+                        shortStats: `${data.cost}g  DMG ${data.dmg}  RNG ${data.range}  ${data.attackSpeed}s`,
+                        stats: [
+                            { label: 'Cost', value: `${data.cost}g` },
+                            { label: 'Damage', value: data.dmg },
+                            { label: 'Fire Rate', value: `${data.attackSpeed}s` },
+                            { label: 'Range', value: data.range }
+                        ]
+                    };
+                }
+
+                if (type === 'upgrade') {
+                    let upgradeType = btn.getAttribute('data-upgrade');
+                    let info = UPGRADE_INFO[upgradeType];
+                    if (!info) return null;
+                    let level = gameState.player.upgrades[upgradeType] || 0;
+                    let cost = level < UPGRADE_COSTS.length ? `${UPGRADE_COSTS[level]}g` : 'MAX';
+                    return {
+                        title: info.title,
+                        desc: info.stat,
+                        color: info.color,
+                        shortStats: `Lvl ${level}  ${cost}  ${info.compact}`,
+                        stats: [
+                            { label: 'Level', value: level },
+                            { label: 'Cost', value: cost },
+                            { label: 'Effect', value: info.stat }
+                        ]
+                    };
+                }
+
+                return null;
+            },
+            canvasAnchor(btn) {
+                let wrapper = document.getElementById('aspect-wrapper');
+                let wrapperRect = wrapper.getBoundingClientRect();
+                let btnRect = btn.getBoundingClientRect();
+                let x = ((btnRect.left + btnRect.width / 2 - wrapperRect.left) / wrapperRect.width) * CANVAS_WIDTH;
+                let y = ((btnRect.top - wrapperRect.top) / wrapperRect.height) * CANVAS_HEIGHT;
+                return {
+                    x: this.clamp(x, 260, CANVAS_WIDTH - 260),
+                    y: this.clamp(y + 220, 320, GROUND_Y - 150)
+                };
+            },
             move(e) {
                 if (!this.el.classList.contains('visible')) return;
                 const rect = document.getElementById('aspect-wrapper').getBoundingClientRect();
@@ -1820,6 +2216,9 @@
 
                 this.el.style.left = `${x}px`;
                 this.el.style.top = `${y - this.el.offsetHeight - 15}px`;
+            },
+            clamp(value, min, max) {
+                return Math.max(min, Math.min(max, value));
             }
         };
 
@@ -2082,8 +2481,8 @@
         }
 
         function drawGemmaContextImage(g, width, height, snapshot) {
-            const playerColor = '#1d4ed8';
-            const enemyColor = '#b91c1c';
+            const playerColor = '#b91c1c';
+            const enemyColor = '#1d4ed8';
             const ink = '#111827';
             const muted = '#6b7280';
             const paper = '#fffaf0';
@@ -2104,12 +2503,12 @@
             g.fillStyle = ink;
             g.font = '800 24px system-ui, Arial, sans-serif';
             g.textAlign = 'center';
-            g.fillText('MAP FOR GEMMA AI: YOU ARE RED ON THE RIGHT', width / 2, 30);
+            g.fillText('MAP FOR GEMMA AI: YOU ARE BLUE ON THE RIGHT', width / 2, 30);
             g.font = '700 15px system-ui, Arial, sans-serif';
-            g.fillText('BLUE PLAYER is your opponent on the LEFT and attacks RIGHT. RED GEMMA is YOU and attacks LEFT.', width / 2, 54);
+            g.fillText('RED PLAYER is your opponent on the LEFT and attacks RIGHT. BLUE GEMMA is YOU and attacks LEFT.', width / 2, 54);
 
-            drawGemmaContextBase(g, 28, 76, 224, 90, playerColor, 'BLUE PLAYER / OPPONENT', AGES[gameState.player.age].name, pct(snapshot.playerHpRatio), gameState.player);
-            drawGemmaContextBase(g, width - 252, 76, 224, 90, enemyColor, 'RED GEMMA / YOU', AGES[gameState.enemy.age].name, pct(snapshot.enemyHpRatio), gameState.enemy);
+            drawGemmaContextBase(g, 28, 76, 224, 90, playerColor, 'RED PLAYER / OPPONENT', AGES[gameState.player.age].name, pct(snapshot.playerHpRatio), gameState.player);
+            drawGemmaContextBase(g, width - 252, 76, 224, 90, enemyColor, 'BLUE GEMMA / YOU', AGES[gameState.enemy.age].name, pct(snapshot.enemyHpRatio), gameState.enemy);
 
             drawGemmaContextLegend(g, width / 2 - 184, 76, 368, 90, playerColor, enemyColor, ink, muted);
 
@@ -2117,13 +2516,13 @@
             g.font = '800 14px system-ui, Arial, sans-serif';
             g.textAlign = 'center';
             g.fillStyle = ink;
-            g.fillText('READ THE MAP AS RED GEMMA: defend the right base, push left, destroy the blue base.', width / 2, 194);
+            g.fillText('READ THE MAP AS BLUE GEMMA: defend the right base, push left, destroy the red base.', width / 2, 194);
 
-            g.fillStyle = '#dbeafe';
-            g.fillRect(mapX(0), laneY - 82, mapX(BASE_WIDTH) - mapX(0), 164);
             g.fillStyle = '#fee2e2';
+            g.fillRect(mapX(0), laneY - 82, mapX(BASE_WIDTH) - mapX(0), 164);
+            g.fillStyle = '#dbeafe';
             g.fillRect(mapX(CANVAS_WIDTH - BASE_WIDTH), laneY - 82, mapX(CANVAS_WIDTH) - mapX(CANVAS_WIDTH - BASE_WIDTH), 164);
-            g.fillStyle = 'rgba(185, 28, 28, 0.10)';
+            g.fillStyle = 'rgba(29, 78, 216, 0.10)';
             g.fillRect(mapX(CANVAS_WIDTH - BASE_WIDTH - 620), laneY - 88, mapX(CANVAS_WIDTH - BASE_WIDTH) - mapX(CANVAS_WIDTH - BASE_WIDTH - 620), 176);
 
             g.strokeStyle = ink;
@@ -2133,16 +2532,17 @@
             g.lineTo(laneRight, laneY);
             g.stroke();
 
-            drawGemmaContextArrow(g, laneLeft + 132, laneY - 64, laneRight - 132, laneY - 64, playerColor, 'BLUE PLAYER ATTACKS RIGHT ->');
-            drawGemmaContextArrow(g, laneRight - 132, laneY + 64, laneLeft + 132, laneY + 64, enemyColor, '<- YOU ATTACK LEFT AS RED GEMMA');
+            drawGemmaContextArrow(g, laneLeft + 132, laneY - 64, laneRight - 132, laneY - 64, playerColor, 'RED PLAYER ATTACKS RIGHT ->');
+            drawGemmaContextArrow(g, laneRight - 132, laneY + 64, laneLeft + 132, laneY + 64, enemyColor, '<- YOU ATTACK LEFT AS BLUE GEMMA');
 
             drawGemmaContextVertical(g, mapX(BASE_WIDTH), laneY - 94, laneY + 94, '#374151', 'PLAYER HIT LINE', 'left');
             drawGemmaContextVertical(g, mapX(CANVAS_WIDTH - BASE_WIDTH), laneY - 94, laneY + 94, '#374151', 'GEMMA HIT LINE', 'right');
             drawGemmaContextVertical(g, mapX(snapshot.playerFrontX || BASE_WIDTH), laneY - 116, laneY + 116, playerColor, 'PLAYER FRONT', 'left', true);
             drawGemmaContextVertical(g, mapX(snapshot.enemyFrontX || (CANVAS_WIDTH - BASE_WIDTH)), laneY - 116, laneY + 116, enemyColor, 'GEMMA FRONT', 'right', true);
+            drawGemmaContextFrontSpan(g, mapX(snapshot.playerFrontX || BASE_WIDTH), mapX(snapshot.enemyFrontX || (CANVAS_WIDTH - BASE_WIDTH)), laneY, muted);
 
-            drawGemmaContextLabel(g, 'RED SHADE = DANGER TO YOUR GEMMA BASE', mapX(CANVAS_WIDTH - BASE_WIDTH - 310), laneY - 108, {
-                fill: '#fff7ed',
+            drawGemmaContextLabel(g, 'BLUE SHADE = DANGER TO YOUR GEMMA BASE', mapX(CANVAS_WIDTH - BASE_WIDTH - 310), laneY - 108, {
+                fill: '#eff6ff',
                 color: enemyColor,
                 align: 'center',
                 font: '800 12px system-ui, Arial, sans-serif'
@@ -2174,8 +2574,7 @@
                 `Gemma units ${snapshot.enemyUnits}`,
                 `Threats near Gemma base ${snapshot.threatCount}`,
                 `Closest player threat: ${closest}`,
-                `Front gap ${snapshot.frontGap} px`,
-                `Pressure pact: ${snapshot.pressure || 'balanced'}`,
+                'Pressure pact: rush',
                 `Gemma emotion: ${snapshot.emotion || 'Centered'}`,
                 `Engine plan: ${snapshot.engineOrder || 'adaptive'}`,
                 `Engine order: ${snapshot.engineOrder || 'adaptive'}`,
@@ -2225,7 +2624,7 @@
             g.fillText('diamond heavy', x + 170, y + 46);
             g.fillText('dashed vertical = front line', x + 30, y + 68);
             g.fillText('gray vertical = base hit line', x + 170, y + 68);
-            g.fillText('P0/P1/P2 = blue player units; G0/G1/G2 = your red units', x + 30, y + 84);
+            g.fillText('P0/P1/P2 = red player units; G0/G1/G2 = your blue units', x + 30, y + 84);
         }
 
         function collectGemmaContextUnitMarkers() {
@@ -2349,6 +2748,33 @@
             });
         }
 
+        function drawGemmaContextFrontSpan(g, x1, x2, y, color) {
+            let left = Math.min(x1, x2);
+            let right = Math.max(x1, x2);
+            if (right - left < 16) return;
+            g.save();
+            g.fillStyle = 'rgba(17, 24, 39, 0.045)';
+            g.fillRect(left, y - 44, right - left, 88);
+            g.strokeStyle = color;
+            g.fillStyle = color;
+            g.lineWidth = 2;
+            g.setLineDash([6, 5]);
+            g.beginPath();
+            g.moveTo(left + 8, y);
+            g.lineTo(right - 8, y);
+            g.stroke();
+            g.setLineDash([]);
+            [[left + 8, -1], [right - 8, 1]].forEach(([x, dir]) => {
+                g.beginPath();
+                g.moveTo(x, y);
+                g.lineTo(x + dir * 10, y - 6);
+                g.lineTo(x + dir * 10, y + 6);
+                g.closePath();
+                g.fill();
+            });
+            g.restore();
+        }
+
         function drawGemmaContextVertical(g, x, y1, y2, color, label, side, dashed = false) {
             g.save();
             g.strokeStyle = color;
@@ -2421,7 +2847,6 @@
             let playerUnitLine = snapshot.playerProfile || `${snapshot.playerUnits} units: ${snapshot.playerMelee} melee, ${snapshot.playerRanged} ranged, ${snapshot.playerHeavy} heavy`;
             let enemyUnitLine = snapshot.enemyProfile || `${snapshot.enemyUnits} units: ${snapshot.enemyMelee} melee, ${snapshot.enemyRanged} ranged, ${snapshot.enemyHeavy} heavy`;
             let tacticalLine = [
-                `front gap ${snapshot.frontGap}px`,
                 `threats near your base ${snapshot.threatCount}`,
                 `closest threat ${Math.round(snapshot.closestThreatDist)}px`,
                 `my turrets ${snapshot.playerTurretCount}`,
@@ -2429,14 +2854,14 @@
                 `engine plan ${snapshot.macroPlan || 'balanced'} / ${snapshot.engineOrder || 'adaptive'}`
             ].join(', ');
             let prompt = [
-                'Gemma, we are still playing our notebook Age of War match and chatting across the table.',
-                'You are the red general on the right. I am the blue player on the left. I attached the little labeled map again so you can see the bases, front lines, danger zone, unit markers, HP, gold, and pressure.',
+                'Gemma, we are still playing our notebook Age of War match and chatting across the table. Your name is Gemma.',
+                'You are the blue general on the right. I am the red player on the left. I attached the little labeled map again so you can see the bases, front lines, danger zone, unit markers, HP, gold, and pressure.',
                 'I am not asking you to click units or spend gold here; the local game keeps doing that while you think. I only want your in-character reply and the feeling behind it so the match keeps sounding human.',
                 `Right now you are in ${enemyAgeData.name}; I am in ${playerAgeData.name}.`,
                 `Your base is at ${Math.round(snapshot.enemyHpRatio * 100)}% with ${Math.floor(snapshot.enemyGold)} gold. My base is at ${Math.round(snapshot.playerHpRatio * 100)}% with ${Math.floor(snapshot.playerGold)} gold.`,
                 `My army: ${playerUnitLine}. Your army: ${enemyUnitLine}.`,
                 `What matters tactically: ${tacticalLine}.`,
-                `Our table rules and preferences: ${DirectorMemory.tags().join(', ')}.`,
+                `Our table rules and preferences: ${gemmaInputPacts().join(', ')}.`,
                 latestPlayer ? `I just told you: "${latestPlayer}"` : 'I did not say anything new this turn.',
                 'Please answer in exactly two short lines so the phone UI can read it.',
                 'First line: talk directly to me as Gemma, one or two short sentences.',
@@ -2558,7 +2983,8 @@
                     visible = true;
                 } else if (state === 'downloading') {
                     let pct = Math.max(0, Math.min(100, Math.floor(this.status.progress || 0)));
-                    label = `Gemma download ${pct}%`;
+                    let detail = this.status.message ? ` - ${this.status.message}` : '';
+                    label = `Gemma download ${pct}%${detail}`;
                     action = '';
                     disabled = true;
                     visible = true;
@@ -2574,7 +3000,7 @@
                     action = 'retry';
                     visible = true;
                 } else {
-                    label = `offline Gemma${ram}`;
+                    label = this.status.message || `offline Gemma${ram}`;
                     action = 'get';
                     visible = this.available;
                 }
@@ -3178,18 +3604,6 @@
                     replies.push('All enemy unit types are available again.');
                 }
 
-                if (/go easy|take it easy|mercy|soft/.test(text)) {
-                    DirectorMemory.setPressure('mercy');
-                    replies.push('I will spend slower unless your army reaches my base.');
-                } else if (/rush|aggressive|pressure me|try hard|harder/.test(text)) {
-                    DirectorMemory.setPressure('rush');
-                    AIDirector.restraintUntil = 0;
-                    replies.push('Pressure plan accepted. I will stop hoarding and push.');
-                } else if (/balanced|fair|normal plan/.test(text)) {
-                    DirectorMemory.setPressure('balanced');
-                    replies.push('Balanced plan restored.');
-                }
-
                 if (/truce|pause attacks|give me/.test(text)) {
                     let secondsMatch = text.match(/(\d{1,2})\s*(sec|second)/);
                     let seconds = secondsMatch ? Math.max(10, Math.min(60, parseInt(secondsMatch[1], 10))) : 30;
@@ -3223,6 +3637,10 @@
             if (hud) hud.classList.toggle('hidden');
         }
 
+        function toggleMusicMute() {
+            MusicDirector.toggleMute();
+        }
+
         function togglePause(forceState) {
             if (!gameState || !gameState.running) return;
             gameState.paused = typeof forceState === 'boolean' ? forceState : !gameState.paused;
@@ -3230,6 +3648,7 @@
             let btn = DirectorPanel.els['btn-pause'];
             if (overlay) overlay.classList.toggle('hidden', !gameState.paused);
             if (btn) btn.innerText = gameState.paused ? 'Resume' : 'Pause';
+            MusicDirector.setDucked(gameState.paused);
             if (!gameState.paused) lastTime = performance.now();
         }
 
@@ -3375,14 +3794,9 @@
                     techWindow: (snapshot.threatCount < 2 ? 1.1 : -0.7) + profile.tech + (gameState.player.age > ai.age ? 0.9 : 0) + snapshot.enemyXpRatio * 0.7,
                     bankHeavy: (snapshot.threatCount < 3 ? 0.8 : -0.6) + (snapshot.enemyGold / Math.max(1, heavyCost)) * 1.2 + (snapshot.playerRanged > 0 ? 0.55 : 0),
                     killPush: Math.max(0, 0.5 - snapshot.playerHpRatio) * 2.4 + profile.aggression + (snapshot.frontGap > 560 ? 0.8 : 0),
-                    flood: Math.max(0, snapshot.playerUnits - snapshot.enemyUnits) * 0.35 + profile.aggression * 0.8 + (snapshot.pressure === 'rush' ? 1 : 0),
+                    flood: Math.max(0, snapshot.playerUnits - snapshot.enemyUnits) * 0.35 + profile.aggression * 0.8,
                     fortify: profile.caution * 0.9 + (snapshot.threatCount >= 2 ? 0.7 : 0) + (DirectorMemory.data.agreements.noTurrets ? -2 : 0)
                 };
-                if (snapshot.pressure === 'mercy' && snapshot.playerHpRatio < 0.55 && snapshot.threatCount < 3) {
-                    scores.techWindow += 1.3;
-                    scores.killPush -= 2.2;
-                    scores.flood -= 1.3;
-                }
                 let next = this.pickTopScore(scores, this.macroPlan);
                 if (next !== this.macroPlan) {
                     this.macroPlan = next;
@@ -3401,7 +3815,6 @@
             },
             pickLocalOrder(snapshot) {
                 let ai = gameState.enemy;
-                let pressure = (DirectorMemory.data.agreements || {}).pressure || 'balanced';
                 let profile = this.emotionProfile();
                 let scores = {
                     defend: 0.5 + snapshot.threatCount * 0.42 + (1 - snapshot.enemyHpRatio) * 2.2 + profile.caution * 1.2,
@@ -3412,19 +3825,9 @@
                     heavy: 0.35 + profile.greed + (snapshot.playerRanged > snapshot.playerMelee ? 1.0 : 0) + Math.max(0, snapshot.enemyGold - AGES[ai.age].units[2].cost) / Math.max(1, AGES[ai.age].units[2].cost),
                     fortify: 0.42 + profile.caution + (snapshot.threatCount >= 2 ? 0.75 : 0) + (snapshot.enemyHpRatio < 0.55 ? 0.7 : 0),
                     special: 0.2 + profile.special + (snapshot.threatCount >= 4 ? 1.0 : 0) + (snapshot.playerUnits >= 5 ? 0.65 : 0),
-                    hold: 0.18 + profile.patience + (pressure === 'mercy' ? 1.2 : 0)
+                    hold: 0.18 + profile.patience
                 };
                 if (snapshot.restrained && snapshot.threatCount < 2) scores.tech += 3;
-                if (pressure === 'rush') {
-                    scores.press += 1.1;
-                    scores.swarm += 0.8;
-                    scores.hold -= 0.7;
-                }
-                if (pressure === 'mercy' && snapshot.playerHpRatio < 0.5 && snapshot.threatCount < 3) {
-                    scores.hold += 3;
-                    scores.press -= 2;
-                    scores.swarm -= 1;
-                }
                 if (snapshot.threatCount >= 5 || snapshot.enemyHpRatio < 0.32) scores.defend += 3;
                 if (snapshot.playerRanged > snapshot.enemyRanged + 1 || snapshot.playerUnits > snapshot.enemyUnits + 2 || snapshot.heavyThreat) scores.counter += 1.7;
                 if (snapshot.threatCount >= 4) {
@@ -3464,8 +3867,6 @@
                 return this.pickTopScore(scores, this.localOrder);
             },
             nextThinkDelay() {
-                let pressure = DirectorMemory.data.agreements.pressure;
-                let pressureFactor = pressure === 'rush' ? 0.7 : (pressure === 'mercy' ? 1.7 : 1);
                 let profile = this.emotionProfile();
                 let emotionFactor = Math.max(0.62, Math.min(1.45, 1 - profile.aggression * 0.22 + profile.caution * 0.18 + profile.patience * 0.14));
                 let order = this.activeOrderFromState();
@@ -3481,7 +3882,7 @@
                     hold: 1.25
                 }[order] || 1;
                 let difficultyFactor = 1 - (currentConfig.aiAggression * 0.12);
-                return Math.max(0.22, (currentConfig.thinkRate * pressureFactor * emotionFactor * orderFactor * difficultyFactor) + Math.random() * 0.35);
+                return Math.max(0.22, (currentConfig.thinkRate * emotionFactor * orderFactor * difficultyFactor) + Math.random() * 0.35);
             },
             pickTopScore(scores, current = '') {
                 let entries = Object.keys(scores).map(key => ({ key, score: scores[key] + (key === current ? 0.22 : 0) }));
@@ -3581,7 +3982,6 @@
                     enemyAge: ai.age,
                     playerAge: player.age,
                     enemyXpRatio: ai.age >= AGES.length - 1 ? 1 : Math.max(0, Math.min(1, ai.xp / evolveNeed)),
-                    pressure: DirectorMemory.data.agreements.pressure,
                     emotion: this.emotionWord || (GemmaMemory.data && GemmaMemory.data.emotion) || 'Centered',
                     macroPlan: this.macroPlan || 'balanced',
                     engineOrder: this.activeOrderFromState(),
@@ -3635,10 +4035,6 @@
                     DirectorPanel.add('ai', `Pacts still active: ${DirectorMemory.tags().join(', ')}.`);
                 } else if (snapshot.threatCount >= 4) {
                     DirectorPanel.add('ai', 'Your line is stacked near my base. I am spending defensively.');
-                } else if (snapshot.pressure === 'rush') {
-                    DirectorPanel.add('ai', 'You asked for pressure, so I am converting gold into bodies.');
-                } else if (snapshot.pressure === 'mercy') {
-                    DirectorPanel.add('ai', 'Mercy plan is on. I will not flood the lane while you are behind.');
                 } else {
                     DirectorPanel.add('ai', 'I am watching age timing, gold float, and front-line distance.');
                 }
@@ -3814,8 +4210,7 @@
 
                 if (snapshot.threatCount >= 3 && unit.type === 'heavy' && snapshot.enemyGold < unit.cost * 1.5) score -= 0.8;
 
-                if (snapshot.playerHpRatio < 0.36 && unit.type === 'heavy' && snapshot.pressure !== 'mercy') score += 1.2;
-                if (snapshot.pressure === 'mercy' && snapshot.playerHpRatio < 0.5) score -= unit.type === 'heavy' ? 1.5 : 0.6;
+                if (snapshot.playerHpRatio < 0.36 && unit.type === 'heavy') score += 1.2;
 
                 if (snapshot.playerTurretCount >= 2 && unit.type !== 'heavy' && snapshot.frontGap > 480) score -= 0.8;
                 if (snapshot.playerTurretCount >= 2 && unit.type === 'heavy') score += 0.6;
@@ -3867,7 +4262,7 @@
                 if (snapshot.threatCount >= 5) score += 2.2;
                 if (snapshot.heavyThreat && snapshot.threatCount >= 2) score += 1.4;
                 if (snapshot.playerUnits >= 5) score += 0.9;
-                if (snapshot.playerHpRatio < 0.45 && snapshot.pressure !== 'mercy') score += 0.5;
+                if (snapshot.playerHpRatio < 0.45) score += 0.5;
                 if (order === 'special') score += 1.0;
                 if (this.macroPlan === 'killPush') score += 0.55;
                 if (this.macroPlan === 'techWindow' && snapshot.threatCount < 3) score -= 0.55;
@@ -3892,7 +4287,6 @@
                 }
 
                 if (snapshot.enemyUnits < snapshot.playerUnits) score -= 0.8;
-                if (snapshot.pressure === 'mercy' && snapshot.playerHpRatio < 0.5) score += 1.2;
                 if (this.macroPlan === 'bankHeavy' || this.macroPlan === 'techWindow') score += 0.5;
                 if (this.macroPlan === 'killPush' || this.macroPlan === 'flood') score -= 0.9;
                 return score;
@@ -4037,6 +4431,7 @@
                 ai.turrets = [null, null, null, null];
                 ai.turretTimers = [0, 0, 0, 0];
                 this.lastEnemyAge = ai.age;
+                MusicDirector.setSignals({ enemyAge: ai.age });
                 this.reportSignal('age', AGES[ai.age].name, true);
                 return true;
             },
@@ -4171,6 +4566,849 @@
         let globalTime = 0;
         let currentTab = 'units';
 
+        const MusicDirector = {
+            tracks: {},
+            activeId: null,
+            pendingId: null,
+            started: false,
+            muted: false,
+            suspended: false,
+            ducked: false,
+            outcome: null,
+            masterVolume: 0.72,
+            fadeMs: 1600,
+            idleReleaseMs: MUSIC_IDLE_RELEASE_MS,
+            decisionTimer: 0,
+            lastSwitchAt: -999,
+            transitionToken: 0,
+            audioContext: null,
+            masterGainNode: null,
+            mixerUnavailable: false,
+            elementMixer: false,
+            recentIds: [],
+            signals: { tension: 0, playerAge: 0, enemyAge: 0, troopPressure: 0 },
+            init() {
+                this.elementMixer = this.shouldUseElementMixer();
+                this.mixerUnavailable = this.elementMixer;
+                try {
+                    this.muted = localStorage.getItem(MUSIC_STORAGE_KEY) === '1';
+                } catch (e) {
+                    this.muted = false;
+                }
+
+                for (let i = 0; i < MUSIC_TRACKS.length; i++) {
+                    let config = MUSIC_TRACKS[i];
+                    let audio = new Audio();
+                    audio.preload = config.preload || 'none';
+                    audio.loop = config.loop !== false;
+                    let entry = {
+                        config,
+                        audio,
+                        variantSources: this.buildVariantSources(config),
+                        variantBag: [],
+                        failedVariants: new Set(),
+                        activeVariantIndex: -1,
+                        lastVariantIndex: -1,
+                        sources: [],
+                        sourceIndex: 0,
+                        failed: false,
+                        blocked: false,
+                        fadeToken: 0,
+                        playToken: 0,
+                        releaseTimer: 0,
+                        fadeTimer: 0,
+                        fadeFrame: 0,
+                        fadeStartedAt: 0,
+                        fadeDurationMs: 0,
+                        fadeStartVolume: 0,
+                        fadeTargetVolume: 0,
+                        currentVolume: 0,
+                        mediaNode: null,
+                        gainNode: null,
+                        webAudioFailed: false
+                    };
+                    audio.addEventListener('error', () => {
+                        if (this.pendingId === config.id) return;
+                        this.markVariantFailed(entry, entry.activeVariantIndex);
+                        if (!entry.failed && this.activeId === config.id) {
+                            this.play(config.id, { fadeMs: 500, force: true, reason: 'variant_error', newVariant: true });
+                        } else if (entry.failed && this.activeId === config.id) {
+                            this.playFallback({ fadeMs: 800, reason: 'active_error' }, config.id);
+                        }
+                        this.updateButton();
+                    });
+                    this.tracks[config.id] = entry;
+                }
+                this.updateButton();
+            },
+            buildSourceCandidates(base) {
+                return MUSIC_SOURCE_EXTENSIONS.map(ext => `assets/audio/${base}.${ext}`);
+            },
+            buildVariantSources(config) {
+                let groups = [];
+                let addGroup = sources => {
+                    if (!Array.isArray(sources) || !sources.length) return;
+                    groups.push(sources.slice());
+                };
+
+                if (Array.isArray(config.variants) && config.variants.length) {
+                    for (let i = 0; i < config.variants.length; i++) {
+                        let variant = config.variants[i];
+                        if (typeof variant === 'string' && variant) {
+                            addGroup(this.buildSourceCandidates(variant));
+                            continue;
+                        }
+                        if (Array.isArray(variant) && variant.length) {
+                            addGroup(variant);
+                            continue;
+                        }
+                        if (variant && typeof variant === 'object') {
+                            if (Array.isArray(variant.sources) && variant.sources.length) {
+                                addGroup(variant.sources);
+                                continue;
+                            }
+                            if (typeof variant.file === 'string' && variant.file) {
+                                addGroup(this.buildSourceCandidates(variant.file));
+                            }
+                        }
+                    }
+                } else if (Array.isArray(config.files) && config.files.length) {
+                    for (let i = 0; i < config.files.length; i++) {
+                        if (typeof config.files[i] === 'string' && config.files[i]) {
+                            addGroup(this.buildSourceCandidates(config.files[i]));
+                        }
+                    }
+                } else if (Array.isArray(config.sources) && config.sources.length) {
+                    addGroup(config.sources);
+                }
+
+                if (!groups.length) {
+                    let base = config.file || config.id;
+                    addGroup(this.buildSourceCandidates(base));
+                }
+                return groups;
+            },
+            refillVariantBag(entry) {
+                if (!entry) return;
+                let bag = [];
+                for (let i = 0; i < entry.variantSources.length; i++) {
+                    if (!entry.failedVariants.has(i)) bag.push(i);
+                }
+
+                for (let i = bag.length - 1; i > 0; i--) {
+                    let j = Math.floor(Math.random() * (i + 1));
+                    let temp = bag[i];
+                    bag[i] = bag[j];
+                    bag[j] = temp;
+                }
+
+                if (bag.length > 1 && entry.lastVariantIndex >= 0 && bag[0] === entry.lastVariantIndex) {
+                    let swapIndex = 1 + Math.floor(Math.random() * (bag.length - 1));
+                    let temp = bag[0];
+                    bag[0] = bag[swapIndex];
+                    bag[swapIndex] = temp;
+                }
+                entry.variantBag = bag;
+            },
+            markVariantFailed(entry, variantIndex) {
+                if (!entry || variantIndex === undefined || variantIndex === null || variantIndex < 0) return;
+                entry.failedVariants.add(variantIndex);
+                if (entry.variantBag && entry.variantBag.length) {
+                    entry.variantBag = entry.variantBag.filter(index => index !== variantIndex);
+                }
+                entry.failed = entry.failedVariants.size >= entry.variantSources.length;
+            },
+            chooseVariant(entry, options = {}) {
+                if (!entry || !entry.variantSources.length) return false;
+
+                if (options.keepCurrent && entry.activeVariantIndex >= 0 && !entry.failedVariants.has(entry.activeVariantIndex)) {
+                    entry.sources = entry.variantSources[entry.activeVariantIndex];
+                    entry.sourceIndex = Math.max(0, Math.min(entry.sourceIndex || 0, entry.sources.length - 1));
+                    entry.failed = false;
+                    return entry.sources.length > 0;
+                }
+
+                if (!entry.variantBag || !entry.variantBag.length) this.refillVariantBag(entry);
+                if (!entry.variantBag || !entry.variantBag.length) {
+                    entry.failed = true;
+                    return false;
+                }
+
+                entry.activeVariantIndex = entry.variantBag.shift();
+                entry.lastVariantIndex = entry.activeVariantIndex;
+                entry.sources = entry.variantSources[entry.activeVariantIndex];
+                entry.sourceIndex = 0;
+                entry.failed = false;
+                this.cancelRelease(entry);
+                this.cancelFade(entry);
+                this.setOutputVolume(entry, 0);
+                entry.audio.pause();
+                entry.audio.removeAttribute('src');
+                entry.audio.load();
+                return entry.sources.length > 0;
+            },
+            start(reason = 'game_start') {
+                this.started = true;
+                this.suspended = false;
+                this.ducked = false;
+                this.outcome = null;
+                this.pendingId = null;
+                this.decisionTimer = 0;
+                this.recentIds = [];
+                this.setSignals(this.readSignals());
+                this.resumeMixer();
+                this.fadeOutAll(0, true);
+                this.play(MUSIC_DEFAULT_TRACK, { fadeMs: 900, force: true, reason });
+            },
+            update(dt) {
+                if (!this.started || this.outcome || this.muted || this.suspended || !gameState || !gameState.running || gameState.paused) return;
+                this.decisionTimer -= dt;
+                if (this.decisionTimer > 0) return;
+                this.decisionTimer = 2.25;
+                let signals = this.readSignals();
+                this.setSignals(signals);
+                let target = this.chooseTrack(signals, { reason: 'flow' });
+                if (target && target !== this.activeId) {
+                    this.play(target, { reason: 'flow' });
+                } else {
+                    this.refreshActiveVolume();
+                }
+            },
+            setSignals(partial) {
+                this.signals = Object.assign({}, this.signals, partial || {});
+            },
+            setScene(scene, reason = 'scene') {
+                let target = this.chooseScene(scene);
+                return target ? this.play(target, { fadeMs: 850, force: true, reason }) : false;
+            },
+            setOutcome(won) {
+                this.outcome = won ? 'victory' : 'defeat';
+                this.ducked = false;
+                this.play(won ? 'victoryCanvas' : 'erasedPages', { fadeMs: 1400, force: true, reason: this.outcome });
+            },
+            play(id, options = {}) {
+                let entry = this.tracks[id];
+                if (!entry || entry.failed) return this.playFallback(options, id);
+                if (this.pendingId === id) return true;
+
+                let fadeMs = options.fadeMs === undefined ? this.fadeMs : options.fadeMs;
+                if (!options.newVariant && this.activeId === id && !entry.audio.paused) {
+                    this.refreshActiveVolume();
+                    this.updateButton();
+                    return true;
+                }
+                if (!options.force && !this.canSwitchTo(entry)) return false;
+
+                if (this.muted || this.suspended) {
+                    this.activeId = id;
+                    this.pendingId = null;
+                    this.transitionToken++;
+                    this.fadeOutAll(0, true);
+                    this.updateButton();
+                    return false;
+                }
+
+                let token = ++this.transitionToken;
+                let previousPending = this.pendingId && this.pendingId !== id ? this.tracks[this.pendingId] : null;
+                this.pendingId = null;
+                if (previousPending && previousPending !== entry && previousPending.config.id !== this.activeId) {
+                    this.cancelEntryStart(previousPending);
+                    this.fadeOut(previousPending, Math.min(300, fadeMs || 300), true);
+                }
+
+                this.resumeMixer();
+                let previous = this.activeId && this.activeId !== id ? this.tracks[this.activeId] : null;
+                if (previous && !previous.audio.paused) this.fadeTo(previous, this.targetVolume(previous), Math.min(500, fadeMs || 500));
+                let rotateVariant = options.newVariant === undefined ? this.activeId !== id : !!options.newVariant;
+                this.pendingId = id;
+                this.startEntry(entry, { newVariant: rotateVariant }).then(ok => {
+                    if (this.transitionToken !== token || this.pendingId !== id) {
+                        if (entry.config.id !== this.activeId) this.fadeOut(entry, Math.min(250, fadeMs || 250), true);
+                        return;
+                    }
+                    if (!ok) {
+                        if (this.pendingId === id) this.pendingId = null;
+                        this.playFallback(options, id);
+                        return;
+                    }
+
+                    this.pendingId = null;
+                    this.activeId = id;
+                    this.lastSwitchAt = globalTime;
+                    this.rememberTrack(id);
+                    this.cancelRelease(entry);
+                    this.fadeTo(entry, this.targetVolume(entry), fadeMs);
+                    if (previous) this.fadeOut(previous, fadeMs, true);
+                    this.updateButton();
+                });
+                this.updateButton();
+                return true;
+            },
+            toggleMute() {
+                this.muted = !this.muted;
+                try {
+                    localStorage.setItem(MUSIC_STORAGE_KEY, this.muted ? '1' : '0');
+                } catch (e) { }
+
+                if (this.muted) {
+                    this.transitionToken++;
+                    this.pendingId = null;
+                    this.fadeOutAll(350, true);
+                } else if (this.started && this.activeId) {
+                    this.resumeMixer();
+                    this.play(this.activeId, { fadeMs: 650, force: true, reason: 'unmute' });
+                } else if (this.started) {
+                    this.resumeMixer();
+                    this.play(this.chooseTrack(this.readSignals(), { force: true, reason: 'unmute' }) || MUSIC_DEFAULT_TRACK, { fadeMs: 650, force: true, reason: 'unmute' });
+                }
+                this.updateButton();
+            },
+            setDucked(ducked) {
+                this.ducked = !!ducked;
+                if (this.ducked && this.started && !this.suspended && !this.muted) {
+                    if (this.setScene('menu', 'pause')) return;
+                } else if (!this.ducked && this.started && !this.outcome) {
+                    this.decisionTimer = 0;
+                    this.update(0);
+                }
+                this.refreshActiveVolume();
+            },
+            suspendForPage() {
+                if (!this.started || this.suspended) return;
+                this.suspended = true;
+                this.transitionToken++;
+                this.pendingId = null;
+                this.fadeOutAll(0, true);
+            },
+            resumeForPage() {
+                if (!this.suspended) return;
+                this.suspended = false;
+                if (this.started && this.activeId && !this.muted) {
+                    this.resumeMixer();
+                    this.play(this.activeId, { fadeMs: 700, force: true, reason: 'page_visible' });
+                }
+            },
+            startEntry(entry, options = {}) {
+                return new Promise(resolve => {
+                    if (!entry || entry.failed || this.muted || this.suspended) {
+                        resolve(false);
+                        return;
+                    }
+                    let playToken = ++entry.playToken;
+                    this.cancelRelease(entry);
+                    this.resumeMixer();
+                    if (!this.chooseVariant(entry, { keepCurrent: !options.newVariant })) {
+                        entry.failed = true;
+                        resolve(false);
+                        return;
+                    }
+                    if (!this.ensureSource(entry)) {
+                        this.markVariantFailed(entry, entry.activeVariantIndex);
+                        if (!this.chooseVariant(entry, { keepCurrent: false }) || !this.ensureSource(entry)) {
+                            entry.failed = true;
+                            resolve(false);
+                            return;
+                        }
+                    }
+
+                    let audio = entry.audio;
+                    let settled = false;
+                    let retrying = false;
+                    let settle = ok => {
+                        if (settled) return;
+                        settled = true;
+                        audio.removeEventListener('error', onError);
+                        if (entry.playToken !== playToken) {
+                            resolve(false);
+                            return;
+                        }
+                        resolve(ok);
+                    };
+                    let retry = () => {
+                        if (settled || retrying) return;
+                        retrying = true;
+                        audio.removeEventListener('error', onError);
+                        if (entry.playToken !== playToken) {
+                            settle(false);
+                            return;
+                        }
+                        if (this.advanceSource(entry)) {
+                            settled = true;
+                            this.startEntry(entry, { newVariant: false }).then(resolve);
+                        } else {
+                            entry.failed = true;
+                            settle(false);
+                        }
+                    };
+                    let onError = () => retry();
+
+                    audio.addEventListener('error', onError);
+                    audio.loop = entry.config.loop !== false;
+                    this.prepareOutput(entry);
+                    this.setOutputVolume(entry, 0);
+
+                    let playPromise = null;
+                    try {
+                        playPromise = audio.play();
+                    } catch (e) {
+                        retry();
+                        return;
+                    }
+
+                    if (playPromise && typeof playPromise.then === 'function') {
+                        playPromise.then(() => {
+                            entry.failed = false;
+                            entry.blocked = false;
+                            settle(true);
+                        }).catch(error => {
+                            if (error && error.name === 'NotAllowedError') {
+                                entry.blocked = true;
+                                settle(false);
+                            } else {
+                                retry();
+                            }
+                        });
+                    } else {
+                        setTimeout(() => settle(!audio.paused || audio.readyState >= 2), 120);
+                    }
+
+                    setTimeout(() => {
+                        if (!settled && audio.readyState >= 2 && !audio.error) settle(true);
+                    }, 2400);
+                });
+            },
+            ensureSource(entry) {
+                if (!entry || !entry.sources.length) return false;
+                this.cancelRelease(entry);
+                if (entry.audio.getAttribute('src')) return true;
+                entry.sourceIndex = Math.max(0, Math.min(entry.sourceIndex || 0, entry.sources.length - 1));
+                entry.audio.src = entry.sources[entry.sourceIndex];
+                entry.audio.load();
+                return true;
+            },
+            advanceSource(entry) {
+                if (!entry) return false;
+                entry.sourceIndex = (entry.sourceIndex || 0) + 1;
+                this.cancelRelease(entry);
+                this.cancelFade(entry);
+                this.setOutputVolume(entry, 0);
+                entry.audio.pause();
+                entry.audio.removeAttribute('src');
+                entry.audio.load();
+
+                if (entry.sourceIndex < entry.sources.length) {
+                    entry.audio.src = entry.sources[entry.sourceIndex];
+                    entry.audio.load();
+                    return true;
+                }
+
+                this.markVariantFailed(entry, entry.activeVariantIndex);
+                if (!this.chooseVariant(entry, { keepCurrent: false })) return false;
+                if (!this.ensureSource(entry)) {
+                    this.markVariantFailed(entry, entry.activeVariantIndex);
+                    return this.advanceSource(entry);
+                }
+                return true;
+            },
+            playFallback(options = {}, blockedId = '') {
+                let active = this.activeId ? this.tracks[this.activeId] : null;
+                if (!options.force && active && active.config.id !== blockedId && !active.failed && !active.audio.paused) {
+                    this.refreshActiveVolume();
+                    return false;
+                }
+
+                let fallback = this.tracks[MUSIC_DEFAULT_TRACK] && !this.tracks[MUSIC_DEFAULT_TRACK].failed ? MUSIC_DEFAULT_TRACK : '';
+                if (!fallback) {
+                    for (let i = 0; i < MUSIC_TRACKS.length; i++) {
+                        let id = MUSIC_TRACKS[i].id;
+                        if (id !== blockedId && this.tracks[id] && !this.tracks[id].failed) {
+                            fallback = id;
+                            break;
+                        }
+                    }
+                }
+                if (!fallback || fallback === blockedId) return false;
+                return this.play(fallback, Object.assign({}, options, { force: true, reason: 'fallback' }));
+            },
+            canSwitchTo(entry) {
+                if (!entry || !this.activeId || this.activeId === entry.config.id) return true;
+                if (entry.config.urgent || entry.config.outcome) return true;
+                let active = this.tracks[this.activeId];
+                let minPlay = active && active.config ? active.config.minPlaySec || 24 : 24;
+                return globalTime - this.lastSwitchAt >= minPlay;
+            },
+            chooseTrack(signals, options = {}) {
+                if (this.outcome) return this.outcome === 'victory' ? 'victoryCanvas' : 'erasedPages';
+                let bestId = '';
+                let bestScore = -Infinity;
+                for (let i = 0; i < MUSIC_TRACKS.length; i++) {
+                    let config = MUSIC_TRACKS[i];
+                    let entry = this.tracks[config.id];
+                    if (!entry || entry.failed || entry.blocked || config.outcome || config.scene === 'menu') continue;
+
+                    let score = this.scoreTrack(config, signals);
+                    if (config.scene === 'opening' && signals.elapsed < 38) score += 26;
+                    if (config.scene === 'opening' && signals.elapsed >= 55) score -= 40;
+                    if (config.scene === 'opening' && signals.activeFight) score -= 34;
+                    if (config.urgent && signals.tension > 0.74) score += 35;
+                    if (this.recentIds.includes(config.id)) score -= 34 - Math.min(18, this.recentIds.indexOf(config.id) * 6);
+                    if (this.activeId === config.id) score += 10;
+                    if (options.force && config.id === MUSIC_DEFAULT_TRACK) score += 4;
+
+                    if (score > bestScore) {
+                        bestScore = score;
+                        bestId = config.id;
+                    }
+                }
+                return bestId || MUSIC_DEFAULT_TRACK;
+            },
+            chooseScene(scene) {
+                let bestId = '';
+                let bestScore = -Infinity;
+                for (let i = 0; i < MUSIC_TRACKS.length; i++) {
+                    let config = MUSIC_TRACKS[i];
+                    let entry = this.tracks[config.id];
+                    if (!entry || entry.failed || entry.blocked || config.scene !== scene) continue;
+                    let score = (config.priority || 0) - (this.recentIds.includes(config.id) ? 20 : 0);
+                    if (score > bestScore) {
+                        bestScore = score;
+                        bestId = config.id;
+                    }
+                }
+                return bestId || MUSIC_DEFAULT_TRACK;
+            },
+            scoreTrack(config, signals) {
+                let age = signals.maxAge || 0;
+                let tension = signals.tension || 0;
+                let ageMin = config.ageMin === undefined ? 0 : config.ageMin;
+                let ageMax = config.ageMax === undefined ? AGES.length - 1 : config.ageMax;
+                let tensionMin = config.tensionMin === undefined ? 0 : config.tensionMin;
+                let tensionMax = config.tensionMax === undefined ? 1 : config.tensionMax;
+                if (age < ageMin - 0.01 || age > ageMax + 0.01) return -Infinity;
+
+                let ageCenter = (ageMin + ageMax) / 2;
+                let tensionCenter = (tensionMin + tensionMax) / 2;
+                let score = config.priority || 0;
+                score -= Math.abs(age - ageCenter) * 8;
+                score -= Math.max(0, tensionMin - tension, tension - tensionMax) * 95;
+                score -= Math.abs(tension - tensionCenter) * 18;
+                if (signals.specialActive && (config.roles || []).some(role => role === 'specials' || role === 'base-pressure')) score += 10;
+                if (signals.baseDanger > 0.58 && (config.scene === 'siege' || config.urgent)) score += 18;
+                if (signals.troopPressure > 0.58 && (config.scene === 'battle' || config.scene === 'pressure')) score += 9;
+                if (config.classicBattle) {
+                    if (signals.activeFight) {
+                        let classicFightBonus = age >= 3 ? 4 : 30;
+                        score += classicFightBonus + this.clamp((signals.clash || 0) * 10 + (signals.baseDanger || 0) * 8, 0, 14);
+                    } else {
+                        score -= 24;
+                    }
+                }
+                if (signals.activeFight && (config.id === 'graphiteSkirmish' || config.id === 'inklineAdvance')) score -= 16;
+                return score;
+            },
+            readSignals() {
+                if (!gameState || !gameState.player || !gameState.enemy) return this.signals || {};
+                let player = gameState.player;
+                let enemy = gameState.enemy;
+                let playerHpRatio = player.maxHp ? Math.max(0, player.hp / player.maxHp) : 1;
+                let enemyHpRatio = enemy.maxHp ? Math.max(0, enemy.hp / enemy.maxHp) : 1;
+                let activeUnits = 0;
+                let playerUnits = 0;
+                let enemyUnits = 0;
+                let playerFront = BASE_WIDTH;
+                let enemyFront = CANVAS_WIDTH - BASE_WIDTH;
+                let playerBaseThreat = 0;
+                let enemyBaseThreat = 0;
+
+                if (gameState.units && gameState.units.pool) {
+                    for (let i = 0; i < gameState.units.pool.length; i++) {
+                        let unit = gameState.units.pool[i];
+                        if (!unit.active) continue;
+                        activeUnits++;
+                        if (unit.team === 1) {
+                            playerUnits++;
+                            playerFront = Math.max(playerFront, unit.x || BASE_WIDTH);
+                            enemyBaseThreat += this.clamp(((CANVAS_WIDTH - BASE_WIDTH) - (unit.x || 0)) / 280, 0, 1) < 1 ? 1 - this.clamp(((CANVAS_WIDTH - BASE_WIDTH) - (unit.x || 0)) / 280, 0, 1) : 0;
+                        } else {
+                            enemyUnits++;
+                            enemyFront = Math.min(enemyFront, unit.x || (CANVAS_WIDTH - BASE_WIDTH));
+                            playerBaseThreat += this.clamp(((unit.x || CANVAS_WIDTH) - BASE_WIDTH) / 280, 0, 1) < 1 ? 1 - this.clamp(((unit.x || CANVAS_WIDTH) - BASE_WIDTH) / 280, 0, 1) : 0;
+                        }
+                    }
+                }
+
+                let frontGap = Math.max(0, enemyFront - playerFront);
+                let clash = this.clamp(1 - frontGap / 560, 0, 1);
+                let baseDanger = this.clamp(Math.max(playerBaseThreat, enemyBaseThreat) / 3, 0, 1);
+                let lowBaseHp = 1 - Math.min(playerHpRatio, enemyHpRatio);
+                let troopPressure = this.clamp(activeUnits / 16 + Math.abs(playerUnits - enemyUnits) / 18, 0, 1);
+                let tension = this.clamp(
+                    activeUnits * 0.035 +
+                    clash * 0.24 +
+                    baseDanger * 0.36 +
+                    lowBaseHp * 0.32 +
+                    (gameState.specialActive ? 0.18 : 0) +
+                    (gameState.screenShake || 0) * 0.18,
+                    0,
+                    1
+                );
+
+                return {
+                    elapsed: globalTime,
+                    playerAge: player.age || 0,
+                    enemyAge: enemy.age || 0,
+                    maxAge: Math.max(player.age || 0, enemy.age || 0),
+                    activeUnits,
+                    playerUnits,
+                    enemyUnits,
+                    troopPressure,
+                    playerHpRatio,
+                    enemyHpRatio,
+                    baseDanger,
+                    clash,
+                    activeFight: activeUnits >= 2 && (clash > 0.08 || baseDanger > 0.03 || troopPressure > 0.12),
+                    tension,
+                    specialActive: !!gameState.specialActive,
+                    library: MUSIC_LIBRARY_VERSION
+                };
+            },
+            rememberTrack(id) {
+                if (!id) return;
+                this.recentIds = [id].concat(this.recentIds.filter(existing => existing !== id)).slice(0, 5);
+            },
+            refreshActiveVolume() {
+                let entry = this.activeId ? this.tracks[this.activeId] : null;
+                if (entry && !this.muted && !this.suspended && !entry.audio.paused) {
+                    this.fadeTo(entry, this.targetVolume(entry), 500);
+                }
+            },
+            fadeOut(entry, fadeMs, pauseWhenDone) {
+                if (!entry) return;
+                this.fadeTo(entry, 0, fadeMs, () => {
+                    if (pauseWhenDone) {
+                        entry.audio.pause();
+                        this.scheduleRelease(entry);
+                    }
+                });
+            },
+            fadeOutAll(fadeMs, pauseWhenDone, exceptId = '') {
+                for (let id in this.tracks) {
+                    if (id === exceptId) continue;
+                    let entry = this.tracks[id];
+                    if (!entry) continue;
+                    if (entry.config.id !== this.activeId || this.muted || this.suspended) this.cancelEntryStart(entry);
+                    if (!entry.audio.paused || this.currentOutputVolume(entry) > MUSIC_SILENCE_EPSILON) {
+                        this.fadeOut(entry, fadeMs, pauseWhenDone);
+                    }
+                }
+            },
+            fadeTo(entry, targetVolume, fadeMs, onDone) {
+                if (!entry) return;
+                let startVolume = this.currentOutputVolume(entry);
+                let target = Math.max(0, Math.min(1, targetVolume));
+                let duration = Math.max(0, fadeMs || 0);
+                this.cancelFade(entry);
+                let token = ++entry.fadeToken;
+
+                entry.fadeStartVolume = startVolume;
+                entry.fadeTargetVolume = target;
+                entry.fadeStartedAt = performance.now();
+                entry.fadeDurationMs = duration;
+
+                if (!duration || Math.abs(startVolume - target) <= MUSIC_SILENCE_EPSILON) {
+                    this.setOutputVolume(entry, target);
+                    if (onDone) onDone();
+                    return;
+                }
+
+                if (this.prepareOutput(entry)) {
+                    let ctx = this.audioContext;
+                    let gain = entry.gainNode.gain;
+                    let now = ctx.currentTime;
+                    try {
+                        gain.cancelScheduledValues(now);
+                        gain.setValueAtTime(startVolume, now);
+                        gain.setValueCurveAtTime(this.buildEqualPowerCurve(startVolume, target), now, Math.max(0.016, duration / 1000));
+                        entry.audio.volume = 1;
+                        entry.fadeTimer = setTimeout(() => {
+                            if (entry.fadeToken !== token) return;
+                            this.setOutputVolume(entry, target);
+                            if (onDone) onDone();
+                        }, duration + 60);
+                        return;
+                    } catch (e) { }
+                }
+
+                this.writeOutputVolume(entry, startVolume, true);
+                let step = (now) => {
+                    if (entry.fadeToken !== token) return;
+                    let progress = Math.min(1, (now - entry.fadeStartedAt) / duration);
+                    this.writeOutputVolume(entry, this.curveVolume(startVolume, target, progress), false);
+                    if (progress < 1) {
+                        entry.fadeFrame = requestAnimationFrame(step);
+                    } else {
+                        this.setOutputVolume(entry, target);
+                        if (onDone) onDone();
+                    }
+                };
+                entry.fadeFrame = requestAnimationFrame(step);
+            },
+            cancelEntryStart(entry) {
+                if (!entry) return;
+                entry.playToken++;
+            },
+            cancelFade(entry) {
+                if (!entry) return;
+                entry.fadeToken++;
+                if (entry.fadeTimer) clearTimeout(entry.fadeTimer);
+                if (entry.fadeFrame) cancelAnimationFrame(entry.fadeFrame);
+                entry.fadeTimer = 0;
+                entry.fadeFrame = 0;
+                entry.fadeDurationMs = 0;
+            },
+            scheduleRelease(entry) {
+                if (!entry) return;
+                this.cancelRelease(entry);
+                if (!this.muted && !this.suspended && (this.activeId === entry.config.id || this.pendingId === entry.config.id)) return;
+                entry.releaseTimer = setTimeout(() => this.releaseEntry(entry), this.idleReleaseMs);
+            },
+            cancelRelease(entry) {
+                if (!entry || !entry.releaseTimer) return;
+                clearTimeout(entry.releaseTimer);
+                entry.releaseTimer = 0;
+            },
+            releaseEntry(entry) {
+                if (!entry) return;
+                entry.releaseTimer = 0;
+                if (!this.muted && !this.suspended && (this.activeId === entry.config.id || this.pendingId === entry.config.id)) return;
+                if (!entry.audio.paused) return;
+                this.cancelFade(entry);
+                this.setOutputVolume(entry, 0);
+                entry.audio.removeAttribute('src');
+                entry.audio.load();
+            },
+            shouldUseElementMixer() {
+                // Android WebView can mute file-backed media after createMediaElementSource.
+                let userAgent = navigator.userAgent || '';
+                return !!window.LocalGemmaAndroid || /; wv\)/i.test(userAgent);
+            },
+            getAudioContext() {
+                if (this.audioContext || this.mixerUnavailable) return this.audioContext;
+                let AudioContextCtor = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContextCtor) {
+                    this.mixerUnavailable = true;
+                    return null;
+                }
+                try {
+                    this.audioContext = new AudioContextCtor();
+                    this.masterGainNode = this.audioContext.createGain();
+                    this.masterGainNode.gain.value = 1;
+                    this.masterGainNode.connect(this.audioContext.destination);
+                } catch (e) {
+                    this.mixerUnavailable = true;
+                    this.audioContext = null;
+                    this.masterGainNode = null;
+                }
+                return this.audioContext;
+            },
+            resumeMixer() {
+                let ctx = this.getAudioContext();
+                if (!ctx || ctx.state !== 'suspended') return;
+                try {
+                    let resumed = ctx.resume();
+                    if (resumed && typeof resumed.catch === 'function') resumed.catch(() => { });
+                } catch (e) { }
+            },
+            prepareOutput(entry) {
+                if (!entry) return false;
+                if (entry.gainNode) {
+                    entry.audio.volume = 1;
+                    return true;
+                }
+                if (entry.webAudioFailed) return false;
+                let ctx = this.getAudioContext();
+                if (!ctx || !this.masterGainNode) return false;
+                try {
+                    entry.mediaNode = ctx.createMediaElementSource(entry.audio);
+                    entry.gainNode = ctx.createGain();
+                    entry.gainNode.gain.value = entry.currentVolume || 0;
+                    entry.mediaNode.connect(entry.gainNode);
+                    entry.gainNode.connect(this.masterGainNode);
+                    entry.audio.volume = 1;
+                    return true;
+                } catch (e) {
+                    entry.webAudioFailed = true;
+                    entry.mediaNode = null;
+                    entry.gainNode = null;
+                    entry.audio.volume = entry.currentVolume || 0;
+                    return false;
+                }
+            },
+            setOutputVolume(entry, volume) {
+                if (!entry) return;
+                this.cancelFade(entry);
+                entry.fadeStartVolume = volume;
+                entry.fadeTargetVolume = volume;
+                this.writeOutputVolume(entry, volume, true);
+            },
+            writeOutputVolume(entry, volume, cancelSchedule) {
+                if (!entry) return;
+                let target = this.clamp(volume, 0, 1);
+                entry.currentVolume = target;
+                if (entry.gainNode && this.audioContext) {
+                    try {
+                        let gain = entry.gainNode.gain;
+                        let now = this.audioContext.currentTime;
+                        if (cancelSchedule) gain.cancelScheduledValues(now);
+                        gain.setValueAtTime(target, now);
+                        entry.audio.volume = 1;
+                        return;
+                    } catch (e) { }
+                }
+                entry.audio.volume = target;
+            },
+            currentOutputVolume(entry) {
+                if (!entry) return 0;
+                if (entry.fadeDurationMs > 0) {
+                    let progress = this.clamp((performance.now() - entry.fadeStartedAt) / entry.fadeDurationMs, 0, 1);
+                    return this.curveVolume(entry.fadeStartVolume, entry.fadeTargetVolume, progress);
+                }
+                if (typeof entry.currentVolume === 'number') return entry.currentVolume;
+                return entry.audio.volume || 0;
+            },
+            curveVolume(start, target, progress) {
+                let t = this.clamp(progress, 0, 1);
+                if (target >= start) {
+                    return start + (target - start) * Math.sin(t * Math.PI / 2);
+                }
+                return target + (start - target) * Math.cos(t * Math.PI / 2);
+            },
+            buildEqualPowerCurve(start, target) {
+                let curve = new Float32Array(MUSIC_CROSSFADE_CURVE_STEPS);
+                for (let i = 0; i < curve.length; i++) {
+                    curve[i] = this.curveVolume(start, target, i / (curve.length - 1));
+                }
+                return curve;
+            },
+            targetVolume(entry) {
+                let level = this.masterVolume * (entry.config.volume || 1);
+                if (this.ducked) level *= 0.45;
+                return Math.max(0, Math.min(1, level));
+            },
+            clamp(value, min, max) {
+                return Math.max(min, Math.min(max, value));
+            },
+            updateButton() {
+                let btn = document.getElementById('btn-music');
+                if (!btn) return;
+                let title = this.activeId && this.tracks[this.activeId] ? this.tracks[this.activeId].config.title : 'Music';
+                btn.classList.toggle('music-muted', this.muted);
+                btn.innerHTML = this.muted ? '&#128263;' : '&#128266;';
+                btn.title = this.muted ? 'Music off' : `Music on: ${title}`;
+                btn.setAttribute('aria-label', this.muted ? 'Turn music on' : 'Turn music off');
+            }
+        };
+
         // Pre-allocate large physics arrays to avoid GC
         let physicsAllies = new Array(500); let physicsAlliesCount = 0;
         let physicsEnemies = new Array(500); let physicsEnemiesCount = 0;
@@ -4256,6 +5494,7 @@
             GemmaMemory.init();
             DirectorPanel.init();
             NativeGemma.init();
+            MusicDirector.init();
 
             // Async generation of heavy procedural assets
             WatercolorEngine.generateAll().then(() => {
@@ -4265,6 +5504,11 @@
         };
 
         document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                MusicDirector.suspendForPage();
+            } else {
+                MusicDirector.resumeForPage();
+            }
             if (document.hidden && gameState && gameState.running && !gameState.paused) {
                 togglePause(true);
             }
@@ -4313,6 +5557,7 @@
             lastTime = performance.now();
             switchTab('units');
             AIDirector.start(diffKey);
+            MusicDirector.start('game_start');
             requestAnimationFrame(gameLoop);
         }
 
@@ -4387,6 +5632,8 @@
 
         // --- UPDATE LOGIC ---
         function update(dt) {
+            MusicDirector.update(dt);
+
             if (gameState.worldProgress < 1.0) {
                 gameState.worldProgress += dt * 0.75;
                 if (gameState.worldProgress > 1.0) gameState.worldProgress = 1.0;
@@ -4649,8 +5896,8 @@
             for (let i = 0; i < gameState.floatingTexts.pool.length; i++) {
                 let ft = gameState.floatingTexts.pool[i];
                 if (!ft.active) continue;
-                ft.life -= dt * 1.2;
-                ft.y -= dt * 40;
+                ft.life -= dt * (ft.decay || 1.2);
+                ft.y -= dt * (ft.rise === undefined ? 40 : ft.rise);
                 if (ft.life <= 0) ft.active = false;
             }
         }
@@ -4853,6 +6100,7 @@
                 let newMax = AGES[p.age].baseHp * getStatMult(p, 'hp');
                 p.hp += (newMax - p.maxHp); p.maxHp = newMax;
                 p.turrets = [null, null, null, null];
+                MusicDirector.setSignals({ playerAge: p.age });
 
                 applyTheme(p.age);
                 gameState.ageTransition = 1.0;
@@ -4920,8 +6168,21 @@
             }
         }
 
-        function spawnCanvasText(text, x, y, color) {
-            gameState.floatingTexts.spawn({ text, x, y, color, life: 1.0 });
+        function spawnCanvasText(text, x, y, color, options = {}) {
+            let life = options.life === undefined ? 1.0 : options.life;
+            gameState.floatingTexts.spawn({
+                text,
+                x,
+                y,
+                color,
+                life,
+                maxLife: life,
+                size: options.size || 30,
+                grow: options.grow === undefined ? 15 : options.grow,
+                rise: options.rise,
+                decay: options.decay,
+                stroke: !!options.stroke
+            });
         }
 
         function updateUI() {
@@ -5000,6 +6261,7 @@
                 TooltipManager.hide();
 
                 let won = gameState.enemy.hp <= 0;
+                MusicDirector.setOutcome(won);
                 document.getElementById('end-title').innerText = won ? "Victory!" : "Defeat...";
                 document.getElementById('end-desc').innerText = won ? "You have conquered history and filled the sketchbook." : "Your civilization was erased from the pages of history.";
 
@@ -5083,10 +6345,17 @@
                     let ft = gameState.floatingTexts.pool[i];
                     if (!ft.active) continue;
 
-                    ctx.globalAlpha = ft.life;
+                    let alpha = Math.max(0, Math.min(1, ft.life / (ft.maxLife || 1)));
+                    let progress = 1 - alpha;
+                    ctx.globalAlpha = alpha;
                     ctx.fillStyle = ft.color;
-                    ctx.font = `bold ${30 + (1 - ft.life) * 15}px 'Caveat', cursive`;
+                    ctx.font = `bold ${(ft.size || 30) + progress * (ft.grow === undefined ? 15 : ft.grow)}px 'Caveat', cursive`;
                     ctx.textAlign = 'center';
+                    if (ft.stroke) {
+                        ctx.lineWidth = 5;
+                        ctx.strokeStyle = 'rgba(255, 250, 235, 0.82)';
+                        ctx.strokeText(ft.text, ft.x, ft.y);
+                    }
                     ctx.fillText(ft.text, ft.x, ft.y);
                 }
                 ctx.globalAlpha = 1.0;
