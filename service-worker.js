@@ -2,11 +2,11 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-const CACHE_NAME = 'age-of-war-sketch-v7';
+const CACHE_NAME = 'ink-battle-v1';
 const APP_SHELL = [
   './',
   './index.html',
-  './Age_of_War_notebook_8.html',
+  './ink-battle.html',
   './privacy-policy.html',
   './manifest.webmanifest',
   './assets/icon.svg'

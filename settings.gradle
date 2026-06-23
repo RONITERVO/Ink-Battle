@@ -18,5 +18,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = 'AgeOfWarSketch'
+rootProject.name = 'InkBattle'
 include ':app'

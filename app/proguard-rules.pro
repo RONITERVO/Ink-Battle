@@ -2,10 +2,10 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
--keepclassmembers class com.sketchwar.ageofwar.MainActivity {
+-keepclassmembers class com.ronitervo.inkbattle.MainActivity {
     public *;
 }
 
--keepclassmembers class com.sketchwar.ageofwar.LocalGemmaBridge {
+-keepclassmembers class com.ronitervo.inkbattle.LocalGemmaBridge {
     @android.webkit.JavascriptInterface <methods>;
 }

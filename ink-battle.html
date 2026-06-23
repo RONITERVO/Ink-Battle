@@ -12,7 +12,7 @@ SPDX-License-Identifier: Apache-2.0
     <meta name="theme-color" content="#ebe3d5">
     <!-- 101% correct: this metadata lives in the document head and is not rendered as body text. -->
     <meta name="author" content="RONITERVO">
-    <title>Age of War: Sketchbook Edition 1.0</title>
+    <title>Ink Battle 1.0</title>
     <link rel="manifest" href="manifest.webmanifest">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;700&family=Patrick+Hand&display=swap');
@@ -1397,7 +1397,7 @@ SPDX-License-Identifier: Apache-2.0
 
             <div id="start-screen" class="overlay-screen">
                 <div class="overlay-content torn-paper sketchy-border">
-                    <h1 class="title-float">Age of War</h1>
+                    <h1 class="title-float">Ink Battle</h1>
                     <p class="font-hand">Choose a difficulty and outdraw the opposing civilization.</p>
 
                     <div class="difficulty-grid">
@@ -1435,7 +1435,7 @@ SPDX-License-Identifier: Apache-2.0
 
     <script>
         /**
-         * AGE OF WAR - SKETCHBOOK EDITION v1.0.8 (Gemma 4 vision backend)
+         * INK BATTLE v1.0.8 (Gemma 4 vision backend)
          * Fully Audited & Expanded: 
          * - Fixed Timestep Game Loop (1/60s step deterministic collision & physics)
          * - Codex Director AI styled as an immersive legal-pad slider
@@ -1450,7 +1450,7 @@ SPDX-License-Identifier: Apache-2.0
         const ctx = canvas.getContext('2d');
         const RELEASE_VERSION = '1.0.8';
         const LOCAL_GEMMA_IMAGE_INPUT_ENABLED = true;
-        const MUSIC_STORAGE_KEY = 'ageOfWarSketch.musicMuted.v1';
+        const MUSIC_STORAGE_KEY = 'inkBattle.musicMuted.v1';
         const MUSIC_LIBRARY_VERSION = 'global-v2';
         const MUSIC_DEFAULT_TRACK = 'evolvingCanvas';
         const MUSIC_SOURCE_EXTENSIONS = ['wav', 'mp3', 'ogg'];
@@ -1468,7 +1468,7 @@ SPDX-License-Identifier: Apache-2.0
                 file: 'evolving_canvas',
                 variants: ['evolving_canvas', 'evolving_canvas_v2', 'evolving_canvas_v3', 'evolving_canvas_v4', 'evolving_canvas_v5', 'evolving_canvas_v6'],
                 scene: 'battle',
-                roles: ['classic-age-of-war', 'active-fight', 'progression', 'age', 'all-purpose', 'fallback'],
+                roles: ['ink-battle', 'active-fight', 'progression', 'age', 'all-purpose', 'fallback'],
                 ageMin: 0,
                 ageMax: 5,
                 tensionMin: 0.18,
@@ -2879,7 +2879,7 @@ SPDX-License-Identifier: Apache-2.0
                 `engine plan ${snapshot.macroPlan || 'balanced'} / ${snapshot.engineOrder || 'adaptive'}`
             ].join(', ');
             let prompt = [
-                'Gemma, we are still playing our notebook Age of War match and chatting across the table. Your name is Gemma.',
+                'Gemma, we are still playing our notebook Ink Battle match and chatting across the table. Your name is Gemma.',
                 'You are the blue general on the right. I am the red player on the left. I attached the little labeled map again so you can see the bases, front lines, danger zone, unit markers, HP, gold, and pressure.',
                 'I am not asking you to click units or spend gold here; the local game keeps doing that while you think. I only want your in-character reply and the feeling behind it so the match keeps sounding human.',
                 `Right now you are in ${enemyAgeData.name}; I am in ${playerAgeData.name}.`,

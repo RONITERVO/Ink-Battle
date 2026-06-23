@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package com.sketchwar.ageofwar;
+package com.ronitervo.inkbattle;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
@@ -53,7 +53,7 @@ public class MainActivity extends Activity {
 
         setContentView(webView);
         webView.post(this::hideSystemUi);
-        webView.loadUrl("file:///android_asset/Age_of_War_notebook_8.html");
+        webView.loadUrl("file:///android_asset/ink-battle.html");
     }
 
     private void hideSystemUi() {

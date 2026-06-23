@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package com.sketchwar.ageofwar
+package com.ronitervo.inkbattle
 
 import android.app.Activity
 import android.app.ActivityManager
@@ -41,7 +41,7 @@ class LocalGemmaBridge(
     private val webView: WebView
 ) : AutoCloseable {
     private companion object {
-        const val LOG_TAG = "AgeOfWarGemma"
+        const val LOG_TAG = "InkBattleGemma"
         const val LOG_CHUNK_SIZE = 3_000
         const val MAX_PROMPT_CHARS = 6_000
         const val MODEL_RESPONSE_TIMEOUT_SECONDS = 90L
@@ -57,7 +57,7 @@ class LocalGemmaBridge(
         const val DOWNLOAD_LOG_STEP_BYTES = 25L * 1024L * 1024L
         const val BYTES_PER_GB = 1_000_000_000.0
         const val GEMMA_SYSTEM_PROMPT =
-            "Your name is Gemma. Your only purpose is to reply as the blue opponent in this Age of War match: exactly two lines, first a short in-character message to the player, second one allowed emotion word."
+            "Your name is Gemma. Your only purpose is to reply as the blue opponent in this Ink Battle match: exactly two lines, first a short in-character message to the player, second one allowed emotion word."
 
         private val ENGINE_LOCK = Any()
         private val downloadExecutor = Executors.newSingleThreadExecutor()
@@ -590,7 +590,7 @@ class LocalGemmaBridge(
                 readTimeout = DOWNLOAD_READ_TIMEOUT_MS
                 setRequestProperty("Accept", "application/octet-stream,*/*")
                 setRequestProperty("Accept-Encoding", "identity")
-                setRequestProperty("User-Agent", "AgeOfWarSketch/1.0.8 Android")
+                setRequestProperty("User-Agent", "InkBattle/1.0.8 Android")
                 if (resumeAt > 0L) {
                     setRequestProperty("Range", "bytes=$resumeAt-")
                 }

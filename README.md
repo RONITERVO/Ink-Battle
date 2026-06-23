@@ -6,13 +6,13 @@ SPDX-License-Identifier: Apache-2.0
 
 <div align="center">
 
-# Age of War: Sketchbook Edition
+# Ink Battle
 
 **A real-time strategy lane war where civilizations evolve from stone clubs to cosmic weapons—all sketched alive on a single, coffee-stained HTML canvas.**
 
-[![Play on GitHub Pages](https://img.shields.io/badge/Play%20Now-GitHub%20Pages-24292F?style=for-the-badge&logo=github&logoColor=white)](https://ronitervo.github.io/Scetch-War/)
+[![Play on GitHub Pages](https://img.shields.io/badge/Play%20Now-GitHub%20Pages-24292F?style=for-the-badge&logo=github&logoColor=white)](https://ronitervo.github.io/Ink-Battle/)
 &nbsp;
-[![Privacy Policy](https://img.shields.io/badge/Privacy%20Policy-GitHub%20Pages-6B7280?style=for-the-badge)](https://ronitervo.github.io/Scetch-War/privacy-policy.html)
+[![Privacy Policy](https://img.shields.io/badge/Privacy%20Policy-GitHub%20Pages-6B7280?style=for-the-badge)](https://ronitervo.github.io/Ink-Battle/privacy-policy.html)
 &nbsp;
 [![Android Wrapper](https://img.shields.io/badge/Android-WebView%20Build-3DDC84?style=for-the-badge&logo=android&logoColor=white)](app/)
 &nbsp;
@@ -47,7 +47,7 @@ SPDX-License-Identifier: Apache-2.0
 ## 🚀 Quick Start
 
 **Play Instantly:**
-Since the entire game (rendering, physics, AI) is zero-dependency, you can just open `Age_of_War_notebook_8.html` in any browser.
+Since the entire game (rendering, physics, AI) is zero-dependency, you can just open `ink-battle.html` in any browser.
 
 **Deploy (GitHub Pages):**
 The repo is pre-configured. `index.html` points to the engine, and the included `manifest.webmanifest` + `service-worker.js` makes it an installable, fully offline PWA.
@@ -63,7 +63,7 @@ To unlock the local LLM vision integration, build the Android WebView shell (req
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please ensure any gameplay, balance, or rendering changes are made directly to `Age_of_War_notebook_8.html` so the Android and Web versions remain perfectly in sync. 
+Contributions are welcome! Please ensure any gameplay, balance, or rendering changes are made directly to `ink-battle.html` so the Android and Web versions remain perfectly in sync. 
 
 1. Fork it & Branch it.
 2. Test your changes locally.
