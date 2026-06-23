@@ -1,10 +1,10 @@
 {
   "copyright": "Copyright 2025 Roni Tervo",
   "license": "SPDX-License-Identifier: Apache-2.0",
-  "name": "Age of War: Sketchbook Edition",
-  "short_name": "AOW Sketch",
+  "name": "Ink Battle",
+  "short_name": "Ink Battle",
   "description": "A sketchbook-style lane battle game with a local chatty AI director.",
-  "start_url": "./Age_of_War_notebook_8.html",
+  "start_url": "./ink-battle.html",
   "scope": "./",
   "display": "fullscreen",
   "orientation": "landscape",

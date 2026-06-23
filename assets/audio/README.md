@@ -39,7 +39,7 @@ Recommended naming pattern:
 - Base: `graphite_skirmish.wav`
 - Variants: `graphite_skirmish_v2.wav`, `graphite_skirmish_v3.wav`, ...
 
-Example config in `Age_of_War_notebook_8.html`:
+Example config in `ink-battle.html`:
 
 ```js
 {
@@ -91,7 +91,7 @@ Paste this into Gemini when asking it to create Suno Custom Mode prompts for any
 missing files:
 
 ```text
-You are composing missing music tracks for "Age of War: Sketchbook Edition",
+You are composing missing music tracks for "Ink Battle",
 a hand-drawn notebook lane strategy game that evolves from Stone/Castle ages to
 Modern, Future, and Cosmic ages.
 

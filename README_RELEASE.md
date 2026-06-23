@@ -4,16 +4,16 @@ Copyright 2025 Roni Tervo
 SPDX-License-Identifier: Apache-2.0
 -->
 
-# Age of War: Sketchbook Edition 1.0.8
+# Ink Battle 1.0.8
 
 This folder contains the 1.0 web game, offline PWA metadata, and an Android
 WebView shell for Google Play packaging. The web app has one canonical source:
-the root `Age_of_War_notebook_8.html` plus `manifest.webmanifest`,
+the root `ink-battle.html` plus `manifest.webmanifest`,
 `service-worker.js`, and `assets/`.
 
 ## What Shipped
 
-- `Age_of_War_notebook_8.html`: the playable game with the local Codex Director.
+- `ink-battle.html`: the playable game with the local Codex Director.
 - `index.html`: a GitHub Pages launcher that redirects to the playable game.
 - `privacy-policy.html`: the Google Play privacy policy page for GitHub Pages.
 - `manifest.webmanifest`, `service-worker.js`, `assets/icon.svg`: offline web/PWA shell.
@@ -68,7 +68,7 @@ used by GitHub Pages.
 - Local Gemma 4 model downloads require user consent and internet only for the model download. Inference runs on-device afterward.
 - Local Gemma 4 turns use bounded mobile memory: the bridge keeps the same local chat for two visible turns, then starts a fresh native chat with raw previous-chat text plus the previous chat's tail user image. No summary is generated or inserted.
 - The normal Gemma turn returns only a visible opponent message and one emotion word; all tactics remain inside the deterministic offline engine.
-- Chunked `AgeOfWarGemma` logcat diagnostics are included for prompt/response diagnosis.
+- Chunked `InkBattleGemma` logcat diagnostics are included for prompt/response diagnosis.
 - Deterministic memory hygiene keeps recent player context and game facts without feeding emotion history back into Gemma.
 - The offline engine now uses macro plans, matchup scoring, timing banks, turret pressure, and emotion-biased risk tolerance while still respecting non-pressure player pacts.
 - Gemma director turns include a labeled tactical context image instead of a raw gameplay screenshot. The native bridge configures LiteRT-LM `visionBackend`, sends the image via the documented `ImageFile` path, and keeps those image files alive until the native chat is reset or closed.
@@ -83,7 +83,7 @@ used by GitHub Pages.
 - Fill the full `assets/audio/README.md` catalog before global release or document intentional omissions; verify missing optional files do not silence the active track.
 - Confirm director pacts persist after reload.
 - On a real phone, tap `Get Gemma`, download the model, go offline, and confirm Gemma director turns still appear.
-- Capture Gemma diagnostics during a real match with `adb logcat -v time -s AgeOfWarGemma:I`.
+- Capture Gemma diagnostics during a real match with `adb logcat -v time -s InkBattleGemma:I`.
 - Confirm Android back button pauses the game.
 - Build a signed release app bundle in Android Studio.
 - Complete Play Console store listing, content rating, data safety, and closed testing before production rollout.

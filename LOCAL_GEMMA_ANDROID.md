@@ -30,7 +30,7 @@ Configured downloads:
 
 ## Native Files
 
-- `app/src/main/java/com/sketchwar/ageofwar/LocalGemmaBridge.kt`
+- `app/src/main/java/com/ronitervo/inkbattle/LocalGemmaBridge.kt`
   - Model recommendation and install flow.
   - App-owned `.part` file downloader with redirect handling, resume support, and byte-level progress.
   - Process-scoped LiteRT-LM engine reuse across Activity/WebView recreation.
@@ -41,7 +41,7 @@ Configured downloads:
   - GPU first, CPU fallback.
   - `ConversationConfig` uses one system instruction: Gemma is the blue opponent and must reply with one visible line plus one emotion word.
   - One prompt cap, one optional `ImageFile`, one streamed `message` phase, and raw text returned to JavaScript.
-- `Age_of_War_notebook_8.html`
+- `ink-battle.html`
   - Builds the randomized emotion prompt.
   - Parses the two-line model answer, including suffix/last-word emotion recovery, without JSON repair.
   - Runs the offline tactical engine with composition, threat, age, economy, turret, macro-plan, timing-bank, and emotion scoring.
@@ -63,7 +63,7 @@ Configured downloads:
 Capture a gameplay log from a connected Android device with:
 
 ```powershell
-adb logcat -v time -s AgeOfWarGemma:I
+adb logcat -v time -s InkBattleGemma:I
 ```
 
 Each local model turn logs:
