@@ -66,6 +66,7 @@ tasks.register('syncWebAssets', Copy) {
     from(rootProject.file('privacy-policy.html'))
     from(rootProject.file('manifest.webmanifest'))
     from(rootProject.file('service-worker.js'))
+    from(rootProject.file('favicon.ico'))
     from(rootProject.file('assets')) {
         into 'assets'
     }
