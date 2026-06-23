@@ -9,7 +9,9 @@ const APP_SHELL = [
   './ink-battle.html',
   './privacy-policy.html',
   './manifest.webmanifest',
-  './assets/icon.svg'
+  './favicon.ico',
+  './assets/icon-192.png',
+  './assets/icon-512.png'
 ];
 const LARGE_MEDIA_PATH = '/assets/audio/';
 
