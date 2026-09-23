@@ -91,7 +91,7 @@ public class MainActivity extends Activity {
             return;
         }
         webView.evaluateJavascript(
-            "(function(){ if (typeof gameState !== 'undefined' && gameState.running && !gameState.paused) { togglePause(true); return true; } return false; })();",
+            "(function(){ var s = window.InkBattle && InkBattle.observe(); if (s && s.running && !s.paused) { togglePause(true); return true; } return false; })();",
             value -> {
                 if (!"true".equals(value)) finish();
             }
@@ -119,7 +119,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onPause() {
         if (webView != null) {
-            webView.evaluateJavascript("if (typeof gameState !== 'undefined' && gameState.running) togglePause(true);", null);
+            webView.evaluateJavascript("if (window.InkBattle && InkBattle.observe() && InkBattle.observe().running) togglePause(true);", null);
             webView.onPause();
             webView.pauseTimers();
         }

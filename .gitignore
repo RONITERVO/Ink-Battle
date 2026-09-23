@@ -44,6 +44,9 @@ Desktop.ini
 
 # Optional JS tooling caches
 node_modules/
+artifacts/
+test-results/
+playwright-report/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
