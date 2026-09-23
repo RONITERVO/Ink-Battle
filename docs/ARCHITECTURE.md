@@ -80,6 +80,22 @@ resolve combat. The original renderer, watercolor algorithm, music catalog, stor
 keys, controls and native bridge callbacks are retained. Fonts ship locally under
 their original OFL licenses. Cosmetic effects are capped and are excluded from replay.
 
+The canvas and HTML controls share a 1280×720 notebook in `#aspect-wrapper`.
+`viewport.js` fits this whole page into the visual viewport, subtracting safe-area
+insets, and follows browser bar/keyboard resize and viewport scroll events. It
+falls back to window dimensions when the Visual Viewport API is unavailable.
+Page CSS uses `--page-vw` and `--page-vmin` for lengths relative to that notebook;
+do not introduce browser `vw`/`vh`/`vmin` units inside the scaled page. Fixed page
+pixels, text, spacing and hit targets all scale together. Pointer coordinates for
+tooltips are converted back into page coordinates. Resizing never changes a Session.
+
+The optional Gemma settings dialog stays outside the scaled notebook so long text
+remains readable and scrollable within the visible safe area. Layout regression
+tests run on Chromium, Firefox and WebKit, including short/portrait/wide viewports,
+all ages/tabs, touch controls, simulated keyboard offsets and safe-area changes.
+These emulate browser behavior; native Instagram/TikTok chrome still needs a real
+device check. A browser overlay that does not report its occlusion cannot be measured.
+
 `npm run build` creates the committed classic-script bundle and a content-versioned
 service worker. Static hosting and Android `file:///android_asset` need no runtime
 module loader, server, account or build tool. Gradle copies the same bundle, CSS and
