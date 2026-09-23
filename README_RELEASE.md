@@ -40,7 +40,11 @@ npm run build
 
 `syncWebAssets` copies the shared bundle, CSS and assets into
 `app/build/generated/web-assets`. Never hand-edit generated Android assets.
-The Android version is `2.1.0` / code `210`. Signing remains in the existing ignored
+The Android version is `2.1.0` / code `211`. This packaging update replaces code
+`210`, which Google Play rejected with automatic protection enabled. The minimum
+supported version is Android 7.0 (API 24), as required by
+[Google Play automatic protection](https://support.google.com/googleplay/android-developer/answer/10183279?hl=en).
+Signing remains in the existing ignored
 `keystore.properties` configuration. Google Play upload remains a release-owner action.
 GitHub Pages publishes merged `main`. The browser-only WASM is excluded from Android
 assets; the Android bridge continues to use its existing native runtime.
