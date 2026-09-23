@@ -48,7 +48,8 @@ test('menus and controls fit short, portrait and wide viewports through live res
     await contained(page, '#start-screen button, #start-screen a', '#start-screen .overlay-content');
   }
   await page.evaluate(() => InkBattle.start('impossible', { manual: true, opponent: false }));
-  await expect(page.locator('#start-screen')).toHaveCSS('opacity', '0');
+  // Verify controls are released, independently of compositor fade timing.
+  await expect(page.locator('#start-screen')).toHaveCSS('pointer-events', 'none');
   const before = await page.evaluate(() => InkBattle.digest());
   for (const size of sizes) {
     await page.setViewportSize(size);
