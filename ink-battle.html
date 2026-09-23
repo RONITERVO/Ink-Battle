@@ -60,6 +60,9 @@ SPDX-License-Identifier: Apache-2.0
                     <div id="top-left-actions">
                         <button id="btn-pause" class="sketchy-border-thin font-sketch"
                             onclick="togglePause()">Pause</button>
+                        <button id="btn-speed" class="game-speed sketchy-border-thin font-sketch" data-game-speed=""
+                            onclick="cycleGameSpeed()" aria-label="Game speed: 1×. Change to 2×."
+                            title="Game speed: 1×. Change to 2×.">1×</button>
                         <button id="btn-music" class="sketchy-border-thin font-sketch" onclick="toggleMusicMute()"
                             title="Music" aria-label="Toggle music">&#128266;</button>
                         <div id="diff-badge"></div>
@@ -194,6 +197,9 @@ SPDX-License-Identifier: Apache-2.0
                         <p class="font-hand">The battlefield is frozen on this page.</p>
                         <button class="diff-btn diff-normal sketchy-border" onclick="togglePause(false)"
                             style="margin-top:20px; font-size: 3vmin; padding: 1vw 3vw;">Resume</button>
+                        <button class="game-speed pause-speed sketchy-border-thin font-sketch" data-game-speed="Speed "
+                            onclick="cycleGameSpeed()" aria-label="Game speed: 1×. Change to 2×."
+                            title="Game speed: 1×. Change to 2×.">Speed 1×</button>
                         <button class="diff-btn diff-hard sketchy-border" onclick="location.reload()"
                             style="margin-top:12px; font-size: 2.6vmin; padding: 0.8vw 2.6vw;">New Canvas</button>
                         <a class="legal-link" href="./privacy-policy.html">Privacy Policy</a>

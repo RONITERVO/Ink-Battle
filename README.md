@@ -24,6 +24,11 @@ and `truce for 30 seconds` still work. Medals, music preferences and commander m
 keep their existing storage keys. No account, network or model is needed to play.
 The PWA caches the game and fonts; music streams separately.
 
+Use the **1×** button beside **Pause** to cycle through **1×, 2× and 3×** game speed.
+The pause screen also lets you change speed before resuming. Both sides, income
+and cooldowns speed up together; music stays at its normal playback rate.
+Each new match starts at 1×.
+
 ## The engine is shared
 
 Inspired by [StateBeats](https://github.com/RONITERVO/StateBeats) and

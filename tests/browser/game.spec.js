@@ -73,6 +73,63 @@ test('brief frame stalls catch up and long interruptions pause until resumed', a
   await expect(page.locator('#pause-overlay')).toBeHidden();
 });
 
+test('players can change battle speed without changing rules or advancing paused time', async ({ page }, info) => {
+  await page.clock.install({ time: new Date('2026-01-01T00:00:00Z') });
+  await ready(page);
+  await page.clock.pauseAt(new Date('2026-01-01T01:00:00Z'));
+  await page.locator('#diff-btn-normal').click();
+  await page.locator('#btn-u1').click();
+  await page.locator('#btn-special').click();
+  const reference = new Session();
+  reference.command(1, { type: 'unit', index: 0 });
+  reference.command(1, { type: 'special' });
+  for (const speed of [1, 2, 3]) {
+    if (speed > 1) await page.locator('#btn-speed').click();
+    await expect(page.locator('#btn-speed')).toHaveText(`${speed}×`);
+    const before = await page.evaluate(() => InkBattle.observe().tick);
+    await page.clock.fastForward(1000);
+    const state = await page.evaluate(() => InkBattle.observe());
+    expect(state.tick - before).toBeGreaterThanOrEqual(60 * speed - 1);
+    expect(state.tick - before).toBeLessThanOrEqual(60 * speed + 1);
+    reference.advance(state.tick - reference.tick);
+    // Same full state: both armies, economy, cooldowns and seeded opponent.
+    expect(await page.evaluate(() => InkBattle.digest())).toBe(reference.digest());
+  }
+  await page.screenshot({ path: info.outputPath('speed-desktop.png') });
+
+  // Two wall seconds at 3× is six game seconds, not a long browser interruption.
+  await page.clock.fastForward(2000);
+  expect(await page.evaluate(() => InkBattle.observe().paused)).toBe(false);
+  await page.locator('#btn-pause').click();
+  const frozen = await page.evaluate(() => InkBattle.observe().tick);
+  const pausedSpeed = page.locator('#pause-overlay [data-game-speed]');
+  await expect(pausedSpeed).toHaveText('Speed 3×');
+  await pausedSpeed.click();
+  await expect(pausedSpeed).toHaveText('Speed 1×');
+  await expect(page.locator('#btn-speed')).toHaveText('1×');
+  await page.clock.runFor(1000);
+  expect(await page.evaluate(() => InkBattle.observe().tick)).toBe(frozen);
+  await page.locator('#pause-overlay').getByRole('button', { name: 'Resume' }).click();
+  await page.clock.runFor(1000);
+  const resumedTick = await page.evaluate(() => InkBattle.observe().tick);
+  expect(resumedTick - frozen).toBeGreaterThanOrEqual(59);
+  expect(resumedTick - frozen).toBeLessThanOrEqual(61);
+  const replay = await page.evaluate(() => InkBattle.replay());
+  expect(Session.fromReplay(replay).digest()).toBe(await page.evaluate(() => InkBattle.digest()));
+
+  await page.locator('#btn-speed').click();
+  await page.locator('#btn-speed').click();
+  const beforeInterruption = await page.evaluate(() => InkBattle.observe().tick);
+  await page.clock.fastForward(6000);
+  expect(await page.evaluate(() => InkBattle.observe().paused)).toBe(true);
+  expect(await page.evaluate(() => InkBattle.observe().tick)).toBe(beforeInterruption);
+  await page.clock.resume();
+  await page.locator('#pause-overlay').getByRole('button', { name: 'New Canvas' }).click();
+  await expect(page.locator('#preloader')).toBeHidden();
+  await page.locator('#diff-btn-normal').click();
+  await expect(page.locator('#btn-speed')).toHaveText('1×');
+});
+
 for (let age = 0; age < AGES.length; age++) {
   test(`original renderer and controls work in ${AGES[age].name}`, async ({ page }, info) => {
     const errors = []; page.on('pageerror', e => errors.push(e.message));
@@ -107,27 +164,39 @@ test('browser plays through to the result screen on the manual clock', async ({ 
   const errors = []; page.on('pageerror', e => errors.push(e.message));
   await ready(page);
   await page.evaluate(() => InkBattle.start('normal', { manual: true, seed: 23 }));
+  await page.locator('#btn-speed').click(); await page.locator('#btn-speed').click();
+  await expect(page.locator('#btn-speed')).toHaveText('3×');
+  expect(await page.evaluate(() => InkBattle.observe().tick)).toBe(0);
   // An independent script supplies player decisions while the UI runs the shared engine.
-  const winner = await page.evaluate(() => {
+  const result = await page.evaluate(() => {
     const policy = new InkBattle.Session({ seed: 23 });
     for (let i = 0; i < 2400 && InkBattle.observe().running; i++) {
       const c = policy.decide(1, 'mixed');
       if (c) { InkBattle.command(c); policy.command(1, c); }
       InkBattle.advance(30); policy.advance(30, { events: false });
     }
-    InkBattle.render(); return InkBattle.observe().winner;
+    InkBattle.render(); return { winner: InkBattle.observe().winner, digest: InkBattle.digest(), expected: policy.digest() };
   });
-  expect(winner).not.toBeNull(); await expect(page.locator('#game-over-screen')).toBeVisible();
+  expect(result.winner).not.toBeNull(); expect(result.digest).toBe(result.expected);
+  await expect(page.locator('#game-over-screen')).toBeVisible();
   expect(errors).toEqual([]);
 });
 
-test('narrow landscape keeps the known controls on the page', async ({ page }) => {
+test('narrow landscape keeps the known controls on the page', async ({ page }, info) => {
   await page.setViewportSize({ width: 844, height: 390 }); await ready(page);
   await page.locator('#diff-btn-normal').click();
-  for (const id of ['#btn-u1', '#btn-u2', '#btn-u3', '#btn-special', '#btn-pause']) {
+  for (const id of ['#btn-u1', '#btn-u2', '#btn-u3', '#btn-special', '#btn-pause', '#btn-speed']) {
     const box = await page.locator(id).boundingBox();
     expect(box.x).toBeGreaterThanOrEqual(0); expect(box.x + box.width).toBeLessThanOrEqual(845);
   }
+  await page.locator('#btn-speed').click(); await page.locator('#btn-speed').click();
+  await expect(page.locator('#btn-speed')).toHaveText('3×');
+  await page.screenshot({ path: info.outputPath('speed-narrow.png') });
+  await page.locator('#btn-pause').click();
+  await page.locator('#pause-overlay [data-game-speed]').click();
+  await page.screenshot({ path: info.outputPath('speed-paused-narrow.png') });
+  await page.locator('#pause-overlay').getByRole('button', { name: 'Resume' }).click();
+  await expect(page.locator('#btn-speed')).toHaveText('1×');
 });
 
 test('static file entry loads like the Android packaged app', async ({ page, browserName }) => {

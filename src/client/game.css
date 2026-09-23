@@ -294,7 +294,8 @@ html {
 }
 
 #btn-pause,
-#btn-music {
+#btn-music,
+.game-speed {
     background: hsl(var(--card));
     font-size: 1.8vmin;
     padding: 4px 12px;
@@ -302,6 +303,15 @@ html {
     color: hsl(var(--foreground));
     box-shadow: 2px 3px 6px rgba(0, 0, 0, 0.25);
     transition: all 0.2s;
+}
+
+#btn-speed {
+    position: absolute;
+    /* Keep the new control inside the notebook header's torn-paper clip. */
+    top: 10px;
+    left: calc(100% + 0.5vw);
+    min-width: 3em;
+    white-space: nowrap;
 }
 
 #btn-music {
@@ -317,7 +327,8 @@ html {
 }
 
 #btn-pause:hover,
-#btn-music:hover {
+#btn-music:hover,
+.game-speed:hover {
     transform: scale(1.05);
 }
 
@@ -1158,6 +1169,12 @@ html {
 
 #pause-overlay {
     z-index: 60;
+}
+
+.pause-speed {
+    margin-top: 12px;
+    font-size: 2.6vmin;
+    padding: 0.8vw 2.6vw;
 }
 
 @media (max-width: 900px),

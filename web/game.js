@@ -5037,7 +5037,22 @@
   var ended = false;
   var manual = false;
   var frameId = 0;
+  var gameSpeed = 1;
+  var GAME_SPEEDS = [1, 2, 3];
   var STALL_PAUSE_SECONDS = 5;
+  function updateSpeedControls() {
+    const next = GAME_SPEEDS[(GAME_SPEEDS.indexOf(gameSpeed) + 1) % GAME_SPEEDS.length];
+    for (const button of document.querySelectorAll("[data-game-speed]")) {
+      button.textContent = `${button.dataset.gameSpeed}${gameSpeed}\xD7`;
+      button.title = `Game speed: ${gameSpeed}\xD7. Change to ${next}\xD7.`;
+      button.setAttribute("aria-label", button.title);
+    }
+  }
+  function cycleGameSpeed() {
+    updateClock(performance.now());
+    gameSpeed = GAME_SPEEDS[(GAME_SPEEDS.indexOf(gameSpeed) + 1) % GAME_SPEEDS.length];
+    updateSpeedControls();
+  }
   function syncView() {
     const s = runtime.session.observe();
     runtime.globalTime = s.tick / 60;
@@ -5119,13 +5134,13 @@
     finish();
     return result;
   }
-  function frame(timestamp) {
+  function updateClock(timestamp) {
     if (!runtime.session) return;
     const elapsed = Math.max(0, (timestamp - runtime.lastTime) / 1e3);
-    runtime.lastTime = timestamp;
+    runtime.lastTime = Math.max(timestamp, runtime.lastTime);
     if (!manual && elapsed >= STALL_PAUSE_SECONDS && runtime.session.running && !runtime.session.paused) runtime.togglePause(true);
     if (!manual && runtime.session.running && !runtime.session.paused) {
-      accumulator += elapsed;
+      accumulator += elapsed * gameSpeed;
       const ticks = Math.floor(accumulator / FIXED_DT);
       if (ticks) {
         advance(ticks);
@@ -5134,6 +5149,10 @@
         runtime.MusicDirector.update(ticks * FIXED_DT);
       }
     }
+  }
+  function frame(timestamp) {
+    if (!runtime.session) return;
+    updateClock(timestamp);
     runtime.draw();
     frameId = requestAnimationFrame(frame);
   }
@@ -5147,6 +5166,8 @@
     manual = manualClock;
     accumulator = 0;
     ended = false;
+    gameSpeed = 1;
+    updateSpeedControls();
     syncView();
     document.getElementById("start-screen").classList.add("fade-out");
     document.getElementById("game-over-screen").classList.add("hidden");
@@ -5165,6 +5186,7 @@
   }
   for (const name of ["buyUnit", "buyTurret", "sellTurret", "buySlot", "buyUpgrade", "evolve", "useSpecial", "switchTab", "togglePause", "toggleDirectorPanel", "toggleMusicMute", "submitDirectorChat", "installLocalGemma"]) window[name] = runtime[name];
   window.initGame = initGame;
+  window.cycleGameSpeed = cycleGameSpeed;
   window.InkBattle = Object.freeze({
     Session,
     start: initGame,

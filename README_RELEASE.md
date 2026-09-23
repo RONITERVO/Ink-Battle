@@ -45,6 +45,8 @@ remain device/release-owner checks; no model download is part of automated balan
 
 ## Behavior changes
 
+- Players can cycle between 1×, 2× and 3× using the control beside Pause or on the
+  pause screen. Speed applies to the whole battle; new matches start at 1×.
 - Simultaneous combat and mirrored geometry remove side-order advantages.
 - Normal laser art is separated from screen-wide special art; projectiles have stable targets.
 - No purchases while paused/ended, no phantom base hits, no special lockout by the other side.

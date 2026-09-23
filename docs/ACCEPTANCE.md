@@ -36,13 +36,16 @@ corpus, not a predicted human win rate or proof that the modes are unbeatable.
 - `npm run check`: 18 engine/contract tests, including 294 mirrored composition
   trials, mono-type counters, 8 adversarial command sequences, replay/checkpoint/
   retry behavior, pacts, simultaneous combat and previously observed stalls.
-- Playwright: 24 passed across Chromium and Firefox. Two Chromium-specific checks
+- Playwright: 26 passed across Chromium and Firefox. Two Chromium-specific checks
   are intentionally skipped on Firefox (packaged file entry and PWA installation).
 - Browser checks include real input/clock, pause/resume, all six rendered ages,
   full match to result screen, Node/browser replay parity, mobile landscape, saved
   medals, pacts, local file loading, offline shell/fonts, and delayed-frame recovery.
   The clock regression reproduces the original premature pause with a one-second
   frame delay, then verifies catch-up, long-interruption pause and resume.
+  Speed tests verify 1×/2×/3× against the unscaled engine's complete state, changes
+  while paused, replay parity, reset on a new match, exact manual advances, and
+  usable controls on a narrow screen.
 - Android `:app:assembleDebug` succeeds using the existing wrapper, JDK 21 and
   installed SDK. Packaged asset paths include the shared bundle and CSS.
 - npm audit during installation reports zero dependency vulnerabilities.

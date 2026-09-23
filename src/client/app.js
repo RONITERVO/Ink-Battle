@@ -23,8 +23,24 @@ const runtime = { canvas, ctx: canvas.getContext('2d'), COLORS: { ...COLORS }, g
     econ: { title: 'Fast Ink', stat: '+20% gold income per level', compact: '+20% gold/lvl', color: COLORS.gold }
   } };
 for (const factory of [createStorage, createUI, createWatercolor, createGemma, createDirectorPanel, createCommander, createAudio, createRenderer, createHUD, createEffects]) Object.assign(runtime, factory(runtime));
-let accumulator = 0, ended = false, manual = false, frameId = 0;
+let accumulator = 0, ended = false, manual = false, frameId = 0, gameSpeed = 1;
+const GAME_SPEEDS = [1, 2, 3];
 const STALL_PAUSE_SECONDS = 5;
+
+function updateSpeedControls() {
+  const next = GAME_SPEEDS[(GAME_SPEEDS.indexOf(gameSpeed) + 1) % GAME_SPEEDS.length];
+  for (const button of document.querySelectorAll('[data-game-speed]')) {
+    button.textContent = `${button.dataset.gameSpeed}${gameSpeed}×`;
+    button.title = `Game speed: ${gameSpeed}×. Change to ${next}×.`;
+    button.setAttribute('aria-label', button.title);
+  }
+}
+function cycleGameSpeed() {
+  // Settle elapsed time at the old rate before applying the new one.
+  updateClock(performance.now());
+  gameSpeed = GAME_SPEEDS[(GAME_SPEEDS.indexOf(gameSpeed) + 1) % GAME_SPEEDS.length];
+  updateSpeedControls();
+}
 
 function syncView() {
   const s = runtime.session.observe();
@@ -81,17 +97,22 @@ function advance(ticks) {
   const result = runtime.session.advance(ticks);
   runtime.effectsTick(ticks * FIXED_DT, result.events); syncView(); runtime.updateUI(); finish(); return result;
 }
-function frame(timestamp) {
+function updateClock(timestamp) {
   if (!runtime.session) return;
-  const elapsed = Math.max(0, (timestamp - runtime.lastTime) / 1000); runtime.lastTime = timestamp;
+  const elapsed = Math.max(0, (timestamp - runtime.lastTime) / 1000);
+  runtime.lastTime = Math.max(timestamp, runtime.lastTime);
   // Brief rendering/GC stalls catch up in whole ticks. Reserve the explicit pause
   // for long interruptions so a busy device does not block the opening controls.
   if (!manual && elapsed >= STALL_PAUSE_SECONDS && runtime.session.running && !runtime.session.paused) runtime.togglePause(true);
   if (!manual && runtime.session.running && !runtime.session.paused) {
-    accumulator += elapsed;
+    accumulator += elapsed * gameSpeed;
     const ticks = Math.floor(accumulator / FIXED_DT);
     if (ticks) { advance(ticks); accumulator -= ticks * FIXED_DT; runtime.AIDirector.tick(ticks * FIXED_DT); runtime.MusicDirector.update(ticks * FIXED_DT); }
   }
+}
+function frame(timestamp) {
+  if (!runtime.session) return;
+  updateClock(timestamp);
   runtime.draw();
   frameId = requestAnimationFrame(frame);
 }
@@ -101,7 +122,7 @@ function initGame(diffKey = 'normal', options = {}) {
   runtime.session = new Session({ difficulty: diffKey, ...sessionOptions });
   runtime.session.agreements(runtime.DirectorMemory.data.agreements);
   runtime.currentDifficulty = diffKey; runtime.currentConfig = DIFFICULTY_SETTINGS[diffKey];
-  manual = manualClock; accumulator = 0; ended = false; syncView();
+  manual = manualClock; accumulator = 0; ended = false; gameSpeed = 1; updateSpeedControls(); syncView();
   document.getElementById('start-screen').classList.add('fade-out');
   document.getElementById('game-over-screen').classList.add('hidden'); document.getElementById('pause-overlay').classList.add('hidden'); document.getElementById('ui-layer').classList.remove('hidden');
   const badge = document.getElementById('diff-badge'); badge.innerText = runtime.currentConfig.name; badge.style.backgroundColor = runtime.currentConfig.color;
@@ -111,6 +132,7 @@ function initGame(diffKey = 'normal', options = {}) {
 
 for (const name of ['buyUnit', 'buyTurret', 'sellTurret', 'buySlot', 'buyUpgrade', 'evolve', 'useSpecial', 'switchTab', 'togglePause', 'toggleDirectorPanel', 'toggleMusicMute', 'submitDirectorChat', 'installLocalGemma']) window[name] = runtime[name];
 window.initGame = initGame;
+window.cycleGameSpeed = cycleGameSpeed;
 // A host API for tools and browser conformance; no alternate gameplay implementation.
 window.InkBattle = Object.freeze({ Session, start: initGame, command, advance, observe: () => runtime.session?.observe(),
   replay: () => runtime.session?.replay(), digest: () => runtime.session?.digest(), render: () => runtime.draw() });

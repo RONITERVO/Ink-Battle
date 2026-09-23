@@ -28,6 +28,12 @@ explicitly pauses the game, as does hiding the page. Rendering, audio and cosmet
 randomness cannot alter the combat PRNG. Each side has its own identical seeded xorshift32 stream,
 so mirrored specials stay mirrored.
 
+The browser speed control scales elapsed time by 1×, 2× or 3× before accumulating
+whole engine ticks. Changing speed settles elapsed time at the previous rate.
+Pause and the five-second interruption threshold use unscaled wall time. Speed
+is an adapter setting: manual `advance(ticks)` stays exact, replay and balance
+rules do not change, and audio playback remains at its normal rate.
+
 A tick accrues income/research, updates construction/cooldowns, runs the opponent,
 collects both armies' attack and movement intents, advances specials/projectiles,
 applies damage, settles deaths once, then checks results. Simultaneous lethal blows
