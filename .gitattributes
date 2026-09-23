@@ -21,5 +21,8 @@
 
 # Built assets and measured data are reviewed through their source modules/reports.
 web/game.js linguist-generated=true
+web/gemma-worker.js linguist-generated=true
+web/vendor/** linguist-vendored=true
+*.wasm binary
 service-worker.js linguist-generated=true
 docs/evidence/*.json linguist-generated=true

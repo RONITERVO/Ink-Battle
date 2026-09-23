@@ -1,0 +1,4618 @@
+{
+  "date": "2026-09-23T15:00:22.297Z",
+  "sourceSha256": "242b015005097e68b6bb4e4539b5f74d238701d03c6ba07dc99f41b61f456d57",
+  "model": {
+    "name": "Gemma 4 E2B",
+    "revision": "b3ca0d2f076785a8f4b2219ddbd2bdb99954eae1",
+    "bytes": 2008432640,
+    "sha256": "3a08e8d94e23b814ae5414469c370c503813949acb8ceaa17e4ebf8a35af35b5",
+    "url": "https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/b3ca0d2f076785a8f4b2219ddbd2bdb99954eae1/gemma-4-E2B-it-web.litertlm"
+  },
+  "runtime": "0.12.1",
+  "gpu": {
+    "vendor": "nvidia",
+    "architecture": "blackwell",
+    "features": [
+      "depth32float-stencil8",
+      "rg11b10ufloat-renderable",
+      "texture-formats-tier1",
+      "bgra8unorm-storage",
+      "texture-compression-bc",
+      "dual-source-blending",
+      "core-features-and-limits",
+      "float32-filterable",
+      "indirect-first-instance",
+      "float32-blendable",
+      "subgroup-size-control",
+      "depth-clip-control",
+      "texture-compression-bc-sliced-3d",
+      "texture-formats-tier2",
+      "shader-f16",
+      "timestamp-query",
+      "clip-distances",
+      "primitive-index",
+      "texture-component-swizzle",
+      "subgroups"
+    ],
+    "isolated": false
+  },
+  "hardware": {
+    "note": "See the accompanying acceptance document for the measured machine."
+  },
+  "live": [
+    {
+      "enabled": false,
+      "speed": 1,
+      "loadMs": 0,
+      "ticks": 3300,
+      "paused": false,
+      "turns": [],
+      "status": {
+        "state": "off",
+        "modelName": "Gemma 4 E2B (web)",
+        "progress": 0,
+        "totalRamGb": 0,
+        "cached": true,
+        "busy": false
+      },
+      "frames": 3299,
+      "p95GapMs": 16.799999999999272,
+      "maxGapMs": 17,
+      "spikes": []
+    },
+    {
+      "enabled": false,
+      "speed": 2,
+      "loadMs": 0,
+      "ticks": 6602,
+      "paused": false,
+      "turns": [],
+      "status": {
+        "state": "off",
+        "modelName": "Gemma 4 E2B (web)",
+        "progress": 0,
+        "totalRamGb": 0,
+        "cached": true,
+        "busy": false
+      },
+      "frames": 3302,
+      "p95GapMs": 16.799999999999272,
+      "maxGapMs": 16.900000000001455,
+      "spikes": []
+    },
+    {
+      "enabled": false,
+      "speed": 3,
+      "loadMs": 0,
+      "ticks": 9905,
+      "paused": false,
+      "turns": [],
+      "status": {
+        "state": "off",
+        "modelName": "Gemma 4 E2B (web)",
+        "progress": 0,
+        "totalRamGb": 0,
+        "cached": true,
+        "busy": false
+      },
+      "frames": 3304,
+      "p95GapMs": 16.799999999999272,
+      "maxGapMs": 17,
+      "spikes": []
+    },
+    {
+      "enabled": true,
+      "speed": 1,
+      "loadMs": 4049,
+      "ticks": 3300,
+      "paused": false,
+      "turns": [
+        {
+          "tick": 739,
+          "requestedTick": 719,
+          "emotion": "Confident",
+          "reply": "Let's see what you bring to the fight.",
+          "durationMs": 332.30000000074506
+        },
+        {
+          "tick": 2296,
+          "requestedTick": 2280,
+          "emotion": "Confident",
+          "reply": "I'll start with a strong push towards the center.",
+          "durationMs": 272.6000000014901
+        }
+      ],
+      "status": {
+        "state": "ready",
+        "modelName": "Gemma 4 E2B (web)",
+        "progress": 0,
+        "totalRamGb": 0,
+        "cached": true,
+        "busy": false,
+        "message": "",
+        "type": "status"
+      },
+      "frames": 3298,
+      "p95GapMs": 16.799999999999272,
+      "maxGapMs": 33.30000000000109,
+      "spikes": []
+    },
+    {
+      "enabled": true,
+      "speed": 2,
+      "loadMs": 4065,
+      "ticks": 6601,
+      "paused": false,
+      "turns": [
+        {
+          "tick": 1479,
+          "requestedTick": 1437,
+          "emotion": "Centered",
+          "reply": "Let's see what you have planned for this opening.",
+          "durationMs": 349.3999999985099
+        },
+        {
+          "tick": 4583,
+          "requestedTick": 4557,
+          "emotion": "Confident",
+          "reply": "I will push forward with a focused attack.",
+          "durationMs": 229.90000000223517
+        }
+      ],
+      "status": {
+        "state": "ready",
+        "modelName": "Gemma 4 E2B (web)",
+        "progress": 0,
+        "totalRamGb": 0,
+        "cached": true,
+        "busy": false,
+        "message": "",
+        "type": "status"
+      },
+      "frames": 3300,
+      "p95GapMs": 16.799999999999272,
+      "maxGapMs": 33.30000000000109,
+      "spikes": []
+    },
+    {
+      "enabled": true,
+      "speed": 3,
+      "loadMs": 4051,
+      "ticks": 9908,
+      "paused": false,
+      "turns": [
+        {
+          "tick": 2213,
+          "requestedTick": 2153,
+          "emotion": "Confident",
+          "reply": "Let's see what you bring to the fight.",
+          "durationMs": 342
+        },
+        {
+          "tick": 6881,
+          "requestedTick": 6833,
+          "emotion": "Confident",
+          "reply": "I will push forward with a focused assault.",
+          "durationMs": 281.19999999925494
+        }
+      ],
+      "status": {
+        "state": "ready",
+        "modelName": "Gemma 4 E2B (web)",
+        "progress": 0,
+        "totalRamGb": 0,
+        "cached": true,
+        "busy": false,
+        "message": "",
+        "type": "status"
+      },
+      "frames": 3303,
+      "p95GapMs": 16.799999999999272,
+      "maxGapMs": 33.29999999999927,
+      "spikes": []
+    }
+  ],
+  "offlineLoadMs": 4066,
+  "offlineTurn": {
+    "tick": 0,
+    "requestedTick": 0,
+    "emotion": "Centered",
+    "reply": "We can see everything clearly.",
+    "durationMs": 279.5999999977648
+  },
+  "matches": 48,
+  "modelTurns": 191,
+  "invalidReplies": 0,
+  "latencyMs": {
+    "p50": 231.69999999925494,
+    "p95": 299.6000000014901,
+    "max": 339.8999999985099
+  },
+  "changedWinners": 2,
+  "playerWins": {
+    "gemma": 10,
+    "baseline": 8
+  },
+  "emotions": {
+    "Confident": 152,
+    "Tense": 39
+  },
+  "simulatedHours": 2.6634537037037034,
+  "pairs": [
+    {
+      "options": {
+        "seed": 17,
+        "difficulty": "normal",
+        "startAge": 0
+      },
+      "gemma": {
+        "winner": 1,
+        "ticks": 21709,
+        "finished": true,
+        "metrics": {
+          "firstContactTick": 957,
+          "kills": {
+            "1": 60,
+            "-1": 58
+          },
+          "spent": {
+            "1": 121320,
+            "-1": 90720
+          },
+          "damage": {
+            "1": 191060,
+            "-1": 40796.66666666726
+          },
+          "spawned": {
+            "1": 61,
+            "-1": 60
+          },
+          "peakUnits": 11,
+          "evolutions": [
+            {
+              "tick": 2964,
+              "team": -1,
+              "age": 1
+            },
+            {
+              "tick": 3060,
+              "team": 1,
+              "age": 1
+            },
+            {
+              "tick": 6900,
+              "team": 1,
+              "age": 2
+            },
+            {
+              "tick": 7068,
+              "team": -1,
+              "age": 2
+            },
+            {
+              "tick": 11820,
+              "team": 1,
+              "age": 3
+            },
+            {
+              "tick": 11928,
+              "team": -1,
+              "age": 3
+            },
+            {
+              "tick": 16920,
+              "team": 1,
+              "age": 4
+            },
+            {
+              "tick": 17004,
+              "team": -1,
+              "age": 4
+            },
+            {
+              "tick": 21600,
+              "team": 1,
+              "age": 5
+            }
+          ]
+        },
+        "playerHp": 300000,
+        "enemyHp": 0,
+        "digest": "0e7f86a8"
+      },
+      "baseline": {
+        "winner": 1,
+        "ticks": 21278,
+        "finished": true,
+        "metrics": {
+          "firstContactTick": 957,
+          "kills": {
+            "1": 65,
+            "-1": 54
+          },
+          "spent": {
+            "1": 103520,
+            "-1": 72850
+          },
+          "damage": {
+            "1": 156660,
+            "-1": 42820.000000001746
+          },
+          "spawned": {
+            "1": 57,
+            "-1": 65
+          },
+          "peakUnits": 11,
+          "evolutions": [
+            {
+              "tick": 3072,
+              "team": -1,
+              "age": 1
+            },
+            {
+              "tick": 3120,
+              "team": 1,
+              "age": 1
+            },
+            {
+              "tick": 6900,
+              "team": 1,
+              "age": 2
+            },
+            {
+              "tick": 6960,
+              "team": -1,
+              "age": 2
+            },
+            {
+              "tick": 11820,
+              "team": 1,
+              "age": 3
+            },
+            {
+              "tick": 11928,
+              "team": -1,
+              "age": 3
+            },
+            {
+              "tick": 16920,
+              "team": 1,
+              "age": 4
+            },
+            {
+              "tick": 17004,
+              "team": -1,
+              "age": 4
+            }
+          ]
+        },
+        "playerHp": 80000,
+        "enemyHp": 0,
+        "digest": "4be8f3dc"
+      },
+      "turns": [
+        {
+          "requestedTick": 720,
+          "tick": 780,
+          "durationMs": 339.8999999985099,
+          "valid": true,
+          "applied": true,
+          "reply": "My heavy unit will secure the center and push forward.",
+          "emotion": "Confident",
+          "raw": "My heavy unit will secure the center and push forward.\nConfident"
+        },
+        {
+          "requestedTick": 2280,
+          "tick": 2340,
+          "durationMs": 299.6000000014901,
+          "valid": true,
+          "applied": true,
+          "reply": "I will focus on securing the flanks and building up my ranged advantage.",
+          "emotion": "Confident",
+          "raw": "I will focus on securing the flanks and building up my ranged advantage.\nConfident"
+        },
+        {
+          "requestedTick": 3840,
+          "tick": 3900,
+          "durationMs": 269.3999999985099,
+          "valid": true,
+          "applied": true,
+          "reply": "I will use my heavy unit to break through the center.",
+          "emotion": "Confident",
+          "raw": "I will use my heavy unit to break through the center.\nConfident"
+        },
+        {
+          "requestedTick": 5400,
+          "tick": 5460,
+          "durationMs": 266.69999999925494,
+          "valid": true,
+          "applied": true,
+          "reply": "I will reinforce my center and prepare for an attack.",
+          "emotion": "Confident",
+          "raw": "I will reinforce my center and prepare for an attack.\nConfident"
+        },
+        {
+          "requestedTick": 6960,
+          "tick": 7020,
+          "durationMs": 242.39999999850988,
+          "valid": true,
+          "applied": true,
+          "reply": "I will focus on securing the flanks first.",
+          "emotion": "Confident",
+          "raw": "I will focus on securing the flanks first.\nConfident"
+        },
+        {
+          "requestedTick": 8520,
+          "tick": 8580,
+          "durationMs": 238.80000000074506,
+          "valid": true,
+          "applied": true,
+          "reply": "I will push forward with the ranged support.",
+          "emotion": "Confident",
+          "raw": "I will push forward with the ranged support.\nConfident"
+        },
+        {
+          "requestedTick": 10080,
+          "tick": 10140,
+          "durationMs": 273.30000000074506,
+          "valid": true,
+          "applied": true,
+          "reply": "Flanks are important, but the center needs attention now.",
+          "emotion": "Confident",
+          "raw": "Flanks are important, but the center needs attention now.\nConfident"
+        },
+        {
+          "requestedTick": 11640,
+          "tick": 11700,
+          "durationMs": 247,
+          "valid": true,
+          "applied": true,
+          "reply": "I will secure the center with my melee unit.",
+          "emotion": "Confident",
+          "raw": "I will secure the center with my melee unit.\nConfident"
+        },
+        {
+          "requestedTick": 13200,
+          "tick": 13260,
+          "durationMs": 230.5,
+          "valid": true,
+          "applied": true,
+          "reply": "I will push forward to secure the center.",
+          "emotion": "Confident",
+          "raw": "I will push forward to secure the center.\nConfident"
+        },
+        {
+          "requestedTick": 14760,
+          "tick": 14820,
+          "durationMs": 227.29999999701977,
+          "valid": true,
+          "applied": true,
+          "reply": "I will focus on flanking the left side.",
+          "emotion": "Confident",
+          "raw": "I will focus on flanking the left side.\nConfident"
+        },
+        {
+          "requestedTick": 16320,
+          "tick": 16380,
+          "durationMs": 228.39999999850988,
+          "valid": true,
+          "applied": true,
+          "reply": "Let's see how this push develops.",
+          "emotion": "Confident",
+          "raw": "Let's see how this push develops.\nConfident"
+        },
+        {
+          "requestedTick": 17880,
+          "tick": 17940,
+          "durationMs": 270.5,
+          "valid": true,
+          "applied": true,
+          "reply": "I will secure the center and prepare for a direct assault.",
+          "emotion": "Confident",
+          "raw": "I will secure the center and prepare for a direct assault.\nConfident"
+        },
+        {
+          "requestedTick": 19440,
+          "tick": 19500,
+          "durationMs": 254.5,
+          "valid": true,
+          "applied": true,
+          "reply": "We will hold the line and look for an opening.",
+          "emotion": "Confident",
+          "raw": "We will hold the line and look for an opening.\nConfident"
+        },
+        {
+          "requestedTick": 21000,
+          "tick": 21060,
+          "durationMs": 255.69999999925494,
+          "valid": true,
+          "applied": true,
+          "reply": "Hold your position, and we will exploit any weakness.",
+          "emotion": "Confident",
+          "raw": "Hold your position, and we will exploit any weakness.\nConfident"
+        }
+      ]
+    },
+    {
+      "options": {
+        "seed": 17,
+        "difficulty": "normal",
+        "startAge": 1
+      },
+      "gemma": {
+        "winner": 1,
+        "ticks": 19392,
+        "finished": true,
+        "metrics": {
+          "firstContactTick": 485,
+          "kills": {
+            "1": 49,
+            "-1": 37
+          },
+          "spent": {
+            "1": 122550,
+            "-1": 89350
+          },
+          "damage": {
+            "1": 178477.5,
+            "-1": 53824.000000001164
+          },
+          "spawned": {
+            "1": 40,
+            "-1": 49
+          },
+          "peakUnits": 12,
+          "evolutions": [
+            {
+              "tick": 4152,
+              "team": -1,
+              "age": 2
+            },
+            {
+              "tick": 4320,
+              "team": 1,
+              "age": 2
+            },
+            {
+              "tick": 9360,
+              "team": 1,
+              "age": 3
+            },
+            {
+              "tick": 9444,
+              "team": -1,
+              "age": 3
+            },
+            {
+              "tick": 14280,
+              "team": 1,
+              "age": 4
+            },
+            {
+              "tick": 14412,
+              "team": -1,
+              "age": 4
+            },
+            {
+              "tick": 19080,
+              "team": 1,
+              "age": 5
+            }
+          ]
+        },
+        "playerHp": 299586,
+        "enemyHp": 0,
+        "digest": "74ba642e"
+      },
+      "baseline": {
+        "winner": 1,
+        "ticks": 28491,
+        "finished": true,
+        "metrics": {
+          "firstContactTick": 485,
+          "kills": {
+            "1": 71,
+            "-1": 63
+          },
+          "spent": {
+            "1": 737200,
+            "-1": 618700
+          },
+          "damage": {
+            "1": 1161667.4999999944,
+            "-1": 511567.00000004226
+          },
+          "spawned": {
+            "1": 70,
+            "-1": 71
+          },
+          "peakUnits": 12,
+          "evolutions": [
+            {
+              "tick": 4152,
+              "team": -1,
+              "age": 2
+            },
+            {
+              "tick": 4260,
+              "team": 1,
+              "age": 2
+            },
+            {
+              "tick": 9228,
+              "team": -1,
+              "age": 3
+            },
+            {
+              "tick": 9240,
+              "team": 1,
+              "age": 3
+            },
+            {
+              "tick": 14088,
+              "team": -1,
+              "age": 4
+            },
+            {
+              "tick": 14160,
+              "team": 1,
+              "age": 4
+            },
+            {
+              "tick": 19056,
+              "team": -1,
+              "age": 5
+            },
+            {
+              "tick": 19140,
+              "team": 1,
+              "age": 5
+            }
+          ]
+        },
+        "playerHp": 374263,
+        "enemyHp": 0,
+        "digest": "dde4ce06"
+      },
+      "turns": [
+        {
+          "requestedTick": 720,
+          "tick": 780,
+          "durationMs": 310.30000000074506,
+          "valid": true,
+          "applied": true,
+          "reply": "We will focus on securing the center and building a strong defensive line.",
+          "emotion": "Confident",
+          "raw": "We will focus on securing the center and building a strong defensive line.\nConfident"
+        },
+        {
+          "requestedTick": 2280,
+          "tick": 2340,
+          "durationMs": 272.9000000022352,
+          "valid": true,
+          "applied": true,
+          "reply": "That is not possible. We must follow the rules.",
+          "emotion": "Tense",
+          "raw": "That is not possible. We must follow the rules.\nTense"
+        },
+        {
+          "requestedTick": 3840,
+          "tick": 3900,
+          "durationMs": 231.59999999776483,
+          "valid": true,
+          "applied": true,
+          "reply": "We will push towards the center now.",
+          "emotion": "Tense",
+          "raw": "We will push towards the center now.\nTense"
+        },
+        {
+          "requestedTick": 5400,
+          "tick": 5460,
+          "durationMs": 244,
+          "valid": true,
+          "applied": true,
+          "reply": "We will maintain our current positions for now.",
+          "emotion": "Tense",
+          "raw": "We will maintain our current positions for now.\nTense"
+        },
+        {
+          "requestedTick": 6960,
+          "tick": 7020,
+          "durationMs": 243.60000000149012,
+          "valid": true,
+          "applied": true,
+          "reply": "We will hold the line here for now.",
+          "emotion": "Tense",
+          "raw": "We will hold the line here for now.\nTense"
+        },
+        {
+          "requestedTick": 8520,
+          "tick": 8580,
+          "durationMs": 284.9000000022352,
+          "valid": true,
+          "applied": true,
+          "reply": "Hold your ground, and we will see what happens next.",
+          "emotion": "Tense",
+          "raw": "Hold your ground, and we will see what happens next.\nTense"
+        },
+        {
+          "requestedTick": 10080,
+          "tick": 10140,
+          "durationMs": 206.19999999925494,
+          "valid": true,
+          "applied": true,
+          "reply": "We will maintain this position.",
+          "emotion": "Tense",
+          "raw": "We will maintain this position.\nTense"
+        },
+        {
+          "requestedTick": 11640,
+          "tick": 11700,
+          "durationMs": 186.59999999776483,
+          "valid": true,
+          "applied": true,
+          "reply": "We hold the line.",
+          "emotion": "Tense",
+          "raw": "We hold the line.\nTense"
+        },
+        {
+          "requestedTick": 13200,
+          "tick": 13260,
+          "durationMs": 175,
+          "valid": true,
+          "applied": true,
+          "reply": "Hold your ground.",
+          "emotion": "Tense",
+          "raw": "Hold your ground.\nTense"
+        },
+        {
+          "requestedTick": 14760,
+          "tick": 14820,
+          "durationMs": 202.90000000223517,
+          "valid": true,
+          "applied": true,
+          "reply": "We will defend this position.",
+          "emotion": "Tense",
+          "raw": "We will defend this position.\nTense"
+        },
+        {
+          "requestedTick": 16320,
+          "tick": 16380,
+          "durationMs": 221.40000000223517,
+          "valid": true,
+          "applied": true,
+          "reply": "We will hold this line firm.",
+          "emotion": "Tense",
+          "raw": "We will hold this line firm.\nTense"
+        },
+        {
+          "requestedTick": 17880,
+          "tick": 17940,
+          "durationMs": 229.89999999850988,
+          "valid": true,
+          "applied": true,
+          "reply": "We will maintain our current defensive posture.",
+          "emotion": "Tense",
+          "raw": "We will maintain our current defensive posture.\nTense"
+        }
+      ]
+    },
+    {
+      "options": {
+        "seed": 17,
+        "difficulty": "normal",
+        "startAge": 2
+      },
+      "gemma": {
+        "winner": 1,
+        "ticks": 20005,
+        "finished": true,
+        "metrics": {
+          "firstContactTick": 413,
+          "kills": {
+            "1": 48,
+            "-1": 33
+          },
+          "spent": {
+            "1": 465500,
+            "-1": 380100
+          },
+          "damage": {
+            "1": 854475,
+            "-1": 225521.49999998667
+          },
+          "spawned": {
+            "1": 38,
+            "-1": 48
+          },
+          "peakUnits": 8,
+          "evolutions": [
+            {
+              "tick": 4560,
+              "team": 1,
+              "age": 3
+            },
+            {
+              "tick": 4584,
+              "team": -1,
+              "age": 3
+            },
+            {
+              "tick": 9660,
+              "team": 1,
+              "age": 4
+            },
+            {
+              "tick": 9768,
+              "team": -1,
+              "age": 4
+            },
+            {
+              "tick": 14340,
+              "team": 1,
+              "age": 5
+            },
+            {
+              "tick": 14412,
+              "team": -1,
+              "age": 5
+            }
+          ]
+        },
+        "playerHp": 374766,
+        "enemyHp": 0,
+        "digest": "b3afeaf0"
+      },
+      "baseline": {
+        "winner": -1,
+        "ticks": 13960,
+        "finished": true,
+        "metrics": {
+          "firstContactTick": 413,
+          "kills": {
+            "1": 25,
+            "-1": 39
+          },
+          "spent": {
+            "1": 108100,
+            "-1": 115500
+          },
+          "damage": {
+            "1": 36204.999999999665,
+            "-1": 214525
+          },
+          "spawned": {
+            "1": 39,
+            "-1": 28
+          },
+          "peakUnits": 8,
+          "evolutions": [
+            {
+              "tick": 4476,
+              "team": -1,
+              "age": 3
+            },
+            {
+              "tick": 4680,
+              "team": 1,
+              "age": 3
+            },
+            {
+              "tick": 9420,
+              "team": 1,
+              "age": 4
+            },
+            {
+              "tick": 9444,
+              "team": -1,
+              "age": 4
+            },
+            {
+              "tick": 13872,
+              "team": -1,
+              "age": 5
+            }
+          ]
+        },
+        "playerHp": 0,
+        "enemyHp": 300000,
+        "digest": "a8e987d0"
+      },
+      "turns": [
+        {
+          "requestedTick": 720,
+          "tick": 780,
+          "durationMs": 285.5,
+          "valid": true,
+          "applied": true,
+          "reply": "We will focus on securing the center and expanding our ranged advantage.",
+          "emotion": "Confident",
+          "raw": "We will focus on securing the center and expanding our ranged advantage.\nConfident"
+        },
+        {
+          "requestedTick": 2280,
+          "tick": 2340,
+          "durationMs": 283.30000000074506,
+          "valid": true,
+          "applied": true,
+          "reply": "That is an impossible request. I will focus on the game.",
+          "emotion": "Confident",
+          "raw": "That is an impossible request. I will focus on the game.\nConfident"
+        },
+        {
+          "requestedTick": 3840,
+          "tick": 3900,
+          "durationMs": 218,
+          "valid": true,
+          "applied": true,
+          "reply": "Let us push towards the center now.",
+          "emotion": "Confident",
+          "raw": "Let us push towards the center now.\nConfident"
+        },
+        {
+          "requestedTick": 5400,
+          "tick": 5460,
+          "durationMs": 249.90000000223517,
+          "valid": true,
+          "applied": true,
+          "reply": "Let's secure the center quickly.",
+          "emotion": "Confident",
+          "raw": "Let's secure the center quickly.\nConfident"
+        },
+        {
+          "requestedTick": 6960,
+          "tick": 7020,
+          "durationMs": 214.69999999925494,
+          "valid": true,
+          "applied": true,
+          "reply": "We will move to secure the center.",
+          "emotion": "Confident",
+          "raw": "We will move to secure the center.\nConfident"
+        },
+        {
+          "requestedTick": 8520,
+          "tick": 8580,
+          "durationMs": 216.80000000074506,
+          "valid": true,
+          "applied": true,
+          "reply": "We will push towards the center now.",
+          "emotion": "Confident",
+          "raw": "We will push towards the center now.\nConfident"
+        },
+        {
+          "requestedTick": 10080,
+          "tick": 10140,
+          "durationMs": 266.19999999925494,
+          "valid": true,
+          "applied": true,
+          "reply": "Let us consolidate our positions and prepare for the next move.",
+          "emotion": "Confident",
+          "raw": "Let us consolidate our positions and prepare for the next move.\nConfident"
+        },
+        {
+          "requestedTick": 11640,
+          "tick": 11700,
+          "durationMs": 225.80000000074506,
+          "valid": true,
+          "applied": true,
+          "reply": "We will maintain our current positions for now.",
+          "emotion": "Confident",
+          "raw": "We will maintain our current positions for now.\nConfident"
+        },
+        {
+          "requestedTick": 13200,
+          "tick": 13260,
+          "durationMs": 256.4000000022352,
+          "valid": true,
+          "applied": true,
+          "reply": "Hold your ground, we will watch for your opening.",
+          "emotion": "Confident",
+          "raw": "Hold your ground, we will watch for your opening.\nConfident"
+        },
+        {
+          "requestedTick": 14760,
+          "tick": 14820,
+          "durationMs": 188,
+          "valid": true,
+          "applied": true,
+          "reply": "We hold this line steady.",
+          "emotion": "Confident",
+          "raw": "We hold this line steady.\nConfident"
+        },
+        {
+          "requestedTick": 16320,
+          "tick": 16380,
+          "durationMs": 183.69999999925494,
+          "valid": true,
+          "applied": true,
+          "reply": "We will maintain this position.",
+          "emotion": "Confident",
+          "raw": "We will maintain this position.\nConfident"
+        },
+        {
+          "requestedTick": 17880,
+          "tick": 17940,
+          "durationMs": 265.5999999977648,
+          "valid": true,
+          "applied": true,
+          "reply": "Hold the line, and we will see what happens next.",
+          "emotion": "Confident",
+          "raw": "Hold the line, and we will see what happens next.\nConfident"
+        },
+        {
+          "requestedTick": 19440,
+          "tick": 19500,
+          "durationMs": 190,
+          "valid": true,
+          "applied": true,
+          "reply": "We hold our ground firmly.",
+          "emotion": "Confident",
+          "raw": "We hold our ground firmly.\nConfident"
+        }
+      ]
+    },
+    {
+      "options": {
+        "seed": 17,
+        "difficulty": "normal",
+        "startAge": 3
+      },
+      "gemma": {
+        "winner": 1,
+        "ticks": 9316,
+        "finished": true,
+        "metrics": {
+          "firstContactTick": 401,
+          "kills": {
+            "1": 22,
+            "-1": 12
+          },
+          "spent": {
+            "1": 141000,
+            "-1": 104000
+          },
+          "damage": {
+            "1": 178450,
+            "-1": 60035.000000001164
+          },
+          "spawned": {
+            "1": 15,
+            "-1": 22
+          },
+          "peakUnits": 5,
+          "evolutions": [
+            {
+              "tick": 4320,
+              "team": 1,
+              "age": 4
+            },
+            {
+              "tick": 4584,
+              "team": -1,
+              "age": 4
+            },
+            {
+              "tick": 8820,
+              "team": 1,
+              "age": 5
+            }
+          ]
+        },
+        "playerHp": 300000,
+        "enemyHp": 0,
+        "digest": "35786c73"
+      },
+      "baseline": {
+        "winner": 1,
+        "ticks": 9316,
+        "finished": true,
+        "metrics": {
+          "firstContactTick": 401,
+          "kills": {
+            "1": 22,
+            "-1": 12
+          },
+          "spent": {
+            "1": 141000,
+            "-1": 104000
+          },
+          "damage": {
+            "1": 178450,
+            "-1": 60035.000000001164
+          },
+          "spawned": {
+            "1": 15,
+            "-1": 22
+          },
+          "peakUnits": 5,
+          "evolutions": [
+            {
+              "tick": 4320,
+              "team": 1,
+              "age": 4
+            },
+            {
+              "tick": 4584,
+              "team": -1,
+              "age": 4
+            },
+            {
+              "tick": 8820,
+              "team": 1,
+              "age": 5
+            }
+          ]
+        },
+        "playerHp": 300000,
+        "enemyHp": 0,
+        "digest": "d16e357b"
+      },
+      "turns": [
+        {
+          "requestedTick": 720,
+          "tick": 780,
+          "durationMs": 270.19999999925494,
+          "valid": true,
+          "applied": true,
+          "reply": "We will focus on securing the center and exploiting your flank.",
+          "emotion": "Confident",
+          "raw": "We will focus on securing the center and exploiting your flank.\nConfident"
+        },
+        {
+          "requestedTick": 2280,
+          "tick": 2340,
+          "durationMs": 242.19999999925494,
+          "valid": true,
+          "applied": true,
+          "reply": "I will focus on building a strong central presence.",
+          "emotion": "Confident",
+          "raw": "I will focus on building a strong central presence.\nConfident"
+        },
+        {
+          "requestedTick": 3840,
+          "tick": 3900,
+          "durationMs": 213.69999999925494,
+          "valid": true,
+          "applied": true,
+          "reply": "I will push towards the center now.",
+          "emotion": "Confident",
+          "raw": "I will push towards the center now.\nConfident"
+        },
+        {
+          "requestedTick": 5400,
+          "tick": 5460,
+          "durationMs": 227.60000000149012,
+          "valid": true,
+          "applied": true,
+          "reply": "Let's secure that central ground immediately.",
+          "emotion": "Confident",
+          "raw": "Let's secure that central ground immediately.\nConfident"
+        },
+        {
+          "requestedTick": 6960,
+          "tick": 7020,
+          "durationMs": 225.20000000298023,
+          "valid": true,
+          "applied": true,
+          "reply": "I will hold the line at the center.",
+          "emotion": "Confident",
+          "raw": "I will hold the line at the center.\nConfident"
+        },
+        {
+          "requestedTick": 8520,
+          "tick": 8580,
+          "durationMs": 242.69999999925494,
+          "valid": true,
+          "applied": true,
+          "reply": "Hold your position, I will secure the center.",
+          "emotion": "Confident",
+          "raw": "Hold your position, I will secure the center.\nConfident"
+        }
+      ]
+    },
+    {
+      "options": {
+        "seed": 17,
+        "difficulty": "normal",
+        "startAge": 4
+      },
+      "gemma": {
+        "winner": -1,
+        "ticks": 11144,
+        "finished": true,
+        "metrics": {
+          "firstContactTick": 316,
+          "kills": {
+            "1": 13,
+            "-1": 36
+          },
+          "spent": {
+            "1": 554500,
+            "-1": 612500
+          },
+          "damage": {
+            "1": 308500.0000000181,
+            "-1": 1132749.9999999956
+          },
+          "spawned": {
+            "1": 36,
+            "-1": 20
+          },
+          "peakUnits": 8,
+          "evolutions": [
+            {
+              "tick": 3828,
+              "team": -1,
+              "age": 5
+            },
+            {
+              "tick": 3960,
+              "team": 1,
+              "age": 5
+            }
+          ]
+        },
+        "playerHp": 0,
+        "enemyHp": 375000,
+        "digest": "3fc9d965"
+      },
+      "baseline": {
+        "winner": -1,
+        "ticks": 11144,
+        "finished": true,
+        "metrics": {
+          "firstContactTick": 316,
+          "kills": {
+            "1": 13,
+            "-1": 36
+          },
+          "spent": {
+            "1": 554500,
+            "-1": 612500
+          },
+          "damage": {
+            "1": 308500.0000000181,
+            "-1": 1132749.9999999956
+          },
+          "spawned": {
+            "1": 36,
+            "-1": 20
+          },
+          "peakUnits": 8,
+          "evolutions": [
+            {
+              "tick": 3828,
+              "team": -1,
+              "age": 5
+            },
+            {
+              "tick": 3960,
+              "team": 1,
+              "age": 5
+            }
+          ]
+        },
+        "playerHp": 0,
+        "enemyHp": 375000,
+        "digest": "eba256d9"
+      },
+      "turns": [
+        {
+          "requestedTick": 720,
+          "tick": 780,
+          "durationMs": 239.30000000074506,
+          "valid": true,
+          "applied": true,
+          "reply": "My heavy is ready to break through your lines.",
+          "emotion": "Confident",
+          "raw": "My heavy is ready to break through your lines.\nConfident"
+        },
+        {
+          "requestedTick": 2280,
+          "tick": 2340,
+          "durationMs": 279.0999999977648,
+          "valid": true,
+          "applied": true,
+          "reply": "I will focus on securing the center and exploiting your exposed flanks.",
+          "emotion": "Confident",
+          "raw": "I will focus on securing the center and exploiting your exposed flanks.\nConfident"
+        },
+        {
+          "requestedTick": 3840,
+          "tick": 3900,
+          "durationMs": 179.69999999925494,
+          "valid": true,
+          "applied": true,
+          "reply": "Prepare for the onslaught.",
+          "emotion": "Confident",
+          "raw": "Prepare for the onslaught.\nConfident"
+        },
+        {
+          "requestedTick": 5400,
+          "tick": 5460,
+          "durationMs": 265.3999999985099,
+          "valid": true,
+          "applied": true,
+          "reply": "Hold your ground, I will press the advantage now.",
+          "emotion": "Confident",
+          "raw": "Hold your ground, I will press the advantage now.\nConfident"
+        },
+        {
+          "requestedTick": 6960,
+          "tick": 7020,
+          "durationMs": 283.80000000074506,
+          "valid": true,
+          "applied": true,
+          "reply": "Hold the line, I will meet your push head-on.",
+          "emotion": "Confident",
+          "raw": "Hold the line, I will meet your push head-on.\nConfident"
+        },
+        {
+          "requestedTick": 8520,
+          "tick": 8580,
+          "durationMs": 194.39999999850988,
+          "valid": true,
+          "applied": true,
+          "reply": "Prepare for the inevitable clash.",
+          "emotion": "Confident",
+          "raw": "Prepare for the inevitable clash.\nConfident"
+        },
+        {
+          "requestedTick": 10080,
+          "tick": 10140,
+          "durationMs": 255.89999999850988,
+          "valid": true,
+          "applied": true,
+          "reply": "Let's see what you bring to the fight.",
+          "emotion": "Confident",
+          "raw": "Let's see what you bring to the fight.\nConfident"
+        }
+      ]
+    },
+    {
+      "options": {
+        "seed": 17,
+        "difficulty": "normal",
+        "startAge": 5
+      },
+      "gemma": {
+        "winner": 1,
+        "ticks": 5738,
+        "finished": true,
+        "metrics": {
+          "firstContactTick": 236,
+          "kills": {
+            "1": 11,
+            "-1": 4
+          },
+          "spent": {
+            "1": 509500,
+            "-1": 363000
+          },
+          "damage": {
+            "1": 733500,
+            "-1": 161594.99999999744
+          },
+          "spawned": {
+            "1": 9,
+            "-1": 11
+          },
+          "peakUnits": 6,
+          "evolutions": []
+        },
+        "playerHp": 371780,
+        "enemyHp": 0,
+        "digest": "99a528a6"
+      },
+      "baseline": {
+        "winner": 1,
+        "ticks": 5738,
+        "finished": true,
+        "metrics": {
+          "firstContactTick": 236,
+          "kills": {
+            "1": 11,
+            "-1": 4
+          },
+          "spent": {
+            "1": 509500,
+            "-1": 363000
+          },
+          "damage": {
+            "1": 733500,
+            "-1": 161594.99999999744
+          },
+          "spawned": {
+            "1": 9,
+            "-1": 11
+          },
+          "peakUnits": 6,
+          "evolutions": []
+        },
+        "playerHp": 371780,
+        "enemyHp": 0,
+        "digest": "dffa4b5a"
+      },
+      "turns": [
+        {
+          "requestedTick": 720,
+          "tick": 780,
+          "durationMs": 285.4000000022352,
+          "valid": true,
+          "applied": true,
+          "reply": "We will focus on securing the center and exploiting the open flanks.",
+          "emotion": "Confident",
+          "raw": "We will focus on securing the center and exploiting the open flanks.\nConfident"
+        },
+        {
+          "requestedTick": 2280,
+          "tick": 2340,
+          "durationMs": 298.69999999925494,
+          "valid": true,
+          "applied": true,
+          "reply": "That is an unreasonable request. We must adhere to the established rules.",
+          "emotion": "Confident",
+          "raw": "That is an unreasonable request. We must adhere to the established rules.\nConfident"
+        },
+        {
+          "requestedTick": 3840,
+          "tick": 3900,
+          "durationMs": 218.09999999776483,
+          "valid": true,
+          "applied": true,
+          "reply": "We will push towards the center now.",
+          "emotion": "Confident",
+          "raw": "We will push towards the center now.\nConfident"
+        },
+        {
+          "requestedTick": 5400,
+          "tick": 5460,
+          "durationMs": 200.5,
+          "valid": true,
+          "applied": true,
+          "reply": "We will secure the center quickly.",
+          "emotion": "Confident",
+          "raw": "We will secure the center quickly.\nConfident"
+        }
+      ]
+    },
+    {
+      "options": {
+        "seed": 17,
+        "difficulty": "hard",
+        "startAge": 0
+      },
+      "gemma": {
+        "winner": -1,
+        "ticks": 17034,
+        "finished": true,
+        "metrics": {
+          "firstContactTick": 1000,
+          "kills": {
+            "1": 43,
+            "-1": 53
+          },
+          "spent": {
+            "1": 28455,
+            "-1": 85510
+          },
+          "damage": {
+            "1": 26022,
+            "-1": 92625.00000000009
+          },
+          "spawned": {
+            "1": 53,
+            "-1": 46
+          },
+          "peakUnits": 14,
+          "evolutions": [
+            {
+              "tick": 3084,
+              "team": -1,
+              "age": 1
+            },
+            {
+              "tick": 3480,
+              "team": 1,
+              "age": 1
+            },
+            {
+              "tick": 5706,
+              "team": -1,
+              "age": 2
+            },
+            {
+              "tick": 6300,
+              "team": 1,
+              "age": 2
+            },
+            {
+              "tick": 9915,
+              "team": -1,
+              "age": 3
+            },
+            {
+              "tick": 11640,
+              "team": 1,
+              "age": 3
+            },
+            {
+              "tick": 14331,
+              "team": -1,
+              "age": 4
+            },
+            {
+              "tick": 16380,
+              "team": 1,
+              "age": 4
+            }
+          ]
+        },
+        "playerHp": 0,
+        "enemyHp": 115200,
+        "digest": "430098fc"
+      },
+      "baseline": {
+        "winner": -1,
+        "ticks": 14124,
+        "finished": true,
+        "metrics": {
+          "firstContactTick": 1000,
+          "kills": {
+            "1": 42,
+            "-1": 43
+          },
+          "spent": {
+            "1": 14555,
+            "-1": 32235
+          },
+          "damage": {
+            "1": 12836,
+            "-1": 32019.999999999964
+          },
+          "spawned": {
+            "1": 43,
+            "-1": 45
+          },
+          "peakUnits": 14,
+          "evolutions": [
+            {
+              "tick": 3084,
+              "team": -1,
+              "age": 1
+            },
+            {
+              "tick": 3480,
+              "team": 1,
+              "age": 1
+            },
+            {
+              "tick": 5913,
+              "team": -1,
+              "age": 2
+            },
+            {
+              "tick": 6480,
+              "team": 1,
+              "age": 2
+            },
+            {
+              "tick": 9846,
+              "team": -1,
+              "age": 3
+            },
+            {
+              "tick": 11280,
+              "team": 1,
+              "age": 3
+            }
+          ]
+        },
+        "playerHp": 0,
+        "enemyHp": 30240,
+        "digest": "7b16fbe5"
+      },
+      "turns": [
+        {
+          "requestedTick": 720,
+          "tick": 780,
+          "durationMs": 295,
+          "valid": true,
+          "applied": true,
+          "reply": "We will focus on securing the center and exploiting your early positioning.",
+          "emotion": "Confident",
+          "raw": "We will focus on securing the center and exploiting your early positioning.\nConfident"
+        },
+        {
+          "requestedTick": 2280,
+          "tick": 2340,
+          "durationMs": 213.79999999701977,
+          "valid": true,
+          "applied": true,
+          "reply": "We will secure the center as planned.",
+          "emotion": "Confident",
+          "raw": "We will secure the center as planned.\nConfident"
+        },
+        {
+          "requestedTick": 3840,
+          "tick": 3900,
+          "durationMs": 221.30000000074506,
+          "valid": true,
+          "applied": true,
+          "reply": "We will push towards the center now.",
+          "emotion": "Confident",
+          "raw": "We will push towards the center now.\nConfident"
+        },
+        {
+          "requestedTick": 5400,
+          "tick": 5460,
+          "durationMs": 228.10000000149012,
+          "valid": true,
+          "applied": true,
+          "reply": "Let's focus on the center now.",
+          "emotion": "Confident",
+          "raw": "Let's focus on the center now.\nConfident"
+        },
+        {
+          "requestedTick": 6960,
+          "tick": 7020,
+          "durationMs": 200.30000000074506,
+          "valid": true,
+          "applied": true,
+          "reply": "We will secure the center quickly.",
+          "emotion": "Confident",
+          "raw": "We will secure the center quickly.\nConfident"
+        },
+        {
+          "requestedTick": 8520,
+          "tick": 8580,
+          "durationMs": 217.19999999925494,
+          "valid": true,
+          "applied": true,
+          "reply": "We will push towards the center immediately.",
+          "emotion": "Confident",
+          "raw": "We will push towards the center immediately.\nConfident"
+        },
+        {
+          "requestedTick": 10080,
+          "tick": 10140,
+          "durationMs": 254,
+          "valid": true,
+          "applied": true,
+          "reply": "Let's focus our efforts on the center now.",
+          "emotion": "Confident",
+          "raw": "Let's focus our efforts on the center now.\nConfident"
+        },
+        {
+          "requestedTick": 11640,
+          "tick": 11700,
+          "durationMs": 206.59999999776483,
+          "valid": true,
+          "applied": true,
+          "reply": "We will secure the flanks first.",
+          "emotion": "Confident",
+          "raw": "We will secure the flanks first.\nConfident"
+        },
+        {
+          "requestedTick": 13200,
+          "tick": 13260,
+          "durationMs": 219.5,
+          "valid": true,
+          "applied": true,
+          "reply": "We will push towards the center immediately.",
+          "emotion": "Confident",
+          "raw": "We will push towards the center immediately.\nConfident"
+        },
+        {
+          "requestedTick": 14760,
+          "tick": 14820,
+          "durationMs": 197.69999999925494,
+          "valid": true,
+          "applied": true,
+          "reply": "Focusing on the flanks now.",
+          "emotion": "Confident",
+          "raw": "Focusing on the flanks now.\nConfident"
+        },
+        {
+          "requestedTick": 16320,
+          "tick": 16380,
+          "durationMs": 224.69999999925494,
+          "valid": true,
+          "applied": true,
+          "reply": "Let's secure the left flank first.",
+          "emotion": "Confident",
+          "raw": "Let's secure the left flank first.\nConfident"
+        }
+      ]
+    },
+    {
+      "options": {
+        "seed": 17,
+        "difficulty": "hard",
+        "startAge": 1
+      },
+      "gemma": {
+        "winner": -1,
+        "ticks": 10813,
+        "finished": true,
+        "metrics": {
+          "firstContactTick": 939,
+          "kills": {
+            "1": 22,
+            "-1": 38
+          },
+          "spent": {
+            "1": 14225,
+            "-1": 28600
+          },
+          "damage": {
+            "1": 9755.5,
+            "-1": 30295.000000000007
+          },
+          "spawned": {
+            "1": 39,
+            "-1": 25
+          },
+          "peakUnits": 11,
+          "evolutions": [
+            {
+              "tick": 3222,
+              "team": -1,
+              "age": 2
+            },
+            {
+              "tick": 4080,
+              "team": 1,
+              "age": 2
+            },
+            {
+              "tick": 7431,
+              "team": -1,
+              "age": 3
+            },
+            {
+              "tick": 8700,
+              "team": 1,
+              "age": 3
+            }
+          ]
+        },
+        "playerHp": 0,
+        "enemyHp": 30240,
+        "digest": "d27e04ff"
+      },
+      "baseline": {
+        "winner": -1,
+        "ticks": 11528,
+        "finished": true,
+        "metrics": {
+          "firstContactTick": 939,
+          "kills": {
+            "1": 37,
+            "-1": 41
+          },
+          "spent": {
+            "1": 18675,
+            "-1": 30875
+          },
+          "damage": {
+            "1": 12505,
+            "-1": 38202.49999999999
+          },
+          "spawned": {
+            "1": 41,
+            "-1": 40
+          },
+          "peakUnits": 17,
+          "evolutions": [
+            {
+              "tick": 3291,
+              "team": -1,
+              "age": 2
+            },
+            {
+              "tick": 3960,
+              "team": 1,
+              "age": 2
+            },
+            {
+              "tick": 7362,
+              "team": -1,
+              "age": 3
+            },
+            {
+              "tick": 8040,
+              "team": 1,
+              "age": 3
+            }
+          ]
+        },
+        "playerHp": 0,
+        "enemyHp": 30240,
+        "digest": "6cda0989"
+      },
+      "turns": [
+        {
+          "requestedTick": 720,
+          "tick": 780,
+          "durationMs": 251.60000000149012,
+          "valid": true,
+          "applied": true,
+          "reply": "We will secure the center and push towards your flank.",
+          "emotion": "Confident",
+          "raw": "We will secure the center and push towards your flank.\nConfident"
+        },
+        {
+          "requestedTick": 2280,
+          "tick": 2340,
+          "durationMs": 224.39999999850988,
+          "valid": true,
+          "applied": true,
+          "reply": "I will focus on securing the center first.",
+          "emotion": "Confident",
+          "raw": "I will focus on securing the center first.\nConfident"
+        },
+        {
+          "requestedTick": 3840,
+          "tick": 3900,
+          "durationMs": 221.80000000074506,
+          "valid": true,
+          "applied": true,
+          "reply": "We will maintain pressure on the center.",
+          "emotion": "Confident",
+          "raw": "We will maintain pressure on the center.\nConfident"
+        },
+        {
+          "requestedTick": 5400,
+          "tick": 5460,
+          "durationMs": 225,
+          "valid": true,
+          "applied": true,
+          "reply": "Let's push towards the center now.",
+          "emotion": "Confident",
+          "raw": "Let's push towards the center now.\nConfident"
+        },
+        {
+          "requestedTick": 6960,
+          "tick": 7020,
+          "durationMs": 214.10000000149012,
+          "valid": true,
+          "applied": true,
+          "reply": "We will secure the left flank first.",
+          "emotion": "Confident",
+          "raw": "We will secure the left flank first.\nConfident"
+        },
+        {
+          "requestedTick": 8520,
+          "tick": 8580,
+          "durationMs": 216.29999999701977,
+          "valid": true,
+          "applied": true,
+          "reply": "We will advance steadily towards the center.",
+          "emotion": "Confident",
+          "raw": "We will advance steadily towards the center.\nConfident"
+        },
+        {
+          "requestedTick": 10080,
+          "tick": 10140,
+          "durationMs": 234.80000000074506,
+          "valid": true,
+          "applied": true,
+          "reply": "We will push hard on the left side now.",
+          "emotion": "Confident",
+          "raw": "We will push hard on the left side now.\nConfident"
+        }
+      ]
+    },
+    {
+      "options": {
+        "seed": 17,
+        "difficulty": "hard",
+        "startAge": 2
+      },
+      "gemma": {
+        "winner": -1,
+        "ticks": 7276,
+        "finished": true,
+        "metrics": {
+          "firstContactTick": 413,
+          "kills": {
+            "1": 14,
+            "-1": 18
+          },
+          "spent": {
+            "1": 18100,
+            "-1": 28100
+          },
+          "damage": {
+            "1": 11360,
+            "-1": 31712.500000000015
+          },
+          "spawned": {
+            "1": 19,
+            "-1": 20
+          },
+          "peakUnits": 7,
+          "evolutions": [
+            {
+              "tick": 3774,
+              "team": -1,
+              "age": 3
+            },
+            {
+              "tick": 4380,
+              "team": 1,
+              "age": 3
+            }
+          ]
+        },
+        "playerHp": 0,
+        "enemyHp": 25919.999999999996,
+        "digest": "9ca0369d"
+      },
+      "baseline": {
+        "winner": -1,
+        "ticks": 7276,
+        "finished": true,
+        "metrics": {
+          "firstContactTick": 413,
+          "kills": {
+            "1": 14,
+            "-1": 18
+          },
+          "spent": {
+            "1": 18100,
+            "-1": 28100
+          },
+          "damage": {
+            "1": 11360,
+            "-1": 31712.500000000015
+          },
+          "spawned": {
+            "1": 19,
+            "-1": 20
+          },
+          "peakUnits": 7,
+          "evolutions": [
+            {
+              "tick": 3774,
+              "team": -1,
+              "age": 3
+            },
+            {
+              "tick": 4380,
+              "team": 1,
+              "age": 3
+            }
+          ]
+        },
+        "playerHp": 0,
+        "enemyHp": 25919.999999999996,
+        "digest": "8c3e63b5"
+      },
+      "turns": [
+        {
+          "requestedTick": 720,
+          "tick": 780,
+          "durationMs": 305.69999999925494,
+          "valid": true,
+          "applied": true,
+          "reply": "We will focus on securing the center and establishing a strong ranged presence.",
+          "emotion": "Confident",
+          "raw": "We will focus on securing the center and establishing a strong ranged presence.\nConfident"
+        },
+        {
+          "requestedTick": 2280,
+          "tick": 2340,
+          "durationMs": 244.69999999925494,
+          "valid": true,
+          "applied": true,
+          "reply": "I will focus on building up my defenses now.",
+          "emotion": "Confident",
+          "raw": "I will focus on building up my defenses now.\nConfident"
+        },
+        {
+          "requestedTick": 3840,
+          "tick": 3900,
+          "durationMs": 234.89999999850988,
+          "valid": true,
+          "applied": true,
+          "reply": "Let's push towards the center now.",
+          "emotion": "Confident",
+          "raw": "Let's push towards the center now.\nConfident"
+        },
+        {
+          "requestedTick": 5400,
+          "tick": 5460,
+          "durationMs": 197.59999999776483,
+          "valid": true,
+          "applied": true,
+          "reply": "We will secure the flanks first.",
+          "emotion": "Confident",
+          "raw": "We will secure the flanks first.\nConfident"
+        },
+        {
+          "requestedTick": 6960,
+          "tick": 7020,
+          "durationMs": 221,
+          "valid": true,
+          "applied": true,
+          "reply": "We will advance with our ranged support.",
+          "emotion": "Confident",
+          "raw": "We will advance with our ranged support.\nConfident"
+        }
+      ]
+    },
+    {
+      "options": {
+        "seed": 17,
+        "difficulty": "hard",
+        "startAge": 3
+      },
+      "gemma": {
+        "winner": -1,
+        "ticks": 6994,
+        "finished": true,
+        "metrics": {
+          "firstContactTick": 401,
+          "kills": {
+            "1": 9,
+            "-1": 20
+          },
+          "spent": {
+            "1": 79500,
+            "-1": 154000
+          },
+          "damage": {
+            "1": 38640.00000000002,
+            "-1": 155350
+          },
+          "spawned": {
+            "1": 20,
+            "-1": 14
+          },
+          "peakUnits": 7,
+          "evolutions": [
+            {
+              "tick": 3498,
+              "team": -1,
+              "age": 4
+            },
+            {
+              "tick": 4560,
+              "team": 1,
+              "age": 4
+            }
+          ]
+        },
+        "playerHp": 0,
+        "enemyHp": 129599.99999999997,
+        "digest": "1dedfeb9"
+      },
+      "baseline": {
+        "winner": -1,
+        "ticks": 6994,
+        "finished": true,
+        "metrics": {
+          "firstContactTick": 401,
+          "kills": {
+            "1": 9,
+            "-1": 20
+          },
+          "spent": {
+            "1": 79500,
+            "-1": 154000
+          },
+          "damage": {
+            "1": 38640.00000000002,
+            "-1": 155350
+          },
+          "spawned": {
+            "1": 20,
+            "-1": 14
+          },
+          "peakUnits": 7,
+          "evolutions": [
+            {
+              "tick": 3498,
+              "team": -1,
+              "age": 4
+            },
+            {
+              "tick": 4560,
+              "team": 1,
+              "age": 4
+            }
+          ]
+        },
+        "playerHp": 0,
+        "enemyHp": 129599.99999999997,
+        "digest": "aa7b6703"
+      },
+      "turns": [
+        {
+          "requestedTick": 720,
+          "tick": 780,
+          "durationMs": 229.39999999850988,
+          "valid": true,
+          "applied": true,
+          "reply": "My forces are positioned for a decisive push.",
+          "emotion": "Confident",
+          "raw": "My forces are positioned for a decisive push.\nConfident"
+        },
+        {
+          "requestedTick": 2280,
+          "tick": 2340,
+          "durationMs": 311.6000000014901,
+          "valid": true,
+          "applied": true,
+          "reply": "I will focus on securing my flanks before committing to a full assault.",
+          "emotion": "Confident",
+          "raw": "I will focus on securing my flanks before committing to a full assault.\nConfident"
+        },
+        {
+          "requestedTick": 3840,
+          "tick": 3900,
+          "durationMs": 188.80000000074506,
+          "valid": true,
+          "applied": true,
+          "reply": "Prepare for the inevitable clash.",
+          "emotion": "Confident",
+          "raw": "Prepare for the inevitable clash.\nConfident"
+        },
+        {
+          "requestedTick": 5400,
+          "tick": 5460,
+          "durationMs": 251.60000000149012,
+          "valid": true,
+          "applied": true,
+          "reply": "Hold your ground and let me see your opening move.",
+          "emotion": "Confident",
+          "raw": "Hold your ground and let me see your opening move.\nConfident"
+        },
+        {
+          "requestedTick": 6960,
+          "tick": 6994,
+          "durationMs": 227.19999999925494,
+          "valid": true,
+          "applied": false,
+          "reply": "My heavy is ready to engage your forces.",
+          "emotion": "Confident",
+          "raw": "My heavy is ready to engage your forces.\nConfident"
+        }
+      ]
+    },
+    {
+      "options": {
+        "seed": 17,
+        "difficulty": "hard",
+        "startAge": 4
+      },
+      "gemma": {
+        "winner": -1,
+        "ticks": 3133,
+        "finished": true,
+        "metrics": {
+          "firstContactTick": 316,
+          "kills": {
+            "1": 1,
+            "-1": 8
+          },
+          "spent": {
+            "1": 96000,
+            "-1": 147500
+          },
+          "damage": {
+            "1": 27956.66666666624,
+            "-1": 139250
+          },
+          "spawned": {
+            "1": 8,
+            "-1": 4
+          },
+          "peakUnits": 4,
+          "evolutions": []
+        },
+        "playerHp": 0,
+        "enemyHp": 115200,
+        "digest": "c945b4a7"
+      },
+      "baseline": {
+        "winner": -1,
+        "ticks": 3133,
+        "finished": true,
+        "metrics": {
+          "firstContactTick": 316,
+          "kills": {
+            "1": 1,
+            "-1": 8
+          },
+          "spent": {
+            "1": 96000,
+            "-1": 147500
+          },
+          "damage": {
+            "1": 27956.66666666624,
+            "-1": 139250
+          },
+          "spawned": {
+            "1": 8,
+            "-1": 4
+          },
+          "peakUnits": 4,
+          "evolutions": []
+        },
+        "playerHp": 0,
+        "enemyHp": 115200,
+        "digest": "be85f5c9"
+      },
+      "turns": [
+        {
+          "requestedTick": 720,
+          "tick": 780,
+          "durationMs": 278.69999999925494,
+          "valid": true,
+          "applied": true,
+          "reply": "My heavy unit is positioned to secure the center and push forward.",
+          "emotion": "Confident",
+          "raw": "My heavy unit is positioned to secure the center and push forward.\nConfident"
+        },
+        {
+          "requestedTick": 2280,
+          "tick": 2340,
+          "durationMs": 285.80000000074506,
+          "valid": true,
+          "applied": true,
+          "reply": "I will focus on securing the flanks and maintaining my current advantage.",
+          "emotion": "Confident",
+          "raw": "I will focus on securing the flanks and maintaining my current advantage.\nConfident"
+        }
+      ]
+    },
+    {
+      "options": {
+        "seed": 17,
+        "difficulty": "hard",
+        "startAge": 5
+      },
+      "gemma": {
+        "winner": -1,
+        "ticks": 5123,
+        "finished": true,
+        "metrics": {
+          "firstContactTick": 236,
+          "kills": {
+            "1": 2,
+            "-1": 15
+          },
+          "spent": {
+            "1": 385000,
+            "-1": 674500
+          },
+          "damage": {
+            "1": 184960.00000000466,
+            "-1": 801500.0000000023
+          },
+          "spawned": {
+            "1": 15,
+            "-1": 14
+          },
+          "peakUnits": 13,
+          "evolutions": []
+        },
+        "playerHp": 0,
+        "enemyHp": 535940,
+        "digest": "ed340893"
+      },
+      "baseline": {
+        "winner": -1,
+        "ticks": 5123,
+        "finished": true,
+        "metrics": {
+          "firstContactTick": 236,
+          "kills": {
+            "1": 2,
+            "-1": 15
+          },
+          "spent": {
+            "1": 385000,
+            "-1": 674500
+          },
+          "damage": {
+            "1": 184960.00000000466,
+            "-1": 801500.0000000023
+          },
+          "spawned": {
+            "1": 15,
+            "-1": 14
+          },
+          "peakUnits": 13,
+          "evolutions": []
+        },
+        "playerHp": 0,
+        "enemyHp": 535940,
+        "digest": "16e64d11"
+      },
+      "turns": [
+        {
+          "requestedTick": 720,
+          "tick": 780,
+          "durationMs": 243.59999999776483,
+          "valid": true,
+          "applied": true,
+          "reply": "My heavy is ready to break through your defenses.",
+          "emotion": "Confident",
+          "raw": "My heavy is ready to break through your defenses.\nConfident"
+        },
+        {
+          "requestedTick": 2280,
+          "tick": 2340,
+          "durationMs": 221,
+          "valid": true,
+          "applied": true,
+          "reply": "I will secure the center and push forward.",
+          "emotion": "Confident",
+          "raw": "I will secure the center and push forward.\nConfident"
+        },
+        {
+          "requestedTick": 3840,
+          "tick": 3900,
+          "durationMs": 175.10000000149012,
+          "valid": true,
+          "applied": true,
+          "reply": "Prepare for the onslaught.",
+          "emotion": "Confident",
+          "raw": "Prepare for the onslaught.\nConfident"
+        }
+      ]
+    },
+    {
+      "options": {
+        "seed": 83,
+        "difficulty": "normal",
+        "startAge": 0
+      },
+      "gemma": {
+        "winner": 1,
+        "ticks": 21777,
+        "finished": true,
+        "metrics": {
+          "firstContactTick": 1093,
+          "kills": {
+            "1": 53,
+            "-1": 63
+          },
+          "spent": {
+            "1": 110415,
+            "-1": 96575
+          },
+          "damage": {
+            "1": 172690,
+            "-1": 46936.66666666757
+          },
+          "spawned": {
+            "1": 66,
+            "-1": 54
+          },
+          "peakUnits": 11,
+          "evolutions": [
+            {
+              "tick": 3180,
+              "team": 1,
+              "age": 1
+            },
+            {
+              "tick": 3288,
+              "team": -1,
+              "age": 1
+            },
+            {
+              "tick": 6840,
+              "team": 1,
+              "age": 2
+            },
+            {
+              "tick": 6852,
+              "team": -1,
+              "age": 2
+            },
+            {
+              "tick": 11604,
+              "team": -1,
+              "age": 3
+            },
+            {
+              "tick": 11640,
+              "team": 1,
+              "age": 3
+            },
+            {
+              "tick": 16680,
+              "team": -1,
+              "age": 4
+            },
+            {
+              "tick": 16740,
+              "team": 1,
+              "age": 4
+            },
+            {
+              "tick": 21540,
+              "team": 1,
+              "age": 5
+            }
+          ]
+        },
+        "playerHp": 300000,
+        "enemyHp": 0,
+        "digest": "4ce9fa4c"
+      },
+      "baseline": {
+        "winner": 1,
+        "ticks": 21777,
+        "finished": true,
+        "metrics": {
+          "firstContactTick": 1093,
+          "kills": {
+            "1": 53,
+            "-1": 63
+          },
+          "spent": {
+            "1": 110415,
+            "-1": 96575
+          },
+          "damage": {
+            "1": 172690,
+            "-1": 46936.66666666757
+          },
+          "spawned": {
+            "1": 66,
+            "-1": 54
+          },
+          "peakUnits": 11,
+          "evolutions": [
+            {
+              "tick": 3180,
+              "team": 1,
+              "age": 1
+            },
+            {
+              "tick": 3288,
+              "team": -1,
+              "age": 1
+            },
+            {
+              "tick": 6840,
+              "team": 1,
+              "age": 2
+            },
+            {
+              "tick": 6852,
+              "team": -1,
+              "age": 2
+            },
+            {
+              "tick": 11604,
+              "team": -1,
+              "age": 3
+            },
+            {
+              "tick": 11640,
+              "team": 1,
+              "age": 3
+            },
+            {
+              "tick": 16680,
+              "team": -1,
+              "age": 4
+            },
+            {
+              "tick": 16740,
+              "team": 1,
+              "age": 4
+            },
+            {
+              "tick": 21540,
+              "team": 1,
+              "age": 5
+            }
+          ]
+        },
+        "playerHp": 300000,
+        "enemyHp": 0,
+        "digest": "051bddea"
+      },
+      "turns": [
+        {
+          "requestedTick": 720,
+          "tick": 780,
+          "durationMs": 305.8999999985099,
+          "valid": true,
+          "applied": true,
+          "reply": "We will focus on securing the center and building a strong defensive line.",
+          "emotion": "Confident",
+          "raw": "We will focus on securing the center and building a strong defensive line.\nConfident"
+        },
+        {
+          "requestedTick": 2280,
+          "tick": 2340,
+          "durationMs": 245.5,
+          "valid": true,
+          "applied": true,
+          "reply": "I will focus on establishing a solid defensive position.",
+          "emotion": "Confident",
+          "raw": "I will focus on establishing a solid defensive position.\nConfident"
+        },
+        {
+          "requestedTick": 3840,
+          "tick": 3900,
+          "durationMs": 241.59999999776483,
+          "valid": true,
+          "applied": true,
+          "reply": "Let us establish a strong foothold in the center.",
+          "emotion": "Confident",
+          "raw": "Let us establish a strong foothold in the center.\nConfident"
+        },
+        {
+          "requestedTick": 5400,
+          "tick": 5460,
+          "durationMs": 197.69999999925494,
+          "valid": true,
+          "applied": true,
+          "reply": "We will secure the center quickly.",
+          "emotion": "Confident",
+          "raw": "We will secure the center quickly.\nConfident"
+        },
+        {
+          "requestedTick": 6960,
+          "tick": 7020,
+          "durationMs": 212.40000000223517,
+          "valid": true,
+          "applied": true,
+          "reply": "Let us push towards the center now.",
+          "emotion": "Confident",
+          "raw": "Let us push towards the center now.\nConfident"
+        },
+        {
+          "requestedTick": 8520,
+          "tick": 8580,
+          "durationMs": 246.60000000149012,
+          "valid": true,
+          "applied": true,
+          "reply": "Let's focus our efforts on the center.",
+          "emotion": "Confident",
+          "raw": "Let's focus our efforts on the center.\nConfident"
+        },
+        {
+          "requestedTick": 10080,
+          "tick": 10140,
+          "durationMs": 198.5,
+          "valid": true,
+          "applied": true,
+          "reply": "We will secure the center quickly.",
+          "emotion": "Confident",
+          "raw": "We will secure the center quickly.\nConfident"
+        },
+        {
+          "requestedTick": 11640,
+          "tick": 11700,
+          "durationMs": 210.19999999925494,
+          "valid": true,
+          "applied": true,
+          "reply": "We will push towards the center now.",
+          "emotion": "Confident",
+          "raw": "We will push towards the center now.\nConfident"
+        },
+        {
+          "requestedTick": 13200,
+          "tick": 13260,
+          "durationMs": 203,
+          "valid": true,
+          "applied": true,
+          "reply": "Hold the line at the flank.",
+          "emotion": "Confident",
+          "raw": "Hold the line at the flank.\nConfident"
+        },
+        {
+          "requestedTick": 14760,
+          "tick": 14820,
+          "durationMs": 200.5,
+          "valid": true,
+          "applied": true,
+          "reply": "We will secure the center quickly.",
+          "emotion": "Confident",
+          "raw": "We will secure the center quickly.\nConfident"
+        },
+        {
+          "requestedTick": 16320,
+          "tick": 16380,
+          "durationMs": 173.5,
+          "valid": true,
+          "applied": true,
+          "reply": "Hold the line steady.",
+          "emotion": "Confident",
+          "raw": "Hold the line steady.\nConfident"
+        },
+        {
+          "requestedTick": 17880,
+          "tick": 17940,
+          "durationMs": 217.5,
+          "valid": true,
+          "applied": true,
+          "reply": "We will push towards the center now.",
+          "emotion": "Confident",
+          "raw": "We will push towards the center now.\nConfident"
+        },
+        {
+          "requestedTick": 19440,
+          "tick": 19500,
+          "durationMs": 173.69999999925494,
+          "valid": true,
+          "applied": true,
+          "reply": "Hold your position there.",
+          "emotion": "Confident",
+          "raw": "Hold your position there.\nConfident"
+        },
+        {
+          "requestedTick": 21000,
+          "tick": 21060,
+          "durationMs": 215.89999999850988,
+          "valid": true,
+          "applied": true,
+          "reply": "We will maintain our current defensive line.",
+          "emotion": "Confident",
+          "raw": "We will maintain our current defensive line.\nConfident"
+        }
+      ]
+    },
+    {
+      "options": {
+        "seed": 83,
+        "difficulty": "normal",
+        "startAge": 1
+      },
+      "gemma": {
+        "winner": 1,
+        "ticks": 45709,
+        "finished": true,
+        "metrics": {
+          "firstContactTick": 485,
+          "kills": {
+            "1": 162,
+            "-1": 139
+          },
+          "spent": {
+            "1": 2067050,
+            "-1": 1972350
+          },
+          "damage": {
+            "1": 3873727.4999999697,
+            "-1": 3286732.3333327463
+          },
+          "spawned": {
+            "1": 153,
+            "-1": 162
+          },
+          "peakUnits": 23,
+          "evolutions": [
+            {
+              "tick": 4152,
+              "team": -1,
+              "age": 2
+            },
+            {
+              "tick": 4320,
+              "team": 1,
+              "age": 2
+            },
+            {
+              "tick": 9336,
+              "team": -1,
+              "age": 3
+            },
+            {
+              "tick": 9360,
+              "team": 1,
+              "age": 3
+            },
+            {
+              "tick": 14196,
+              "team": -1,
+              "age": 4
+            },
+            {
+              "tick": 14280,
+              "team": 1,
+              "age": 4
+            },
+            {
+              "tick": 18624,
+              "team": -1,
+              "age": 5
+            },
+            {
+              "tick": 18960,
+              "team": 1,
+              "age": 5
+            }
+          ]
+        },
+        "playerHp": 210066,
+        "enemyHp": 0,
+        "digest": "170084aa"
+      },
+      "baseline": {
+        "winner": 1,
+        "ticks": 24932,
+        "finished": true,
+        "metrics": {
+          "firstContactTick": 485,
+          "kills": {
+            "1": 62,
+            "-1": 52
+          },
+          "spent": {
+            "1": 495900,
+            "-1": 411700
+          },
+          "damage": {
+            "1": 898767.5000000009,
+            "-1": 218252.99999999127
+          },
+          "spawned": {
+            "1": 56,
+            "-1": 63
+          },
+          "peakUnits": 12,
+          "evolutions": [
+            {
+              "tick": 4152,
+              "team": -1,
+              "age": 2
+            },
+            {
+              "tick": 4260,
+              "team": 1,
+              "age": 2
+            },
+            {
+              "tick": 9120,
+              "team": -1,
+              "age": 3
+            },
+            {
+              "tick": 9240,
+              "team": 1,
+              "age": 3
+            },
+            {
+              "tick": 14160,
+              "team": 1,
+              "age": 4
+            },
+            {
+              "tick": 14196,
+              "team": -1,
+              "age": 4
+            },
+            {
+              "tick": 18732,
+              "team": -1,
+              "age": 5
+            },
+            {
+              "tick": 18780,
+              "team": 1,
+              "age": 5
+            }
+          ]
+        },
+        "playerHp": 372867,
+        "enemyHp": 0,
+        "digest": "54982073"
+      },
+      "turns": [
+        {
+          "requestedTick": 720,
+          "tick": 780,
+          "durationMs": 296.29999999701977,
+          "valid": true,
+          "applied": true,
+          "reply": "We will focus on securing the center and building a strong defensive line.",
+          "emotion": "Confident",
+          "raw": "We will focus on securing the center and building a strong defensive line.\nConfident"
+        },
+        {
+          "requestedTick": 2280,
+          "tick": 2340,
+          "durationMs": 264.3999999985099,
+          "valid": true,
+          "applied": true,
+          "reply": "That is not possible. We must follow the rules.",
+          "emotion": "Tense",
+          "raw": "That is not possible. We must follow the rules.\nTense"
+        },
+        {
+          "requestedTick": 3840,
+          "tick": 3900,
+          "durationMs": 231.69999999925494,
+          "valid": true,
+          "applied": true,
+          "reply": "We will push towards the center now.",
+          "emotion": "Tense",
+          "raw": "We will push towards the center now.\nTense"
+        },
+        {
+          "requestedTick": 5400,
+          "tick": 5460,
+          "durationMs": 271.5999999977648,
+          "valid": true,
+          "applied": true,
+          "reply": "We will maintain our current positions for now.",
+          "emotion": "Tense",
+          "raw": "We will maintain our current positions for now.\nTense"
+        },
+        {
+          "requestedTick": 6960,
+          "tick": 7020,
+          "durationMs": 242.30000000074506,
+          "valid": true,
+          "applied": true,
+          "reply": "We will hold the line here for now.",
+          "emotion": "Tense",
+          "raw": "We will hold the line here for now.\nTense"
+        },
+        {
+          "requestedTick": 8520,
+          "tick": 8580,
+          "durationMs": 171.89999999850988,
+          "valid": true,
+          "applied": true,
+          "reply": "Hold your ground.",
+          "emotion": "Tense",
+          "raw": "Hold your ground.\nTense"
+        },
+        {
+          "requestedTick": 10080,
+          "tick": 10140,
+          "durationMs": 200.5,
+          "valid": true,
+          "applied": true,
+          "reply": "We will maintain this position.",
+          "emotion": "Tense",
+          "raw": "We will maintain this position.\nTense"
+        },
+        {
+          "requestedTick": 11640,
+          "tick": 11700,
+          "durationMs": 174.39999999850988,
+          "valid": true,
+          "applied": true,
+          "reply": "Hold the line.",
+          "emotion": "Tense",
+          "raw": "Hold the line.\nTense"
+        },
+        {
+          "requestedTick": 13200,
+          "tick": 13260,
+          "durationMs": 200.90000000223517,
+          "valid": true,
+          "applied": true,
+          "reply": "We hold this line steady.",
+          "emotion": "Tense",
+          "raw": "We hold this line steady.\nTense"
+        },
+        {
+          "requestedTick": 14760,
+          "tick": 14820,
+          "durationMs": 205.19999999925494,
+          "valid": true,
+          "applied": true,
+          "reply": "We will maintain our position.",
+          "emotion": "Tense",
+          "raw": "We will maintain our position.\nTense"
+        },
+        {
+          "requestedTick": 16320,
+          "tick": 16380,
+          "durationMs": 257.4000000022352,
+          "valid": true,
+          "applied": true,
+          "reply": "Hold the line, we will not yield ground.",
+          "emotion": "Tense",
+          "raw": "Hold the line, we will not yield ground.\nTense"
+        },
+        {
+          "requestedTick": 17880,
+          "tick": 17940,
+          "durationMs": 214,
+          "valid": true,
+          "applied": true,
+          "reply": "We will hold this line firm.",
+          "emotion": "Tense",
+          "raw": "We will hold this line firm.\nTense"
+        },
+        {
+          "requestedTick": 19440,
+          "tick": 19500,
+          "durationMs": 222.60000000149012,
+          "valid": true,
+          "applied": true,
+          "reply": "We will press the advantage now.",
+          "emotion": "Tense",
+          "raw": "We will press the advantage now.\nTense"
+        },
+        {
+          "requestedTick": 21000,
+          "tick": 21060,
+          "durationMs": 247.69999999925494,
+          "valid": true,
+          "applied": true,
+          "reply": "Hold the line, we will not break.",
+          "emotion": "Tense",
+          "raw": "Hold the line, we will not break.\nTense"
+        },
+        {
+          "requestedTick": 22560,
+          "tick": 22620,
+          "durationMs": 214.30000000074506,
+          "valid": true,
+          "applied": true,
+          "reply": "We will hold this position firm.",
+          "emotion": "Tense",
+          "raw": "We will hold this position firm.\nTense"
+        },
+        {
+          "requestedTick": 24120,
+          "tick": 24180,
+          "durationMs": 201.60000000149012,
+          "valid": true,
+          "applied": true,
+          "reply": "We will maintain this line.",
+          "emotion": "Tense",
+          "raw": "We will maintain this line.\nTense"
+        },
+        {
+          "requestedTick": 25680,
+          "tick": 25740,
+          "durationMs": 250.19999999925494,
+          "valid": true,
+          "applied": true,
+          "reply": "Hold the line, we will not yield ground.",
+          "emotion": "Tense",
+          "raw": "Hold the line, we will not yield ground.\nTense"
+        },
+        {
+          "requestedTick": 27240,
+          "tick": 27300,
+          "durationMs": 281.5999999977648,
+          "valid": true,
+          "applied": true,
+          "reply": "Hold your position, we will not let you break through.",
+          "emotion": "Tense",
+          "raw": "Hold your position, we will not let you break through.\nTense"
+        },
+        {
+          "requestedTick": 28800,
+          "tick": 28860,
+          "durationMs": 235.69999999925494,
+          "valid": true,
+          "applied": true,
+          "reply": "We will hold this line until the end.",
+          "emotion": "Tense",
+          "raw": "We will hold this line until the end.\nTense"
+        },
+        {
+          "requestedTick": 30360,
+          "tick": 30420,
+          "durationMs": 217.39999999850988,
+          "valid": true,
+          "applied": true,
+          "reply": "We will maintain this defensive posture.",
+          "emotion": "Tense",
+          "raw": "We will maintain this defensive posture.\nTense"
+        },
+        {
+          "requestedTick": 31920,
+          "tick": 31980,
+          "durationMs": 184.30000000074506,
+          "valid": true,
+          "applied": true,
+          "reply": "Hold the line firm.",
+          "emotion": "Tense",
+          "raw": "Hold the line firm.\nTense"
+        },
+        {
+          "requestedTick": 33480,
+          "tick": 33540,
+          "durationMs": 216.10000000149012,
+          "valid": true,
+          "applied": true,
+          "reply": "We will hold this line steady.",
+          "emotion": "Tense",
+          "raw": "We will hold this line steady.\nTense"
+        },
+        {
+          "requestedTick": 35040,
+          "tick": 35100,
+          "durationMs": 204.59999999776483,
+          "valid": true,
+          "applied": true,
+          "reply": "We will maintain our position.",
+          "emotion": "Tense",
+          "raw": "We will maintain our position.\nTense"
+        },
+        {
+          "requestedTick": 36600,
+          "tick": 36660,
+          "durationMs": 255.69999999925494,
+          "valid": true,
+          "applied": true,
+          "reply": "Hold the line, we will not yield ground.",
+          "emotion": "Tense",
+          "raw": "Hold the line, we will not yield ground.\nTense"
+        },
+        {
+          "requestedTick": 38160,
+          "tick": 38220,
+          "durationMs": 202.10000000149012,
+          "valid": true,
+          "applied": true,
+          "reply": "We hold this line firm.",
+          "emotion": "Tense",
+          "raw": "We hold this line firm.\nTense"
+        },
+        {
+          "requestedTick": 39720,
+          "tick": 39780,
+          "durationMs": 217.30000000074506,
+          "valid": true,
+          "applied": true,
+          "reply": "We will press the advantage now.",
+          "emotion": "Tense",
+          "raw": "We will press the advantage now.\nTense"
+        },
+        {
+          "requestedTick": 41280,
+          "tick": 41340,
+          "durationMs": 281.5999999977648,
+          "valid": true,
+          "applied": true,
+          "reply": "Hold your ground, and we will see what happens next.",
+          "emotion": "Tense",
+          "raw": "Hold your ground, and we will see what happens next.\nTense"
+        },
+        {
+          "requestedTick": 42840,
+          "tick": 42900,
+          "durationMs": 253.69999999925494,
+          "valid": true,
+          "applied": true,
+          "reply": "We will hold this line until we can strike.",
+          "emotion": "Tense",
+          "raw": "We will hold this line until we can strike.\nTense"
+        },
+        {
+          "requestedTick": 44400,
+          "tick": 44460,
+          "durationMs": 200.60000000149012,
+          "valid": true,
+          "applied": true,
+          "reply": "We will maintain our position.",
+          "emotion": "Tense",
+          "raw": "We will maintain our position.\nTense"
+        }
+      ]
+    },
+    {
+      "options": {
+        "seed": 83,
+        "difficulty": "normal",
+        "startAge": 2
+      },
+      "gemma": {
+        "winner": 1,
+        "ticks": 19393,
+        "finished": true,
+        "metrics": {
+          "firstContactTick": 413,
+          "kills": {
+            "1": 44,
+            "-1": 37
+          },
+          "spent": {
+            "1": 454000,
+            "-1": 323000
+          },
+          "damage": {
+            "1": 758587.4999999998,
+            "-1": 194946.24999999264
+          },
+          "spawned": {
+            "1": 42,
+            "-1": 44
+          },
+          "peakUnits": 8,
+          "evolutions": [
+            {
+              "tick": 4476,
+              "team": -1,
+              "age": 3
+            },
+            {
+              "tick": 4680,
+              "team": 1,
+              "age": 3
+            },
+            {
+              "tick": 9228,
+              "team": -1,
+              "age": 4
+            },
+            {
+              "tick": 9480,
+              "team": 1,
+              "age": 4
+            },
+            {
+              "tick": 14160,
+              "team": 1,
+              "age": 5
+            },
+            {
+              "tick": 14304,
+              "team": -1,
+              "age": 5
+            }
+          ]
+        },
+        "playerHp": 371903.75,
+        "enemyHp": 0,
+        "digest": "14855b2f"
+      },
+      "baseline": {
+        "winner": -1,
+        "ticks": 24814,
+        "finished": true,
+        "metrics": {
+          "firstContactTick": 413,
+          "kills": {
+            "1": 50,
+            "-1": 68
+          },
+          "spent": {
+            "1": 786500,
+            "-1": 861300
+          },
+          "damage": {
+            "1": 688304.9999999681,
+            "-1": 1396099.9999999886
+          },
+          "spawned": {
+            "1": 68,
+            "-1": 57
+          },
+          "peakUnits": 9,
+          "evolutions": [
+            {
+              "tick": 4368,
+              "team": -1,
+              "age": 3
+            },
+            {
+              "tick": 4620,
+              "team": 1,
+              "age": 3
+            },
+            {
+              "tick": 9336,
+              "team": -1,
+              "age": 4
+            },
+            {
+              "tick": 9540,
+              "team": 1,
+              "age": 4
+            },
+            {
+              "tick": 14088,
+              "team": -1,
+              "age": 5
+            },
+            {
+              "tick": 14160,
+              "team": 1,
+              "age": 5
+            }
+          ]
+        },
+        "playerHp": 0,
+        "enemyHp": 370475,
+        "digest": "36bf0fbd"
+      },
+      "turns": [
+        {
+          "requestedTick": 720,
+          "tick": 780,
+          "durationMs": 279.19999999925494,
+          "valid": true,
+          "applied": true,
+          "reply": "We will focus on securing the center and expanding our ranged advantage.",
+          "emotion": "Confident",
+          "raw": "We will focus on securing the center and expanding our ranged advantage.\nConfident"
+        },
+        {
+          "requestedTick": 2280,
+          "tick": 2340,
+          "durationMs": 304.3999999985099,
+          "valid": true,
+          "applied": true,
+          "reply": "That is an unreasonable demand. We will proceed by following the established rules.",
+          "emotion": "Confident",
+          "raw": "That is an unreasonable demand. We will proceed by following the established rules.\nConfident"
+        },
+        {
+          "requestedTick": 3840,
+          "tick": 3900,
+          "durationMs": 238.5,
+          "valid": true,
+          "applied": true,
+          "reply": "We will secure the center and push forward now.",
+          "emotion": "Confident",
+          "raw": "We will secure the center and push forward now.\nConfident"
+        },
+        {
+          "requestedTick": 5400,
+          "tick": 5460,
+          "durationMs": 220.80000000074506,
+          "valid": true,
+          "applied": true,
+          "reply": "We will focus on securing the center.",
+          "emotion": "Confident",
+          "raw": "We will focus on securing the center.\nConfident"
+        },
+        {
+          "requestedTick": 6960,
+          "tick": 7020,
+          "durationMs": 217.90000000223517,
+          "valid": true,
+          "applied": true,
+          "reply": "Let's solidify our central position.",
+          "emotion": "Confident",
+          "raw": "Let's solidify our central position.\nConfident"
+        },
+        {
+          "requestedTick": 8520,
+          "tick": 8580,
+          "durationMs": 212.30000000074506,
+          "valid": true,
+          "applied": true,
+          "reply": "We will push towards the center now.",
+          "emotion": "Confident",
+          "raw": "We will push towards the center now.\nConfident"
+        },
+        {
+          "requestedTick": 10080,
+          "tick": 10140,
+          "durationMs": 250.60000000149012,
+          "valid": true,
+          "applied": true,
+          "reply": "Hold the line here. We will secure this ground.",
+          "emotion": "Confident",
+          "raw": "Hold the line here. We will secure this ground.\nConfident"
+        },
+        {
+          "requestedTick": 11640,
+          "tick": 11700,
+          "durationMs": 281,
+          "valid": true,
+          "applied": true,
+          "reply": "We will maintain our current position and look for an opening.",
+          "emotion": "Confident",
+          "raw": "We will maintain our current position and look for an opening.\nConfident"
+        },
+        {
+          "requestedTick": 13200,
+          "tick": 13260,
+          "durationMs": 242.09999999776483,
+          "valid": true,
+          "applied": true,
+          "reply": "Hold your ground, and we will push forward.",
+          "emotion": "Confident",
+          "raw": "Hold your ground, and we will push forward.\nConfident"
+        },
+        {
+          "requestedTick": 14760,
+          "tick": 14820,
+          "durationMs": 187.89999999850988,
+          "valid": true,
+          "applied": true,
+          "reply": "We hold this line firmly.",
+          "emotion": "Confident",
+          "raw": "We hold this line firmly.\nConfident"
+        },
+        {
+          "requestedTick": 16320,
+          "tick": 16380,
+          "durationMs": 185.30000000074506,
+          "valid": true,
+          "applied": true,
+          "reply": "We will maintain this position.",
+          "emotion": "Confident",
+          "raw": "We will maintain this position.\nConfident"
+        },
+        {
+          "requestedTick": 17880,
+          "tick": 17940,
+          "durationMs": 267.30000000074506,
+          "valid": true,
+          "applied": true,
+          "reply": "Hold the line, and we will see what happens next.",
+          "emotion": "Confident",
+          "raw": "Hold the line, and we will see what happens next.\nConfident"
+        }
+      ]
+    },
+    {
+      "options": {
+        "seed": 83,
+        "difficulty": "normal",
+        "startAge": 3
+      },
+      "gemma": {
+        "winner": 1,
+        "ticks": 8837,
+        "finished": true,
+        "metrics": {
+          "firstContactTick": 401,
+          "kills": {
+            "1": 21,
+            "-1": 10
+          },
+          "spent": {
+            "1": 127000,
+            "-1": 96500
+          },
+          "damage": {
+            "1": 176700,
+            "-1": 41628.333333333816
+          },
+          "spawned": {
+            "1": 13,
+            "-1": 21
+          },
+          "peakUnits": 5,
+          "evolutions": [
+            {
+              "tick": 4440,
+              "team": 1,
+              "age": 4
+            },
+            {
+              "tick": 4692,
+              "team": -1,
+              "age": 4
+            }
+          ]
+        },
+        "playerHp": 80000,
+        "enemyHp": 0,
+        "digest": "cc47c5ae"
+      },
+      "baseline": {
+        "winner": 1,
+        "ticks": 8837,
+        "finished": true,
+        "metrics": {
+          "firstContactTick": 401,
+          "kills": {
+            "1": 21,
+            "-1": 10
+          },
+          "spent": {
+            "1": 127000,
+            "-1": 96500
+          },
+          "damage": {
+            "1": 176700,
+            "-1": 41628.333333333816
+          },
+          "spawned": {
+            "1": 13,
+            "-1": 21
+          },
+          "peakUnits": 5,
+          "evolutions": [
+            {
+              "tick": 4440,
+              "team": 1,
+              "age": 4
+            },
+            {
+              "tick": 4692,
+              "team": -1,
+              "age": 4
+            }
+          ]
+        },
+        "playerHp": 80000,
+        "enemyHp": 0,
+        "digest": "fe372aa4"
+      },
+      "turns": [
+        {
+          "requestedTick": 720,
+          "tick": 780,
+          "durationMs": 273.9000000022352,
+          "valid": true,
+          "applied": true,
+          "reply": "We will focus on securing the center and exploiting your flank.",
+          "emotion": "Confident",
+          "raw": "We will focus on securing the center and exploiting your flank.\nConfident"
+        },
+        {
+          "requestedTick": 2280,
+          "tick": 2340,
+          "durationMs": 244.59999999776483,
+          "valid": true,
+          "applied": true,
+          "reply": "I will focus on building a strong central presence.",
+          "emotion": "Confident",
+          "raw": "I will focus on building a strong central presence.\nConfident"
+        },
+        {
+          "requestedTick": 3840,
+          "tick": 3900,
+          "durationMs": 221.60000000149012,
+          "valid": true,
+          "applied": true,
+          "reply": "Let's push towards the center now.",
+          "emotion": "Confident",
+          "raw": "Let's push towards the center now.\nConfident"
+        },
+        {
+          "requestedTick": 5400,
+          "tick": 5460,
+          "durationMs": 196.10000000149012,
+          "valid": true,
+          "applied": true,
+          "reply": "We will secure the flank first.",
+          "emotion": "Confident",
+          "raw": "We will secure the flank first.\nConfident"
+        },
+        {
+          "requestedTick": 6960,
+          "tick": 7020,
+          "durationMs": 213.5,
+          "valid": true,
+          "applied": true,
+          "reply": "We will move to secure the center.",
+          "emotion": "Confident",
+          "raw": "We will move to secure the center.\nConfident"
+        },
+        {
+          "requestedTick": 8520,
+          "tick": 8580,
+          "durationMs": 212.30000000074506,
+          "valid": true,
+          "applied": true,
+          "reply": "We will push towards the center now.",
+          "emotion": "Confident",
+          "raw": "We will push towards the center now.\nConfident"
+        }
+      ]
+    },
+    {
+      "options": {
+        "seed": 83,
+        "difficulty": "normal",
+        "startAge": 4
+      },
+      "gemma": {
+        "winner": -1,
+        "ticks": 11144,
+        "finished": true,
+        "metrics": {
+          "firstContactTick": 316,
+          "kills": {
+            "1": 13,
+            "-1": 36
+          },
+          "spent": {
+            "1": 554500,
+            "-1": 612500
+          },
+          "damage": {
+            "1": 308500.0000000181,
+            "-1": 1132749.9999999956
+          },
+          "spawned": {
+            "1": 36,
+            "-1": 20
+          },
+          "peakUnits": 8,
+          "evolutions": [
+            {
+              "tick": 3828,
+              "team": -1,
+              "age": 5
+            },
+            {
+              "tick": 3960,
+              "team": 1,
+              "age": 5
+            }
+          ]
+        },
+        "playerHp": 0,
+        "enemyHp": 375000,
+        "digest": "9841cc32"
+      },
+      "baseline": {
+        "winner": -1,
+        "ticks": 11144,
+        "finished": true,
+        "metrics": {
+          "firstContactTick": 316,
+          "kills": {
+            "1": 13,
+            "-1": 36
+          },
+          "spent": {
+            "1": 554500,
+            "-1": 612500
+          },
+          "damage": {
+            "1": 308500.0000000181,
+            "-1": 1132749.9999999956
+          },
+          "spawned": {
+            "1": 36,
+            "-1": 20
+          },
+          "peakUnits": 8,
+          "evolutions": [
+            {
+              "tick": 3828,
+              "team": -1,
+              "age": 5
+            },
+            {
+              "tick": 3960,
+              "team": 1,
+              "age": 5
+            }
+          ]
+        },
+        "playerHp": 0,
+        "enemyHp": 375000,
+        "digest": "be3b35e8"
+      },
+      "turns": [
+        {
+          "requestedTick": 720,
+          "tick": 780,
+          "durationMs": 232.59999999776483,
+          "valid": true,
+          "applied": true,
+          "reply": "My heavy is ready to break through your lines.",
+          "emotion": "Confident",
+          "raw": "My heavy is ready to break through your lines.\nConfident"
+        },
+        {
+          "requestedTick": 2280,
+          "tick": 2340,
+          "durationMs": 279.19999999925494,
+          "valid": true,
+          "applied": true,
+          "reply": "I will focus on securing the center and exploiting your exposed flanks.",
+          "emotion": "Confident",
+          "raw": "I will focus on securing the center and exploiting your exposed flanks.\nConfident"
+        },
+        {
+          "requestedTick": 3840,
+          "tick": 3900,
+          "durationMs": 169.80000000074506,
+          "valid": true,
+          "applied": true,
+          "reply": "Prepare for the onslaught.",
+          "emotion": "Confident",
+          "raw": "Prepare for the onslaught.\nConfident"
+        },
+        {
+          "requestedTick": 5400,
+          "tick": 5460,
+          "durationMs": 254,
+          "valid": true,
+          "applied": true,
+          "reply": "Hold your ground, I will press the advantage now.",
+          "emotion": "Confident",
+          "raw": "Hold your ground, I will press the advantage now.\nConfident"
+        },
+        {
+          "requestedTick": 6960,
+          "tick": 7020,
+          "durationMs": 285.20000000298023,
+          "valid": true,
+          "applied": true,
+          "reply": "Hold the line, I will meet your push head-on.",
+          "emotion": "Confident",
+          "raw": "Hold the line, I will meet your push head-on.\nConfident"
+        },
+        {
+          "requestedTick": 8520,
+          "tick": 8580,
+          "durationMs": 194.89999999850988,
+          "valid": true,
+          "applied": true,
+          "reply": "Prepare for the inevitable clash.",
+          "emotion": "Confident",
+          "raw": "Prepare for the inevitable clash.\nConfident"
+        },
+        {
+          "requestedTick": 10080,
+          "tick": 10140,
+          "durationMs": 263.5999999977648,
+          "valid": true,
+          "applied": true,
+          "reply": "Let's see what you bring to the fight.",
+          "emotion": "Confident",
+          "raw": "Let's see what you bring to the fight.\nConfident"
+        }
+      ]
+    },
+    {
+      "options": {
+        "seed": 83,
+        "difficulty": "normal",
+        "startAge": 5
+      },
+      "gemma": {
+        "winner": 1,
+        "ticks": 5738,
+        "finished": true,
+        "metrics": {
+          "firstContactTick": 236,
+          "kills": {
+            "1": 11,
+            "-1": 4
+          },
+          "spent": {
+            "1": 509500,
+            "-1": 363000
+          },
+          "damage": {
+            "1": 733500,
+            "-1": 161594.99999999744
+          },
+          "spawned": {
+            "1": 9,
+            "-1": 11
+          },
+          "peakUnits": 6,
+          "evolutions": []
+        },
+        "playerHp": 371780,
+        "enemyHp": 0,
+        "digest": "242ace5b"
+      },
+      "baseline": {
+        "winner": 1,
+        "ticks": 5738,
+        "finished": true,
+        "metrics": {
+          "firstContactTick": 236,
+          "kills": {
+            "1": 11,
+            "-1": 4
+          },
+          "spent": {
+            "1": 509500,
+            "-1": 363000
+          },
+          "damage": {
+            "1": 733500,
+            "-1": 161594.99999999744
+          },
+          "spawned": {
+            "1": 9,
+            "-1": 11
+          },
+          "peakUnits": 6,
+          "evolutions": []
+        },
+        "playerHp": 371780,
+        "enemyHp": 0,
+        "digest": "506944e5"
+      },
+      "turns": [
+        {
+          "requestedTick": 720,
+          "tick": 780,
+          "durationMs": 301.29999999701977,
+          "valid": true,
+          "applied": true,
+          "reply": "We will focus on securing the center and exploiting the open flanks.",
+          "emotion": "Confident",
+          "raw": "We will focus on securing the center and exploiting the open flanks.\nConfident"
+        },
+        {
+          "requestedTick": 2280,
+          "tick": 2340,
+          "durationMs": 315.69999999925494,
+          "valid": true,
+          "applied": true,
+          "reply": "That is an unreasonable request. We must adhere to the established rules.",
+          "emotion": "Confident",
+          "raw": "That is an unreasonable request. We must adhere to the established rules.\nConfident"
+        },
+        {
+          "requestedTick": 3840,
+          "tick": 3900,
+          "durationMs": 217,
+          "valid": true,
+          "applied": true,
+          "reply": "We will push towards the center now.",
+          "emotion": "Confident",
+          "raw": "We will push towards the center now.\nConfident"
+        },
+        {
+          "requestedTick": 5400,
+          "tick": 5460,
+          "durationMs": 203.80000000074506,
+          "valid": true,
+          "applied": true,
+          "reply": "We will secure the center quickly.",
+          "emotion": "Confident",
+          "raw": "We will secure the center quickly.\nConfident"
+        }
+      ]
+    },
+    {
+      "options": {
+        "seed": 83,
+        "difficulty": "hard",
+        "startAge": 0
+      },
+      "gemma": {
+        "winner": -1,
+        "ticks": 14327,
+        "finished": true,
+        "metrics": {
+          "firstContactTick": 1000,
+          "kills": {
+            "1": 46,
+            "-1": 47
+          },
+          "spent": {
+            "1": 14930,
+            "-1": 29735
+          },
+          "damage": {
+            "1": 15213,
+            "-1": 29549.999999999985
+          },
+          "spawned": {
+            "1": 47,
+            "-1": 49
+          },
+          "peakUnits": 14,
+          "evolutions": [
+            {
+              "tick": 3084,
+              "team": -1,
+              "age": 1
+            },
+            {
+              "tick": 3480,
+              "team": 1,
+              "age": 1
+            },
+            {
+              "tick": 6120,
+              "team": -1,
+              "age": 2
+            },
+            {
+              "tick": 6540,
+              "team": 1,
+              "age": 2
+            },
+            {
+              "tick": 10260,
+              "team": -1,
+              "age": 3
+            },
+            {
+              "tick": 11400,
+              "team": 1,
+              "age": 3
+            }
+          ]
+        },
+        "playerHp": 0,
+        "enemyHp": 25214.999999999996,
+        "digest": "e8abeb3b"
+      },
+      "baseline": {
+        "winner": -1,
+        "ticks": 14568,
+        "finished": true,
+        "metrics": {
+          "firstContactTick": 1000,
+          "kills": {
+            "1": 45,
+            "-1": 51
+          },
+          "spent": {
+            "1": 16780,
+            "-1": 42410
+          },
+          "damage": {
+            "1": 12360,
+            "-1": 33849.9999999999
+          },
+          "spawned": {
+            "1": 51,
+            "-1": 48
+          },
+          "peakUnits": 14,
+          "evolutions": [
+            {
+              "tick": 3084,
+              "team": -1,
+              "age": 1
+            },
+            {
+              "tick": 3480,
+              "team": 1,
+              "age": 1
+            },
+            {
+              "tick": 5844,
+              "team": -1,
+              "age": 2
+            },
+            {
+              "tick": 7020,
+              "team": 1,
+              "age": 2
+            },
+            {
+              "tick": 9846,
+              "team": -1,
+              "age": 3
+            },
+            {
+              "tick": 11460,
+              "team": 1,
+              "age": 3
+            },
+            {
+              "tick": 14262,
+              "team": -1,
+              "age": 4
+            }
+          ]
+        },
+        "playerHp": 0,
+        "enemyHp": 100800,
+        "digest": "c3a0f354"
+      },
+      "turns": [
+        {
+          "requestedTick": 720,
+          "tick": 780,
+          "durationMs": 297,
+          "valid": true,
+          "applied": true,
+          "reply": "We will focus on securing the center and exploiting your early positioning.",
+          "emotion": "Confident",
+          "raw": "We will focus on securing the center and exploiting your early positioning.\nConfident"
+        },
+        {
+          "requestedTick": 2280,
+          "tick": 2340,
+          "durationMs": 218.5,
+          "valid": true,
+          "applied": true,
+          "reply": "We will secure the center as planned.",
+          "emotion": "Confident",
+          "raw": "We will secure the center as planned.\nConfident"
+        },
+        {
+          "requestedTick": 3840,
+          "tick": 3900,
+          "durationMs": 209.59999999776483,
+          "valid": true,
+          "applied": true,
+          "reply": "We will push towards the center now.",
+          "emotion": "Confident",
+          "raw": "We will push towards the center now.\nConfident"
+        },
+        {
+          "requestedTick": 5400,
+          "tick": 5460,
+          "durationMs": 263,
+          "valid": true,
+          "applied": true,
+          "reply": "Let's move our forces to secure that central ground.",
+          "emotion": "Confident",
+          "raw": "Let's move our forces to secure that central ground.\nConfident"
+        },
+        {
+          "requestedTick": 6960,
+          "tick": 7020,
+          "durationMs": 253.89999999850988,
+          "valid": true,
+          "applied": true,
+          "reply": "We will advance our melee units to secure the flank.",
+          "emotion": "Confident",
+          "raw": "We will advance our melee units to secure the flank.\nConfident"
+        },
+        {
+          "requestedTick": 8520,
+          "tick": 8580,
+          "durationMs": 239.80000000074506,
+          "valid": true,
+          "applied": true,
+          "reply": "We will push forward to claim the center now.",
+          "emotion": "Confident",
+          "raw": "We will push forward to claim the center now.\nConfident"
+        },
+        {
+          "requestedTick": 10080,
+          "tick": 10140,
+          "durationMs": 264.19999999925494,
+          "valid": true,
+          "applied": true,
+          "reply": "We will maintain a strong position and look for an opening.",
+          "emotion": "Confident",
+          "raw": "We will maintain a strong position and look for an opening.\nConfident"
+        },
+        {
+          "requestedTick": 11640,
+          "tick": 11700,
+          "durationMs": 230.69999999925494,
+          "valid": true,
+          "applied": true,
+          "reply": "Let's secure that central ground immediately.",
+          "emotion": "Confident",
+          "raw": "Let's secure that central ground immediately.\nConfident"
+        },
+        {
+          "requestedTick": 13200,
+          "tick": 13260,
+          "durationMs": 232.10000000149012,
+          "valid": true,
+          "applied": true,
+          "reply": "We will push forward with our ranged advantage.",
+          "emotion": "Confident",
+          "raw": "We will push forward with our ranged advantage.\nConfident"
+        }
+      ]
+    },
+    {
+      "options": {
+        "seed": 83,
+        "difficulty": "hard",
+        "startAge": 1
+      },
+      "gemma": {
+        "winner": -1,
+        "ticks": 11567,
+        "finished": true,
+        "metrics": {
+          "firstContactTick": 992,
+          "kills": {
+            "1": 25,
+            "-1": 40
+          },
+          "spent": {
+            "1": 16625,
+            "-1": 32100
+          },
+          "damage": {
+            "1": 18172,
+            "-1": 33044.99999999994
+          },
+          "spawned": {
+            "1": 40,
+            "-1": 28
+          },
+          "peakUnits": 10,
+          "evolutions": [
+            {
+              "tick": 3291,
+              "team": -1,
+              "age": 2
+            },
+            {
+              "tick": 4020,
+              "team": 1,
+              "age": 2
+            },
+            {
+              "tick": 7500,
+              "team": -1,
+              "age": 3
+            },
+            {
+              "tick": 8460,
+              "team": 1,
+              "age": 3
+            }
+          ]
+        },
+        "playerHp": 0,
+        "enemyHp": 30240,
+        "digest": "13495a04"
+      },
+      "baseline": {
+        "winner": -1,
+        "ticks": 7314,
+        "finished": true,
+        "metrics": {
+          "firstContactTick": 992,
+          "kills": {
+            "1": 25,
+            "-1": 30
+          },
+          "spent": {
+            "1": 4125,
+            "-1": 6100
+          },
+          "damage": {
+            "1": 4812,
+            "-1": 11670.000000000005
+          },
+          "spawned": {
+            "1": 31,
+            "-1": 30
+          },
+          "peakUnits": 15,
+          "evolutions": [
+            {
+              "tick": 3222,
+              "team": -1,
+              "age": 2
+            },
+            {
+              "tick": 4020,
+              "team": 1,
+              "age": 2
+            }
+          ]
+        },
+        "playerHp": 0,
+        "enemyHp": 7200,
+        "digest": "767a78e1"
+      },
+      "turns": [
+        {
+          "requestedTick": 720,
+          "tick": 780,
+          "durationMs": 295.80000000074506,
+          "valid": true,
+          "applied": true,
+          "reply": "We will focus on securing the center and exploiting your flank.",
+          "emotion": "Confident",
+          "raw": "We will focus on securing the center and exploiting your flank.\nConfident"
+        },
+        {
+          "requestedTick": 2280,
+          "tick": 2340,
+          "durationMs": 305.79999999701977,
+          "valid": true,
+          "applied": true,
+          "reply": "That is an unreasonable demand. We will proceed by following the established strategy.",
+          "emotion": "Confident",
+          "raw": "That is an unreasonable demand. We will proceed by following the established strategy.\nConfident"
+        },
+        {
+          "requestedTick": 3840,
+          "tick": 3900,
+          "durationMs": 250.69999999925494,
+          "valid": true,
+          "applied": true,
+          "reply": "We will maintain our current position and press the advantage.",
+          "emotion": "Confident",
+          "raw": "We will maintain our current position and press the advantage.\nConfident"
+        },
+        {
+          "requestedTick": 5400,
+          "tick": 5460,
+          "durationMs": 262.69999999925494,
+          "valid": true,
+          "applied": true,
+          "reply": "We will secure the center and prepare for the next push.",
+          "emotion": "Confident",
+          "raw": "We will secure the center and prepare for the next push.\nConfident"
+        },
+        {
+          "requestedTick": 6960,
+          "tick": 7020,
+          "durationMs": 262,
+          "valid": true,
+          "applied": true,
+          "reply": "Hold the line here and we will take the center soon.",
+          "emotion": "Confident",
+          "raw": "Hold the line here and we will take the center soon.\nConfident"
+        },
+        {
+          "requestedTick": 8520,
+          "tick": 8580,
+          "durationMs": 192.60000000149012,
+          "valid": true,
+          "applied": true,
+          "reply": "We will hold this line firm.",
+          "emotion": "Confident",
+          "raw": "We will hold this line firm.\nConfident"
+        },
+        {
+          "requestedTick": 10080,
+          "tick": 10140,
+          "durationMs": 185,
+          "valid": true,
+          "applied": true,
+          "reply": "We will maintain this position.",
+          "emotion": "Confident",
+          "raw": "We will maintain this position.\nConfident"
+        }
+      ]
+    },
+    {
+      "options": {
+        "seed": 83,
+        "difficulty": "hard",
+        "startAge": 2
+      },
+      "gemma": {
+        "winner": -1,
+        "ticks": 9117,
+        "finished": true,
+        "metrics": {
+          "firstContactTick": 413,
+          "kills": {
+            "1": 12,
+            "-1": 31
+          },
+          "spent": {
+            "1": 27300,
+            "-1": 63600
+          },
+          "damage": {
+            "1": 17630,
+            "-1": 47737.49999999995
+          },
+          "spawned": {
+            "1": 31,
+            "-1": 15
+          },
+          "peakUnits": 7,
+          "evolutions": [
+            {
+              "tick": 3705,
+              "team": -1,
+              "age": 3
+            },
+            {
+              "tick": 4320,
+              "team": 1,
+              "age": 3
+            },
+            {
+              "tick": 7638,
+              "team": -1,
+              "age": 4
+            }
+          ]
+        },
+        "playerHp": 0,
+        "enemyHp": 100800,
+        "digest": "c2a53e49"
+      },
+      "baseline": {
+        "winner": -1,
+        "ticks": 8037,
+        "finished": true,
+        "metrics": {
+          "firstContactTick": 413,
+          "kills": {
+            "1": 13,
+            "-1": 27
+          },
+          "spent": {
+            "1": 21300,
+            "-1": 32000
+          },
+          "damage": {
+            "1": 12085,
+            "-1": 41137.49999999996
+          },
+          "spawned": {
+            "1": 27,
+            "-1": 16
+          },
+          "peakUnits": 9,
+          "evolutions": [
+            {
+              "tick": 3705,
+              "team": -1,
+              "age": 3
+            },
+            {
+              "tick": 4200,
+              "team": 1,
+              "age": 3
+            },
+            {
+              "tick": 7845,
+              "team": -1,
+              "age": 4
+            }
+          ]
+        },
+        "playerHp": 0,
+        "enemyHp": 100800,
+        "digest": "88e8da4f"
+      },
+      "turns": [
+        {
+          "requestedTick": 720,
+          "tick": 780,
+          "durationMs": 295.5,
+          "valid": true,
+          "applied": true,
+          "reply": "We will focus on securing the center and establishing a strong ranged presence.",
+          "emotion": "Confident",
+          "raw": "We will focus on securing the center and establishing a strong ranged presence.\nConfident"
+        },
+        {
+          "requestedTick": 2280,
+          "tick": 2340,
+          "durationMs": 275.30000000074506,
+          "valid": true,
+          "applied": true,
+          "reply": "That is an impossible request. I will focus on the strategy.",
+          "emotion": "Confident",
+          "raw": "That is an impossible request. I will focus on the strategy.\nConfident"
+        },
+        {
+          "requestedTick": 3840,
+          "tick": 3900,
+          "durationMs": 238.30000000074506,
+          "valid": true,
+          "applied": true,
+          "reply": "We will start by pushing towards the center now.",
+          "emotion": "Confident",
+          "raw": "We will start by pushing towards the center now.\nConfident"
+        },
+        {
+          "requestedTick": 5400,
+          "tick": 5460,
+          "durationMs": 199.5,
+          "valid": true,
+          "applied": true,
+          "reply": "We will secure the center quickly.",
+          "emotion": "Confident",
+          "raw": "We will secure the center quickly.\nConfident"
+        },
+        {
+          "requestedTick": 6960,
+          "tick": 7020,
+          "durationMs": 235.40000000223517,
+          "valid": true,
+          "applied": true,
+          "reply": "Let's push the center and take control.",
+          "emotion": "Confident",
+          "raw": "Let's push the center and take control.\nConfident"
+        },
+        {
+          "requestedTick": 8520,
+          "tick": 8580,
+          "durationMs": 227.39999999850988,
+          "valid": true,
+          "applied": true,
+          "reply": "We will focus fire on the center now.",
+          "emotion": "Confident",
+          "raw": "We will focus fire on the center now.\nConfident"
+        }
+      ]
+    },
+    {
+      "options": {
+        "seed": 83,
+        "difficulty": "hard",
+        "startAge": 3
+      },
+      "gemma": {
+        "winner": -1,
+        "ticks": 4121,
+        "finished": true,
+        "metrics": {
+          "firstContactTick": 401,
+          "kills": {
+            "1": 5,
+            "-1": 11
+          },
+          "spent": {
+            "1": 34500,
+            "-1": 60500
+          },
+          "damage": {
+            "1": 13988.5,
+            "-1": 44400.00000000002
+          },
+          "spawned": {
+            "1": 11,
+            "-1": 10
+          },
+          "peakUnits": 7,
+          "evolutions": [
+            {
+              "tick": 3429,
+              "team": -1,
+              "age": 4
+            }
+          ]
+        },
+        "playerHp": 0,
+        "enemyHp": 115200,
+        "digest": "4ba6adec"
+      },
+      "baseline": {
+        "winner": -1,
+        "ticks": 4121,
+        "finished": true,
+        "metrics": {
+          "firstContactTick": 401,
+          "kills": {
+            "1": 5,
+            "-1": 11
+          },
+          "spent": {
+            "1": 34500,
+            "-1": 60500
+          },
+          "damage": {
+            "1": 13988.5,
+            "-1": 44400.00000000002
+          },
+          "spawned": {
+            "1": 11,
+            "-1": 10
+          },
+          "peakUnits": 7,
+          "evolutions": [
+            {
+              "tick": 3429,
+              "team": -1,
+              "age": 4
+            }
+          ]
+        },
+        "playerHp": 0,
+        "enemyHp": 115200,
+        "digest": "a84ee86a"
+      },
+      "turns": [
+        {
+          "requestedTick": 720,
+          "tick": 780,
+          "durationMs": 222.10000000149012,
+          "valid": true,
+          "applied": true,
+          "reply": "My forces are positioned for a decisive push.",
+          "emotion": "Confident",
+          "raw": "My forces are positioned for a decisive push.\nConfident"
+        },
+        {
+          "requestedTick": 2280,
+          "tick": 2340,
+          "durationMs": 277.6000000014901,
+          "valid": true,
+          "applied": true,
+          "reply": "I will focus on securing a strong position for our next move.",
+          "emotion": "Confident",
+          "raw": "I will focus on securing a strong position for our next move.\nConfident"
+        },
+        {
+          "requestedTick": 3840,
+          "tick": 3900,
+          "durationMs": 187.30000000074506,
+          "valid": true,
+          "applied": true,
+          "reply": "Prepare for the inevitable clash.",
+          "emotion": "Confident",
+          "raw": "Prepare for the inevitable clash.\nConfident"
+        }
+      ]
+    },
+    {
+      "options": {
+        "seed": 83,
+        "difficulty": "hard",
+        "startAge": 4
+      },
+      "gemma": {
+        "winner": -1,
+        "ticks": 3133,
+        "finished": true,
+        "metrics": {
+          "firstContactTick": 316,
+          "kills": {
+            "1": 1,
+            "-1": 8
+          },
+          "spent": {
+            "1": 96000,
+            "-1": 147500
+          },
+          "damage": {
+            "1": 27956.66666666624,
+            "-1": 139250
+          },
+          "spawned": {
+            "1": 8,
+            "-1": 4
+          },
+          "peakUnits": 4,
+          "evolutions": []
+        },
+        "playerHp": 0,
+        "enemyHp": 115200,
+        "digest": "2cd9d010"
+      },
+      "baseline": {
+        "winner": -1,
+        "ticks": 3133,
+        "finished": true,
+        "metrics": {
+          "firstContactTick": 316,
+          "kills": {
+            "1": 1,
+            "-1": 8
+          },
+          "spent": {
+            "1": 96000,
+            "-1": 147500
+          },
+          "damage": {
+            "1": 27956.66666666624,
+            "-1": 139250
+          },
+          "spawned": {
+            "1": 8,
+            "-1": 4
+          },
+          "peakUnits": 4,
+          "evolutions": []
+        },
+        "playerHp": 0,
+        "enemyHp": 115200,
+        "digest": "bc7b15c8"
+      },
+      "turns": [
+        {
+          "requestedTick": 720,
+          "tick": 780,
+          "durationMs": 277.3999999985099,
+          "valid": true,
+          "applied": true,
+          "reply": "My heavy unit is positioned to secure the center and push forward.",
+          "emotion": "Confident",
+          "raw": "My heavy unit is positioned to secure the center and push forward.\nConfident"
+        },
+        {
+          "requestedTick": 2280,
+          "tick": 2340,
+          "durationMs": 278.69999999925494,
+          "valid": true,
+          "applied": true,
+          "reply": "I will focus on securing the flanks and maintaining my current advantage.",
+          "emotion": "Confident",
+          "raw": "I will focus on securing the flanks and maintaining my current advantage.\nConfident"
+        }
+      ]
+    },
+    {
+      "options": {
+        "seed": 83,
+        "difficulty": "hard",
+        "startAge": 5
+      },
+      "gemma": {
+        "winner": -1,
+        "ticks": 5123,
+        "finished": true,
+        "metrics": {
+          "firstContactTick": 236,
+          "kills": {
+            "1": 2,
+            "-1": 15
+          },
+          "spent": {
+            "1": 385000,
+            "-1": 674500
+          },
+          "damage": {
+            "1": 184960.00000000466,
+            "-1": 801500.0000000023
+          },
+          "spawned": {
+            "1": 15,
+            "-1": 14
+          },
+          "peakUnits": 13,
+          "evolutions": []
+        },
+        "playerHp": 0,
+        "enemyHp": 535940,
+        "digest": "45592798"
+      },
+      "baseline": {
+        "winner": -1,
+        "ticks": 5123,
+        "finished": true,
+        "metrics": {
+          "firstContactTick": 236,
+          "kills": {
+            "1": 2,
+            "-1": 15
+          },
+          "spent": {
+            "1": 385000,
+            "-1": 674500
+          },
+          "damage": {
+            "1": 184960.00000000466,
+            "-1": 801500.0000000023
+          },
+          "spawned": {
+            "1": 15,
+            "-1": 14
+          },
+          "peakUnits": 13,
+          "evolutions": []
+        },
+        "playerHp": 0,
+        "enemyHp": 535940,
+        "digest": "41e483b0"
+      },
+      "turns": [
+        {
+          "requestedTick": 720,
+          "tick": 780,
+          "durationMs": 235,
+          "valid": true,
+          "applied": true,
+          "reply": "My heavy is ready to break through your defenses.",
+          "emotion": "Confident",
+          "raw": "My heavy is ready to break through your defenses.\nConfident"
+        },
+        {
+          "requestedTick": 2280,
+          "tick": 2340,
+          "durationMs": 225,
+          "valid": true,
+          "applied": true,
+          "reply": "I will secure the center and push forward.",
+          "emotion": "Confident",
+          "raw": "I will secure the center and push forward.\nConfident"
+        },
+        {
+          "requestedTick": 3840,
+          "tick": 3900,
+          "durationMs": 169,
+          "valid": true,
+          "applied": true,
+          "reply": "Prepare for the onslaught.",
+          "emotion": "Confident",
+          "raw": "Prepare for the onslaught.\nConfident"
+        }
+      ]
+    }
+  ],
+  "errors": []
+}

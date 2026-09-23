@@ -113,13 +113,16 @@ function updateClock(timestamp) {
 function frame(timestamp) {
   if (!runtime.session) return;
   updateClock(timestamp);
+  runtime.NativeGemma.wallTick();
   runtime.draw();
   frameId = requestAnimationFrame(frame);
 }
 function initGame(diffKey = 'normal', options = {}) {
+  if (runtime.NativeGemma.web && ['loading', 'downloading'].includes(runtime.NativeGemma.status.state)) return;
   if (runtime.session?.running) return;
   const { manual: manualClock = false, ...sessionOptions } = options;
   runtime.session = new Session({ difficulty: diffKey, ...sessionOptions });
+  runtime.NativeGemma.startMatch();
   runtime.session.agreements(runtime.DirectorMemory.data.agreements);
   runtime.currentDifficulty = diffKey; runtime.currentConfig = DIFFICULTY_SETTINGS[diffKey];
   manual = manualClock; accumulator = 0; ended = false; gameSpeed = 1; updateSpeedControls(); syncView();
@@ -135,6 +138,9 @@ window.initGame = initGame;
 window.cycleGameSpeed = cycleGameSpeed;
 // A host API for tools and browser conformance; no alternate gameplay implementation.
 window.InkBattle = Object.freeze({ Session, start: initGame, command, advance, observe: () => runtime.session?.observe(),
+  gemma: Object.freeze({ status: () => ({ ...runtime.NativeGemma.status }), turns: () => structuredClone(runtime.NativeGemma.turns),
+    request: message => runtime.NativeGemma.requestTurn('player_chat', message),
+    stop: () => { runtime.NativeGemma.cancelPending(); runtime.NativeGemma.web?.stop(); } }),
   replay: () => runtime.session?.replay(), digest: () => runtime.session?.digest(), render: () => runtime.draw() });
 
 async function boot() {

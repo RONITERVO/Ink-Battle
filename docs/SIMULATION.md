@@ -52,3 +52,9 @@ is broad automated evidence; it cannot measure human enjoyment or prove no strat
 exists outside the supplied policies. Human play and actual phone/model testing remain
 separate acceptance activities. CI runs the same command and publishes report/replay
 artifacts so future additions receive the same coverage.
+
+For optional Gemma, run the separate `npm run test:gemma` workflow described in
+[web Gemma](GEMMA_WEB.md). It calls the real GPU model for each sampled turn while
+skipping idle time between requests, compares completed matches against controls,
+and records emotion inputs for ordinary model-free replay. Keep that hardware test
+separate from the high-throughput balance sweep above.

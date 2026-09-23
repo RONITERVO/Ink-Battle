@@ -1,8 +1,10 @@
-# Ink Battle 2.0.0 release
+# Ink Battle 2.1.0 release
 
 This release rebuilds the single-file demo around one standalone engine while
 retaining the notebook presentation, six ages, four difficulties, music, menus,
-medals, pacts and optional native Gemma bridge.
+medals, pacts and optional native Gemma bridge. Version 2.1.0 adds optional local
+Gemma on the web with a separate, reusable real-model benchmark. Combat rules and
+the replay rules version remain 2.0.0.
 
 ## Build and verify
 
@@ -38,8 +40,10 @@ npm run build
 
 `syncWebAssets` copies the shared bundle, CSS and assets into
 `app/build/generated/web-assets`. Never hand-edit generated Android assets.
-The Android version is `2.0.0` / code `200`. Signing remains in the existing ignored
-`keystore.properties` configuration. This PR does not publish to Google Play or Pages.
+The Android version is `2.1.0` / code `210`. Signing remains in the existing ignored
+`keystore.properties` configuration. Google Play upload remains a release-owner action.
+GitHub Pages publishes merged `main`. The browser-only WASM is excluded from Android
+assets; the Android bridge continues to use its existing native runtime.
 Store submission, real-phone controls/audio and optional multi-GB model installation
 remain device/release-owner checks; no model download is part of automated balance tests.
 
@@ -61,3 +65,5 @@ remain device/release-owner checks; no model download is part of automated balan
   continue through the browser adapter; emotion inputs are recorded for replay.
 
 See [acceptance evidence](docs/ACCEPTANCE.md) for measured coverage and limitations.
+See [web Gemma](docs/GEMMA_WEB.md) for model lifecycle, hardware requirements and
+the additional measured release evidence.

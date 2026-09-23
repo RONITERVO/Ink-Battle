@@ -29,6 +29,13 @@ The pause screen also lets you change speed before resuming. Both sides, income
 and cooldowns speed up together; music stays at its normal playback rate.
 Each new match starts at 1×.
 
+**Optional Gemma on the web:** choose **Play with Gemma** on the start screen, or
+open its settings while paused. This downloads Gemma 4 E2B (2.01 GB) once and runs
+its replies locally on a compatible WebGPU GPU in Chrome/Edge. The game stays
+paused while loading. Turn it off or remove its download from the same settings.
+Gemma remains optional, and starts off when the page is reopened. See
+[web Gemma setup, testing and limitations](docs/GEMMA_WEB.md).
+
 ## The engine is shared
 
 Inspired by [StateBeats](https://github.com/RONITERVO/StateBeats) and
@@ -58,6 +65,11 @@ npx playwright install chromium firefox
 npm run test:browser
 npm run simulate -- --release
 ```
+
+For the separate, opt-in GPU/model benchmark, run `npm start` in one terminal and
+`npm run test:gemma` in another. It downloads the model on first use and checks real
+1×/2×/3× play, offline inference and paired full matches. It is excluded from CI
+and fast balance sweeps; it needs a WebGPU-capable browser and sufficient storage.
 
 The release simulation covers every age and difficulty with six scripted styles,
 seeded full matches, all troop compositions, side symmetry, state invariants and
