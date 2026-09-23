@@ -61,7 +61,7 @@ Edit source modules and run the build, rather than editing generated JavaScript.
 
 ```sh
 npm run check
-npx playwright install chromium firefox
+npx playwright install chromium firefox webkit
 npm run test:browser
 npm run simulate -- --release
 ```

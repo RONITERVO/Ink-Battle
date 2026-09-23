@@ -13,6 +13,7 @@ import { createAudio } from './audio.js';
 import { createRenderer } from './renderer.js';
 import { createHUD } from './hud.js';
 import { createEffects } from './effects.js';
+import { fitBrowserViewport } from './viewport.js';
 
 const canvas = document.getElementById('game-canvas');
 const runtime = { canvas, ctx: canvas.getContext('2d'), COLORS: { ...COLORS }, gameState: {}, globalTime: 0,
@@ -144,6 +145,7 @@ window.InkBattle = Object.freeze({ Session, start: initGame, command, advance, o
   replay: () => runtime.session?.replay(), digest: () => runtime.session?.digest(), render: () => runtime.draw() });
 
 async function boot() {
+  fitBrowserViewport();
   runtime.UIManager.init(); runtime.TooltipManager.init(); runtime.StorageManager.init(); runtime.DirectorMemory.init();
   runtime.GemmaMemory.init(); runtime.DirectorPanel.init(); runtime.NativeGemma.init(); runtime.MusicDirector.init();
   await runtime.WatercolorEngine.generateAll();

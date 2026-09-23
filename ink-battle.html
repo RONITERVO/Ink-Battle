@@ -8,7 +8,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#ebe3d5">
     <!-- 101% correct: this metadata lives in the document head and is not rendered as body text. -->
     <meta name="author" content="RONITERVO">
@@ -20,18 +20,10 @@ SPDX-License-Identifier: Apache-2.0
 </head>
 
 <body>
+    <div id="viewport">
 
     <div class="paper-texture" id="global-paper"></div>
     <div class="coffee-stain"></div>
-
-    <div class="sketchbook-spine">
-        <div class="ring-hole"></div>
-        <div class="ring-hole"></div>
-        <div class="ring-hole"></div>
-        <div class="ring-hole"></div>
-        <div class="ring-hole"></div>
-        <div class="ring-hole"></div>
-    </div>
 
     <div id="preloader">
         <h1 class="font-sketch title-float" style="font-size:8vmin; color:hsl(var(--foreground))">Mixing Watercolors...
@@ -44,6 +36,15 @@ SPDX-License-Identifier: Apache-2.0
 
     <div id="game-container" class="hidden">
         <div id="aspect-wrapper">
+            <div class="sketchbook-spine">
+                <div class="ring-hole"></div>
+                <div class="ring-hole"></div>
+                <div class="ring-hole"></div>
+                <div class="ring-hole"></div>
+                <div class="ring-hole"></div>
+                <div class="ring-hole"></div>
+            </div>
+
             <!-- 101% correct: this canvas is the game's drawing surface. -->
             <canvas id="game-canvas" width="1280" height="720" data-sketch-signature="RONITERVO"></canvas>
 
@@ -196,12 +197,12 @@ SPDX-License-Identifier: Apache-2.0
                         <h1>Paused</h1>
                         <p class="font-hand">The battlefield is frozen on this page.</p>
                         <button class="diff-btn diff-normal sketchy-border" onclick="togglePause(false)"
-                            style="margin-top:20px; font-size: 3vmin; padding: 1vw 3vw;">Resume</button>
+                            style="margin-top:20px; font-size: calc(3 * var(--page-vmin)); padding: calc(1 * var(--page-vw)) calc(3 * var(--page-vw));">Resume</button>
                         <button class="game-speed pause-speed sketchy-border-thin font-sketch" data-game-speed="Speed "
                             onclick="cycleGameSpeed()" aria-label="Game speed: 1×. Change to 2×."
                             title="Game speed: 1×. Change to 2×.">Speed 1×</button>
                         <button class="diff-btn diff-hard sketchy-border" onclick="location.reload()"
-                            style="margin-top:12px; font-size: 2.6vmin; padding: 0.8vw 2.6vw;">New Canvas</button>
+                            style="margin-top:12px; font-size: calc(2.6 * var(--page-vmin)); padding: calc(0.8 * var(--page-vw)) calc(2.6 * var(--page-vw));">New Canvas</button>
                         <a class="legal-link" href="./privacy-policy.html">Privacy Policy</a>
                         <button class="gemma-settings sketchy-border-thin font-hand hidden" data-web-gemma-open>Gemma opponent settings</button>
                     </div>
@@ -240,11 +241,13 @@ SPDX-License-Identifier: Apache-2.0
                     <h1 id="end-title" class="title-float">Game Over</h1>
                     <p id="end-desc" class="font-hand">The pages of history are written by the victors.</p>
                     <button class="diff-btn diff-normal sketchy-border" onclick="location.reload()"
-                        style="margin-top:20px; font-size: 3vmin; padding: 1vw 3vw;">New Canvas</button>
+                        style="margin-top:20px; font-size: calc(3 * var(--page-vmin)); padding: calc(1 * var(--page-vw)) calc(3 * var(--page-vw));">New Canvas</button>
                     <a class="legal-link" href="./privacy-policy.html">Privacy Policy</a>
                 </div>
             </div>
         </div>
+    </div>
+
     </div>
 
     <dialog id="web-gemma-dialog" class="web-gemma-dialog sketchy-border" aria-labelledby="web-gemma-title">

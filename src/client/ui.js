@@ -164,14 +164,12 @@ const TooltipManager = {
         if (!this.el.classList.contains('visible')) return;
         const rect = document.getElementById('aspect-wrapper').getBoundingClientRect();
 
-        // Prevent tooltip from overflowing screen bounds
-        let x = e.clientX - rect.left;
-        let y = e.clientY - rect.top;
-
-        if (y < this.el.offsetHeight + 20) {
-            y = this.el.offsetHeight + 20;
-        }
-
+        // Pointer positions are screen pixels; the tooltip lives on the scaled page.
+        const halfWidth = this.el.offsetWidth / 2;
+        const x = this.clamp((e.clientX - rect.left) * CANVAS_WIDTH / rect.width,
+            halfWidth + 8, CANVAS_WIDTH - halfWidth - 8);
+        const y = this.clamp((e.clientY - rect.top) * CANVAS_HEIGHT / rect.height,
+            this.el.offsetHeight + 20, CANVAS_HEIGHT - 8);
         this.el.style.left = `${x}px`;
         this.el.style.top = `${y - this.el.offsetHeight - 15}px`;
     },

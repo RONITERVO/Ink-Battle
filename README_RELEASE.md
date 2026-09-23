@@ -13,7 +13,7 @@ Use Node 22+ and npm:
 ```sh
 npm ci
 npm run check
-npx playwright install chromium firefox
+npx playwright install chromium firefox webkit
 npm run release:check
 ```
 
@@ -53,6 +53,10 @@ remain device/release-owner checks; no model download is part of automated balan
 
 ## Behavior changes
 
+- The notebook and controls scale together into the visible browser area, including
+  short in-app browser windows, safe areas and keyboard changes. Existing matches
+  survive resizing; optional Gemma settings scroll separately. Layout checks cover
+  Chromium, Firefox and WebKit, including real touch events in reduced viewports.
 - Players can cycle between 1×, 2× and 3× using the control beside Pause or on the
   pause screen. Speed applies to the whole battle; new matches start at 1×.
 - Simultaneous combat and mirrored geometry remove side-order advantages.
