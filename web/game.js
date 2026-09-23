@@ -5037,6 +5037,7 @@
   var ended = false;
   var manual = false;
   var frameId = 0;
+  var STALL_PAUSE_SECONDS = 5;
   function syncView() {
     const s = runtime.session.observe();
     runtime.globalTime = s.tick / 60;
@@ -5122,7 +5123,7 @@
     if (!runtime.session) return;
     const elapsed = Math.max(0, (timestamp - runtime.lastTime) / 1e3);
     runtime.lastTime = timestamp;
-    if (!manual && elapsed > 0.5 && runtime.session.running && !runtime.session.paused) runtime.togglePause(true);
+    if (!manual && elapsed >= STALL_PAUSE_SECONDS && runtime.session.running && !runtime.session.paused) runtime.togglePause(true);
     if (!manual && runtime.session.running && !runtime.session.paused) {
       accumulator += elapsed;
       const ticks = Math.floor(accumulator / FIXED_DT);

@@ -24,6 +24,7 @@ const runtime = { canvas, ctx: canvas.getContext('2d'), COLORS: { ...COLORS }, g
   } };
 for (const factory of [createStorage, createUI, createWatercolor, createGemma, createDirectorPanel, createCommander, createAudio, createRenderer, createHUD, createEffects]) Object.assign(runtime, factory(runtime));
 let accumulator = 0, ended = false, manual = false, frameId = 0;
+const STALL_PAUSE_SECONDS = 5;
 
 function syncView() {
   const s = runtime.session.observe();
@@ -83,8 +84,9 @@ function advance(ticks) {
 function frame(timestamp) {
   if (!runtime.session) return;
   const elapsed = Math.max(0, (timestamp - runtime.lastTime) / 1000); runtime.lastTime = timestamp;
-  // A long stall explicitly pauses. No silently discarded simulation time.
-  if (!manual && elapsed > .5 && runtime.session.running && !runtime.session.paused) runtime.togglePause(true);
+  // Brief rendering/GC stalls catch up in whole ticks. Reserve the explicit pause
+  // for long interruptions so a busy device does not block the opening controls.
+  if (!manual && elapsed >= STALL_PAUSE_SECONDS && runtime.session.running && !runtime.session.paused) runtime.togglePause(true);
   if (!manual && runtime.session.running && !runtime.session.paused) {
     accumulator += elapsed;
     const ticks = Math.floor(accumulator / FIXED_DT);

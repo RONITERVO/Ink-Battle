@@ -39,6 +39,40 @@ test('menu, real clock, troop controls, pause, tabs, pacts and persisted medals'
   expect(errors).toEqual([]);
 });
 
+test('brief frame stalls catch up and long interruptions pause until resumed', async ({ page }) => {
+  await page.clock.install({ time: new Date('2026-01-01T00:00:00Z') });
+  await ready(page);
+  await page.clock.pauseAt(new Date('2026-01-01T01:00:00Z'));
+  await page.locator('#diff-btn-normal').click();
+
+  // Deliver one delayed animation frame, as on a busy device during startup.
+  await page.clock.fastForward(1000);
+  const caughtUp = await page.evaluate(() => InkBattle.observe());
+  expect(caughtUp.paused).toBe(false);
+  expect(caughtUp.tick).toBeGreaterThanOrEqual(59);
+  expect(caughtUp.tick).toBeLessThanOrEqual(60);
+  await expect(page.locator('#pause-overlay')).toBeHidden();
+  await page.locator('#btn-u1').click();
+  expect(await page.evaluate(() => InkBattle.observe().units.some(u => u.team === 1))).toBe(true);
+
+  // A long interruption must not advance an unattended battle or lose the pause.
+  await page.clock.fastForward(6000);
+  const paused = await page.evaluate(() => InkBattle.observe());
+  expect(paused.paused).toBe(true);
+  expect(paused.tick).toBe(caughtUp.tick);
+  await expect(page.locator('#pause-overlay')).toBeVisible();
+  await page.clock.runFor(1000);
+  expect(await page.evaluate(() => InkBattle.observe().tick)).toBe(paused.tick);
+
+  await page.locator('#pause-overlay').getByRole('button', { name: 'Resume' }).click();
+  await page.clock.runFor(1000);
+  const resumed = await page.evaluate(() => InkBattle.observe());
+  expect(resumed.paused).toBe(false);
+  expect(resumed.tick - paused.tick).toBeGreaterThanOrEqual(59);
+  expect(resumed.tick - paused.tick).toBeLessThanOrEqual(61);
+  await expect(page.locator('#pause-overlay')).toBeHidden();
+});
+
 for (let age = 0; age < AGES.length; age++) {
   test(`original renderer and controls work in ${AGES[age].name}`, async ({ page }, info) => {
     const errors = []; page.on('pageerror', e => errors.push(e.message));

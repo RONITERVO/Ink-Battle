@@ -22,9 +22,10 @@ uses the same internal in-place step for throughput. No separate simulator physi
 ## Time and combat
 
 Authoritative time is an integer tick at 60 Hz. A real frame advances whole ticks;
-manual callers can advance up to 36,000 per call without sleeping. A long browser
-stall explicitly pauses the game. Rendering, audio and cosmetic randomness cannot
-alter the combat PRNG. Each side has its own identical seeded xorshift32 stream,
+manual callers can advance up to 36,000 per call without sleeping. Brief browser
+stalls catch up without dropping ticks; an interruption of five seconds or more
+explicitly pauses the game, as does hiding the page. Rendering, audio and cosmetic
+randomness cannot alter the combat PRNG. Each side has its own identical seeded xorshift32 stream,
 so mirrored specials stay mirrored.
 
 A tick accrues income/research, updates construction/cooldowns, runs the opponent,
