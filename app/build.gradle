@@ -29,9 +29,10 @@ android {
 
     defaultConfig {
         applicationId = 'com.ronitervo.inkbattle'
-        minSdk = 23
+        // Google Play automatic protection requires Android 7.0 / API 24 or newer.
+        minSdk = 24
         targetSdk = 36
-        versionCode = 210
+        versionCode = 211
         versionName = '2.1.0'
     }
 
