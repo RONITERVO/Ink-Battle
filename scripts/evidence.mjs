@@ -1,0 +1,11 @@
+import fs from 'node:fs';
+import crypto from 'node:crypto';
+const report=JSON.parse(fs.readFileSync(process.argv[2] || 'artifacts/balance/report.json','utf8'));
+if (report.summary.failures.length) throw new Error('Cannot accept a report with unresolved findings');
+const hash=crypto.createHash('sha256');
+for(const dir of ['src/core','src/content','src/sdk'])for(const f of fs.readdirSync(dir).sort())hash.update(fs.readFileSync(dir+'/'+f,'utf8').replace(/\r\n/g,'\n').replace(/^\uFEFF/,''));
+const percentile=(rows,q)=>rows.slice().sort((a,b)=>a-b)[Math.min(rows.length-1,Math.floor(rows.length*q))];
+const normal=report.matches.filter(m=>m.startAge===0&&m.difficulty==='normal');
+const summary={...report.summary,engineSourceSha256:hash.digest('hex'),normalStoneAge:{matches:normal.length,medianSeconds:percentile(normal.map(m=>m.seconds),.5),p95Seconds:percentile(normal.map(m=>m.seconds),.95),medianFirstContactSeconds:percentile(normal.map(m=>m.firstContact),.5),maxSeconds:Math.max(...normal.map(m=>m.seconds))},compositionResults:report.compositions};
+fs.mkdirSync('docs/evidence',{recursive:true});fs.writeFileSync(`docs/evidence/balance-${report.summary.version}.json`,JSON.stringify(summary,null,2)+'\n');
+console.log(JSON.stringify({...summary,compositionResults:undefined},null,2));

@@ -41,10 +41,10 @@ Configured downloads:
   - GPU first, CPU fallback.
   - `ConversationConfig` uses one system instruction: Gemma is the blue opponent and must reply with one visible line plus one emotion word.
   - One prompt cap, one optional `ImageFile`, one streamed `message` phase, and raw text returned to JavaScript.
-- `ink-battle.html`
+- `src/client/gemma.js`, `src/client/director-panel.js`, `src/client/commander.js`
   - Builds the randomized emotion prompt.
   - Parses the two-line model answer, including suffix/last-word emotion recovery, without JSON repair.
-  - Runs the offline tactical engine with composition, threat, age, economy, turret, macro-plan, timing-bank, and emotion scoring.
+  - Adapts observations and recorded emotion inputs to the shared engine in `src/core/opponent.js`; model output never executes gameplay code.
   - Shows the current emotion and removable pact chips between the base health bars.
 
 ## Runtime UX
@@ -55,7 +55,7 @@ Configured downloads:
 4. App asks for confirmation before the multi-GB download.
 5. Offline AI continues playing during download, loading, and model thinking.
 6. Once ready, Gemma periodically returns a visible message plus one emotion word.
-7. The emotion word appears as the current mood signal and biases the local engine's timing, risk tolerance, defense, teching, special use, and aggression.
+7. The emotion word appears as the current mood signal and biases the local engine's composition preferences within the same command and pact rules.
 8. Active agreements are clickable chips; removing one updates the local engine and future Gemma context.
 
 ## Gemma Diagnostics

@@ -31,8 +31,8 @@ android {
         applicationId = 'com.ronitervo.inkbattle'
         minSdk = 23
         targetSdk = 36
-        versionCode = 108
-        versionName = '1.0.8'
+        versionCode = 200
+        versionName = '2.0.0'
     }
 
     buildTypes {
@@ -67,6 +67,8 @@ tasks.register('syncWebAssets', Copy) {
     from(rootProject.file('manifest.webmanifest'))
     from(rootProject.file('service-worker.js'))
     from(rootProject.file('favicon.ico'))
+    from(rootProject.file('web')) { into 'web' }
+    from(rootProject.file('src/client/game.css')) { into 'src/client' }
     from(rootProject.file('assets')) {
         into 'assets'
     }

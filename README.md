@@ -1,74 +1,76 @@
-<!--
-Copyright 2025 Roni Tervo
-
-SPDX-License-Identifier: Apache-2.0
--->
-
-<div align="center">
-
 # Ink Battle
 
-**A real-time strategy lane war where civilizations evolve from stone clubs to cosmic weapons—all sketched alive on a single, coffee-stained HTML canvas.**
+A notebook lane-strategy game, from stone clubs to cosmic weapons. The original
+watercolor canvas, squiggly troops, music, controls and optional local Gemma chat
+now run on a standalone, deterministic game engine.
 
-[![Play on GitHub Pages](https://img.shields.io/badge/Play%20Now-GitHub%20Pages-24292F?style=for-the-badge&logo=github&logoColor=white)](https://ronitervo.github.io/Ink-Battle/)
-&nbsp;
-[![Privacy Policy](https://img.shields.io/badge/Privacy%20Policy-GitHub%20Pages-6B7280?style=for-the-badge)](https://ronitervo.github.io/Ink-Battle/privacy-policy.html)
-&nbsp;
-[![Android Wrapper](https://img.shields.io/badge/Android-WebView%20Build-3DDC84?style=for-the-badge&logo=android&logoColor=white)](app/)
-&nbsp;
-[![PWA Ready](https://img.shields.io/badge/PWA-Offline%20Shell-5A0FC8?style=for-the-badge&logo=pwa&logoColor=white)](manifest.webmanifest)
+[Play](https://ronitervo.github.io/Ink-Battle/) · [Release evidence](docs/ACCEPTANCE.md) ·
+[Architecture](docs/ARCHITECTURE.md) · [SDK / terminal play](docs/SDK.md) ·
+[Balance simulations](docs/SIMULATION.md)
 
-</div>
+## Play and develop
 
----
+Open `ink-battle.html` directly, or serve the checkout:
 
-## 🖋️ The Canvas Battlefield
+```sh
+npm ci
+npm run build
+npm start
+```
 
-> You drop 15 gold on a Clubman. He doesn't just slide across the screen—he *boils*. Every line of his body jitters in rough, procedural "Squigglevision" as he marches right. 
->
-> In the margins, Opponent is watching. You click the commander HUD and type: *"no ranged units."* The AI reads it, pins a `melee only` pact to its legal pad, and stops building Slingers. But it's not stupid. It immediately counters your squishy infantry by rushing a heavy Dino Rider. Its status updates to `! Aggravated`.
->
-> Your base takes a hit. The adaptive music swells from a steady beat to a frantic march. You bank 400 XP and hit **Evolve**. 
->
-> A procedural watercolor wash bleeds across the paper, shifting the era from prehistoric grays to Castle Age blues. You queue a Knight. The arms race accelerates through six ages of history—straight into orbital lasers and cosmic motherships—until someone's base is literally erased from the page.
+Open **http://127.0.0.1:4173**. Choose a difficulty, buy troops, defend with turrets,
+upgrade, evolve and time specials. Commander pacts such as `no ranged`, `no turrets`
+and `truce for 30 seconds` still work. Medals, music preferences and commander memory
+keep their existing storage keys. No account, network or model is needed to play.
+The PWA caches the game and fonts; music streams separately.
 
----
+## The engine is shared
 
-## ⚙️ The Tech (All in one `.html` file)
+Inspired by [StateBeats](https://github.com/RONITERVO/StateBeats) and
+[StateWork](https://github.com/RONITERVO/StateWork), combat is independent of display,
+clock and input. The browser, terminal, replay verifier and accelerated simulator all
+use `Session`. Observing state never moves time. Commands are validated on both sides.
 
-*   **No Sprites, Pure Code:** Every unit, attack, and watercolor background is drawn mathematically. Lines jitter and warp every few frames to simulate a turbulent, hand-drawn animation style.
-*   **The Codex Director (Live AI):** It analyzes lane pressure, manages an emotional state, and chats with you. Type "truce for 30s" or "no turrets" and it parses the text to alter its build rules in real-time.
-*   **Local LLM Vision (Optional):** Play in a browser for a highly competent deterministic AI, or use the Android wrapper to feed a physical "tactical minimap" into an on-device Gemma LLM, letting the AI actually *see* the board and talk trash based on your unit composition.
-*   **Zero-GC Engine:** Built with strict `1/60s` fixed-timestep physics and pre-allocated object pools. The game stays buttery smooth even when the screen is flooded with 500+ units on **Impossible** difficulty.
-*   **Adaptive Audio:** The music engine crossfades tracks dynamically based on your current Age, lane tension, and base health.
+```js
+import { Session } from './src/sdk/session.js';
+const game = new Session({ seed: 42, difficulty: 'normal' });
+game.client(1).command({ type: 'unit', index: 0 });
+game.advance(600); // ten game seconds, without waiting
+console.log(game.observe());
+Session.fromReplay(game.replay()); // verifies deterministic replay
+```
 
----
+`src/core` owns rules; `src/content` owns balance data; `src/sdk` owns the public
+session; `src/client` owns presentation. `ink-battle.html` is the small page shell.
+`web/game.js` and `service-worker.js` are generated, committed static-host artifacts.
+Edit source modules and run the build, rather than editing generated JavaScript.
 
-## 🚀 Quick Start
+## Verify changes and expansions
 
-**Play Instantly:**
-Since the entire game (rendering, physics, AI) is zero-dependency, you can just open `ink-battle.html` in any browser.
+```sh
+npm run check
+npx playwright install chromium firefox
+npm run test:browser
+npm run simulate -- --release
+```
 
-**Deploy (GitHub Pages):**
-The repo is pre-configured. `index.html` points to the engine, and the included `manifest.webmanifest` + `service-worker.js` makes it an installable, fully offline PWA.
+The release simulation covers every age and difficulty with six scripted styles,
+seeded full matches, all troop compositions, side symmetry, state invariants and
+replay verification. It writes measured reports and reproductions under
+`artifacts/balance`. Gemma/model calls are excluded from this fast path. CI repeats
+the same checks on future changes. See [simulation coverage and limits](docs/SIMULATION.md).
 
-**Native Gemma Build:**
-To unlock the local LLM vision integration, build the Android WebView shell (requires JDK 17 & Android SDK):
+## Android
+
 ```powershell
+npm ci
+npm run build
 .\gradlew.bat :app:assembleDebug
 ```
-*(See `LOCAL_GEMMA_ANDROID.md` for AI setup details).*
 
----
+Gradle packages the same web bundle, CSS, fonts and assets. Optional on-device model
+installation and native callbacks are retained; see [Gemma integration](LOCAL_GEMMA_ANDROID.md)
+and [release packaging](README_RELEASE.md).
 
-## 🤝 Contributing
-
-Contributions are welcome! Please ensure any gameplay, balance, or rendering changes are made directly to `ink-battle.html` so the Android and Web versions remain perfectly in sync. 
-
-1. Fork it & Branch it.
-2. Test your changes locally.
-3. Submit a PR with a summary of how it impacts the "feel" of the notebook war.
-
-## 📄 License
-
-Distributed under the [Apache 2.0 License](LICENSE).
+Code and existing game assets: [Apache-2.0](LICENSE). Bundled Caveat and Patrick Hand
+fonts: SIL Open Font License, with license files in `assets/fonts`.
