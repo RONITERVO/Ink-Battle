@@ -4,7 +4,8 @@ import { AGES } from '../../src/content/ages.js';
 
 async function ready(page) {
   await page.goto('/ink-battle.html');
-  await expect(page.locator('#preloader')).toBeHidden();
+  // Procedural watercolor generation is slower in WebKit's software renderer.
+  await expect(page.locator('#preloader')).toBeHidden({ timeout: 15000 });
   await page.evaluate(() => document.fonts.ready);
 }
 
@@ -35,6 +36,7 @@ async function fits(page, { width, height, x = 0, y = 0 }) {
 }
 
 test('menus and controls fit short, portrait and wide viewports through live resizing', async ({ page }, info) => {
+  test.setTimeout(90000); // Many real interactions across six consecutive resizes.
   await ready(page);
   const sizes = [{ width: 844, height: 240 }, { width: 667, height: 200 },
     { width: 320, height: 180 }, { width: 360, height: 640 },
