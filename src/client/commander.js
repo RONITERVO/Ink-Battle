@@ -14,7 +14,7 @@ const AIDirector = {
    this.chatTimer -= dt; this.gemmaTimer -= dt;
    const snapshot = this.snapshot(); this.maybeMilestoneChat(snapshot);
    if(this.chatTimer <= 0) { this.chatTimer = 12; this.comment(snapshot); runtime.DirectorPanel.renderMemory(); }
-   if(this.gemmaTimer <= 0) { this.gemmaTimer = 26; runtime.NativeGemma.requestTurn('periodic_director_turn'); }
+   if(this.gemmaTimer <= 0 && !runtime.NativeGemma.web) { this.gemmaTimer = 26; runtime.NativeGemma.requestTurn('periodic_director_turn'); }
  },
  setRestraint(seconds) { runtime.session?.truce(seconds); },
  activeOrderFromState() { return this.localOrder; },

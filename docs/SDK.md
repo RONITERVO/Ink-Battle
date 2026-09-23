@@ -46,3 +46,13 @@ Also supported: `pause` with `paused`, `restore` with `checkpoint`, and `verify`
 with `replay`. Request IDs are optional and provide idempotency when supplied.
 This local process is suitable for an agent/tool adapter. There is no bundled MCP
 server or HTTP mutation endpoint.
+
+## Optional browser model diagnostics
+
+The browser host exposes `InkBattle.gemma.status()` and `InkBattle.gemma.turns()`
+(copies of at most 100 applied replies in the current match). The opt-in model is
+enabled through its visible settings. `InkBattle.gemma.request(text)` requests a
+turn using the same pause, readiness, rate and busy checks as player chat; it returns
+false if no request was submitted. `InkBattle.gemma.stop()` releases the browser
+worker and restores the neutral opponent mood. These are host helpers, not engine
+or remote inference APIs. The engine `Session` remains independent of the model.

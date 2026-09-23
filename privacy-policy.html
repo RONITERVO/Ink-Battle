@@ -90,7 +90,7 @@ SPDX-License-Identifier: Apache-2.0
         <header>
             <h1>Privacy Policy</h1>
             <p class="muted">Ink Battle</p>
-            <p class="muted">Last updated: June 23, 2026</p>
+            <p class="muted">Last updated: September 23, 2026</p>
             <div class="summary">
                 <p>Ink Battle is designed as a local-first game. It does not use developer-run accounts, ads, analytics SDKs, or a hosted gameplay backend.</p>
             </div>
@@ -109,20 +109,21 @@ SPDX-License-Identifier: Apache-2.0
                 <li>Gameplay preferences, such as music mute state.</li>
                 <li>Director chat pacts, short local notes, recent in-game director memory, and model status used to keep the opponent behavior consistent.</li>
                 <li>Cached web app files used by the Progressive Web App and Android WebView shell.</li>
-                <li>On Android, an optional Gemma model file if you choose to download it for local on-device opponent replies.</li>
+                <li>An optional Gemma model file if you choose to download it for local on-device opponent replies. The web version saves this separately in browser storage, along with its inference runtime.</li>
             </ul>
             <p>This locally stored information is used to run the game, remember settings, and support offline play. The developer does not receive this information from the app.</p>
         </section>
 
         <section>
             <h2>Network Use</h2>
-            <p>The web version can request game files, fonts, and audio files from GitHub Pages or the configured hosting location. The Android version may use the internet permission to download an optional Gemma model file after user confirmation.</p>
+            <p>The web version can request game files, fonts, and audio files from GitHub Pages or the configured hosting location. Both the web and Android versions can download an optional Gemma model after you choose to download it. The web model comes from Hugging Face and its download CDN; the runtime comes from this game's host. No model download begins automatically.</p>
             <p>If you choose the optional Gemma download, the model file is requested from the configured model host. That host may receive normal network request information such as IP address, request time, and user agent under its own privacy practices.</p>
         </section>
 
         <section>
             <h2>AI And Gameplay Text</h2>
             <p>The deterministic opponent runs locally. When the optional Android Gemma feature is installed and loaded, the app sends in-game tactical context, recent player/director text, and a generated tactical image to the on-device model for local processing. This context is not sent to a developer server.</p>
+            <p>The optional web Gemma feature processes a text summary of the battle and recent chat locally on your GPU. It does not upload these prompts or replies. No inference API key or remote AI service is used.</p>
         </section>
 
         <section>
@@ -133,6 +134,7 @@ SPDX-License-Identifier: Apache-2.0
         <section>
             <h2>Deletion</h2>
             <p>You can delete locally stored app data by clearing the browser site data for the GitHub Pages site, clearing Android app storage, or uninstalling the Android app. Clearing Android app storage or uninstalling the app also removes the optional downloaded model file.</p>
+            <p>On the web, Gemma settings also offer Turn off (releases the model from memory) and Remove download (deletes the model and runtime cache while keeping progress). The browser may evict saved files when storage is low.</p>
         </section>
 
         <section>

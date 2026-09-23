@@ -1,4 +1,7 @@
 import { AGES } from '../content/ages.js';
+import { WebGemma } from './gemma-web.js';
+import { buildWebPrompt, parseWebReply } from './gemma-web-config.js';
+import { bindWebGemmaUI, renderWebGemmaStatus } from './gemma-web-ui.js';
 import { CANVAS_WIDTH, CANVAS_HEIGHT, GROUND_Y, BASE_WIDTH, UPGRADE_COSTS, DIFFICULTY_SETTINGS } from '../core/constants.js';
 export function createGemma(runtime) {
 const LOCAL_GEMMA_IMAGE_INPUT_ENABLED = true;
@@ -712,6 +715,8 @@ function parseGemmaEmotionReply(rawText, allowedWords = GEMMA_EMOTION_WORDS) {
 
 // --- LOCAL GEMMA BRIDGE ---
 const NativeGemma = {
+    web: null,
+    turns: [],
     available: false,
     status: { state: 'browser', modelName: 'Local fallback', progress: 0, totalRamGb: 0 },
     pending: {},
@@ -719,10 +724,25 @@ const NativeGemma = {
     lastRequestAt: -999,
     init() {
         this.available = !!window.LocalGemmaAndroid;
+        if (!this.available) {
+            this.web = new WebGemma({
+                onStatus: status => {
+                    if (['off', 'error'].includes(status.state) && this.status.state === 'ready' && runtime.session?.running)
+                        runtime.AIDirector.acceptGemmaEmotion('Centered');
+                    this.available = status.state !== 'unavailable'; this.updateStatus(status);
+                },
+                onReply: data => this.receive(data.id, data.text, data.durationMs),
+                onError: (id, message) => { if (id) this.error(id, message); }
+            });
+            bindWebGemmaUI(runtime, this);
+            this.web.inspect();
+            return;
+        }
         this.refresh();
         if (this.available) setInterval(() => this.refresh(), 4000);
     },
     refresh() {
+        if (this.web) { this.updateStatus(this.web.status); return; }
         if (!this.available) {
             this.updateStatus({ state: 'unavailable', modelName: 'Android Gemma', progress: 0 });
             return;
@@ -745,6 +765,7 @@ const NativeGemma = {
     },
     updateStatus(next) {
         this.status = Object.assign({}, this.status, next || {});
+        if (this.web) { renderWebGemmaStatus(this.status); GemmaMemory.updateInputSuggestion(); return; }
         let label = '';
         let action = 'Get';
         let disabled = false;
@@ -831,7 +852,8 @@ const NativeGemma = {
             return false;
         }
         let minGap = reason === 'player_chat' ? 4 : 18;
-        if (this.status.busy || runtime.globalTime - this.lastRequestAt < minGap) return false;
+        const clock = this.web ? performance.now() / 1000 : runtime.globalTime;
+        if (this.status.busy || clock - this.lastRequestAt < minGap) return false;
 
         let snapshot = runtime.AIDirector.snapshot();
         let cleanExtraMessage = normalizeGemmaRecentUserMessage(extraMessage, 120);
@@ -851,9 +873,10 @@ const NativeGemma = {
             };
         }
 
-        let contextImageDataUrl = captureGemmaContextImage(snapshot);
+        let contextImageDataUrl = this.web ? null : captureGemmaContextImage(snapshot);
         let requestId = `g${Date.now()}_${Math.floor(Math.random() * 10000)}`;
-        let promptBuild = buildGemmaEmotionPrompt({
+        let promptBuild = this.web ? { prompt: buildWebPrompt(runtime.session.observe(), relayComment?.text || cleanExtraMessage,
+            runtime.gemmaInputPacts(), GemmaMemory.data.recentTurns) } : buildGemmaEmotionPrompt({
             reason,
             cleanExtraMessage,
             relayComment,
@@ -862,12 +885,15 @@ const NativeGemma = {
         let promptText = promptBuild.prompt;
 
         this.pending[requestId] = {
+            session: runtime.session,
+            startedAt: performance.now(),
+            tick: runtime.session.tick,
             reason,
             userLineId: relayComment ? relayComment.lineId : '',
             relayedUserMessage: relayComment ? relayComment.text : '',
             emotions: promptBuild.emotions || GEMMA_EMOTION_WORDS
         };
-        this.lastRequestAt = runtime.globalTime;
+        this.lastRequestAt = clock;
         this.status.busy = true;
         this.updateStatus(this.status);
         runtime.DirectorPanel.beginModelThoughts(requestId, reason);
@@ -882,7 +908,9 @@ const NativeGemma = {
             enginePlan: snapshot.engineOrder || ''
         });
         try {
-            if (contextImageDataUrl && typeof window.LocalGemmaAndroid.generateDirectorTurnWithImage === 'function') {
+            if (this.web) {
+                if (!this.web.generate(requestId, promptText)) throw new Error('Gemma is busy');
+            } else if (contextImageDataUrl && typeof window.LocalGemmaAndroid.generateDirectorTurnWithImage === 'function') {
                 window.LocalGemmaAndroid.generateDirectorTurnWithImage(requestId, promptText, contextImageDataUrl);
             } else {
                 window.LocalGemmaAndroid.generateDirectorTurn(requestId, promptText);
@@ -906,14 +934,38 @@ const NativeGemma = {
         }
     },
     stream(requestId, phase, text, done) {
+        if (!this.pending[requestId] || this.pending[requestId].session !== runtime.session) return;
         runtime.DirectorPanel.updateModelThoughts(requestId, phase, text, !!done);
     },
-    receive(requestId, rawText) {
+    cancelPending() {
+        for (const id of Object.keys(this.pending)) runtime.DirectorPanel.failModelThoughts(id, 'Cancelled');
+        this.pending = {}; this.status.busy = false;
+    },
+    invalidateTurns() {
+        for (const pending of Object.values(this.pending)) pending.invalidated = true;
+    },
+    startMatch() {
+        this.cancelPending(); this.queuedUserComment = null; this.turns = [];
+        this.lastRequestAt = this.web ? performance.now() / 1000 - 14 : -999;
+    },
+    wallTick() {
+        if (this.web && performance.now() / 1000 - this.lastRequestAt >= 26) this.requestTurn('periodic_director_turn');
+    },
+    receive(requestId, rawText, durationMs) {
         let pendingMeta = this.pending[requestId] || null;
+        if (!pendingMeta) return;
         delete this.pending[requestId];
         this.status.busy = false;
         this.refresh();
-        let result = parseGemmaEmotionReply(rawText, pendingMeta && pendingMeta.emotions);
+        if (pendingMeta.invalidated || pendingMeta.session !== runtime.session || !runtime.session.running || runtime.session.paused || (this.web && performance.now() - pendingMeta.startedAt > 30000)) {
+            runtime.DirectorPanel.failModelThoughts(requestId, 'Battle changed; reply discarded'); return;
+        }
+        let result = this.web ? parseWebReply(rawText) : parseGemmaEmotionReply(rawText, pendingMeta.emotions);
+        if (!result) { runtime.DirectorPanel.failModelThoughts(requestId, 'Gemma reply format was not valid'); return; }
+        if (this.web) {
+            this.turns.push({ tick: runtime.session.tick, requestedTick: pendingMeta.tick, emotion: result.emotion, reply: result.reply, durationMs });
+            this.turns = this.turns.slice(-100);
+        }
         this.log('response.emotion', {
             requestId,
             emotion: result.emotion || '',
@@ -923,6 +975,7 @@ const NativeGemma = {
         applyGemmaEmotionTurn(result, requestId, pendingMeta);
     },
     error(requestId, message) {
+        if (!this.pending[requestId]) return;
         delete this.pending[requestId];
         this.status.busy = false;
         this.updateStatus(Object.assign({}, this.status, { state: this.status.state === 'ready' ? 'ready' : 'error', message }));
@@ -933,6 +986,7 @@ const NativeGemma = {
 };
 
 function installLocalGemma() {
+    if (NativeGemma.web) { runtime.togglePause(true); document.getElementById('web-gemma-dialog').showModal(); return; }
     if (NativeGemma.status.state === 'installed') {
         try { window.LocalGemmaAndroid.loadModel(); } catch (e) { }
         NativeGemma.updateStatus(Object.assign({}, NativeGemma.status, { state: 'loading' }));

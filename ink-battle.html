@@ -203,6 +203,7 @@ SPDX-License-Identifier: Apache-2.0
                         <button class="diff-btn diff-hard sketchy-border" onclick="location.reload()"
                             style="margin-top:12px; font-size: 2.6vmin; padding: 0.8vw 2.6vw;">New Canvas</button>
                         <a class="legal-link" href="./privacy-policy.html">Privacy Policy</a>
+                        <button class="gemma-settings sketchy-border-thin font-hand hidden" data-web-gemma-open>Gemma opponent settings</button>
                     </div>
                 </div>
             </div>
@@ -230,6 +231,7 @@ SPDX-License-Identifier: Apache-2.0
                         </button>
                     </div>
                     <a class="legal-link" href="./privacy-policy.html">Privacy Policy</a>
+                    <button class="gemma-settings sketchy-border-thin font-hand hidden" data-web-gemma-open>Play with Gemma (optional)</button>
                 </div>
             </div>
 
@@ -245,6 +247,20 @@ SPDX-License-Identifier: Apache-2.0
         </div>
     </div>
 
+    <dialog id="web-gemma-dialog" class="web-gemma-dialog sketchy-border" aria-labelledby="web-gemma-title">
+        <h2 id="web-gemma-title" class="font-sketch">Gemma at the table</h2>
+        <p>Give the opposing general a local voice and mood. The same troop rules, difficulty and pacts still apply.</p>
+        <p>Optional 2.01 GB download from Hugging Face, plus a 19 MB runtime. Runs on your GPU and saves in this browser for offline use. Battle observations and chat stay on your device.</p>
+        <p>Needs a compatible GPU and an updated Chrome or Edge. Loading can take several minutes. You can always play with the standard opponent.</p>
+        <p id="web-gemma-status" role="status" aria-live="polite">Checking this browser…</p>
+        <div class="gemma-actions">
+            <button id="web-gemma-enable" class="sketchy-border-thin">Download &amp; turn on (2.01 GB)</button>
+            <button id="web-gemma-stop" class="sketchy-border-thin" disabled>Turn off</button>
+            <button id="web-gemma-remove" class="sketchy-border-thin">Remove download</button>
+        </div>
+        <p class="gemma-small">By downloading you accept the <a href="https://ai.google.dev/gemma/terms" target="_blank" rel="noopener noreferrer">Gemma terms</a>. Browser storage may be cleared or evicted. Gemma starts off when you reopen the game.</p>
+        <form method="dialog"><button class="sketchy-border-thin">Back to game</button></form>
+    </dialog>
     <script src="./web/game.js" defer></script>
 </body>
 

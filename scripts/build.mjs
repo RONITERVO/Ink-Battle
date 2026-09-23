@@ -1,11 +1,22 @@
 import { build } from 'esbuild';
-import { mkdir, writeFile, readFile } from 'node:fs/promises';
+import { mkdir, writeFile, readFile, copyFile, chmod } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
+import { RUNTIME_VERSION } from '../src/client/gemma-web-config.js';
 await mkdir('web', { recursive: true });
 await build({ entryPoints: ['src/client/app.js'], bundle: true, outfile: 'web/game.js', format: 'iife', target: ['es2022'], legalComments: 'inline' });
-await writeFile('web/build.json', JSON.stringify({ version: '2.0.0', entry: 'game.js' }) + '\n');
+await build({ entryPoints: ['src/client/gemma-worker.js'], bundle: true, outfile: 'web/gemma-worker.js', format: 'iife', target: ['es2022'], legalComments: 'inline' });
+const vendor = `web/vendor/litert-lm-${RUNTIME_VERSION}`;
+await mkdir(vendor, { recursive: true });
+for (const suffix of ['js', 'wasm']) {
+  const destination = `${vendor}/litertlm_wasm_compat_internal.${suffix}`;
+  await copyFile(`node_modules/@litert-lm/core/wasm/litertlm_wasm_compat_internal.${suffix}`, destination);
+  // npm's runtime files are executable on Linux; web assets must have stable modes.
+  await chmod(destination, 0o644);
+}
+const version = JSON.parse(await readFile('package.json', 'utf8')).version;
+await writeFile('web/build.json', JSON.stringify({ version, entry: 'game.js' }) + '\n');
 const shell = ['./', './index.html', './ink-battle.html', './privacy-policy.html', './manifest.webmanifest', './favicon.ico',
-  './assets/icon-192.png', './assets/icon-512.png', './assets/fonts/caveat.ttf', './assets/fonts/patrick-hand.ttf', './src/client/game.css', './web/game.js'];
+  './assets/icon-192.png', './assets/icon-512.png', './assets/fonts/caveat.ttf', './assets/fonts/patrick-hand.ttf', './src/client/game.css', './web/game.js', './web/gemma-worker.js'];
 const hash = createHash('sha256');
 for (const file of shell.filter(f => f !== './')) {
   const data = await readFile(file);

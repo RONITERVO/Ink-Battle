@@ -31,8 +31,8 @@ android {
         applicationId = 'com.ronitervo.inkbattle'
         minSdk = 23
         targetSdk = 36
-        versionCode = 200
-        versionName = '2.0.0'
+        versionCode = 210
+        versionName = '2.1.0'
     }
 
     buildTypes {
@@ -60,14 +60,14 @@ dependencies {
     implementation("com.google.ai.edge.litertlm:litertlm-android:0.11.0")
 }
 
-tasks.register('syncWebAssets', Copy) {
+tasks.register('syncWebAssets', Sync) {
     from(rootProject.file('ink-battle.html'))
     from(rootProject.file('index.html'))
     from(rootProject.file('privacy-policy.html'))
     from(rootProject.file('manifest.webmanifest'))
     from(rootProject.file('service-worker.js'))
     from(rootProject.file('favicon.ico'))
-    from(rootProject.file('web')) { into 'web' }
+    from(rootProject.file('web')) { into 'web'; exclude 'vendor/**' }
     from(rootProject.file('src/client/game.css')) { into 'src/client' }
     from(rootProject.file('assets')) {
         into 'assets'

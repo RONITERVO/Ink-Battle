@@ -86,6 +86,14 @@ module loader, server, account or build tool. Gradle copies the same bundle, CSS
 assets. The cache updates the whole shell and removes only Ink Battle caches. Audio
 streams separately; downloading every optional music variant is not part of PWA install.
 
+Web Gemma is an optional worker transport beside the native Android bridge. It
+receives a bounded textual observation and returns only a validated reply/emotion.
+It has no command channel. `gemma-web` owns worker lifecycle, `gemma-model-store`
+owns the verified OPFS download, and `gemma-worker` owns the pinned LiteRT runtime.
+Model cadence uses wall time, while engine replays retain emotion inputs at exact
+ticks. The model cache uses a separate name from the game shell and survives shell
+updates. See [web Gemma](GEMMA_WEB.md) for the real-model test workflow.
+
 ## Extending the game
 
 Add rules/data in `src/content` and the responsible core module, bump the rules

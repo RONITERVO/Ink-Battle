@@ -1,6 +1,6 @@
 {
   "name": "ink-battle",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "private": true,
   "type": "module",
   "engines": {
@@ -14,12 +14,17 @@
     "test:browser": "playwright test",
     "simulate": "node scripts/simulate.mjs",
     "check": "npm run lint && npm test && npm run build",
-    "release:check": "npm run check && npm run simulate -- --release && npm run test:browser"
+    "release:check": "npm run check && npm run simulate -- --release && npm run test:browser",
+    "test:gemma": "node scripts/test-gemma.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",
     "esbuild": "^0.28.2",
     "eslint": "^10.11.0",
     "globals": "^17.12.0"
+  },
+  "dependencies": {
+    "@litert-lm/core": "0.12.1",
+    "@noble/hashes": "2.4.0"
   }
 }

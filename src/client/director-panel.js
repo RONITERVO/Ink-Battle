@@ -461,8 +461,10 @@ function toggleMusicMute() {
 
 function togglePause(forceState) {
     if (!runtime.gameState || !runtime.gameState.running) return;
+    if (forceState !== true && runtime.NativeGemma.web && ['loading', 'downloading'].includes(runtime.NativeGemma.status.state)) return;
     runtime.session.pause(typeof forceState === 'boolean' ? forceState : !runtime.gameState.paused);
     runtime.gameState.paused = runtime.session.paused;
+    if (runtime.gameState.paused) runtime.NativeGemma.invalidateTurns();
     let overlay = document.getElementById('pause-overlay');
     let btn = DirectorPanel.els['btn-pause'];
     if (overlay) overlay.classList.toggle('hidden', !runtime.gameState.paused);
