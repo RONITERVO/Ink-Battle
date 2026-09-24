@@ -1,0 +1,50 @@
+{
+  "replay": {
+    "version": "2.0.0",
+    "options": {
+      "seed": 23,
+      "difficulty": "normal",
+      "startAge": 0,
+      "opponent": false
+    },
+    "ticks": 12120,
+    "entries": [
+      {
+        "tick": 12000,
+        "type": "command",
+        "team": 1,
+        "command": {
+          "type": "turret",
+          "index": 0
+        }
+      },
+      {
+        "tick": 12000,
+        "type": "command",
+        "team": 1,
+        "command": {
+          "type": "slot"
+        }
+      },
+      {
+        "tick": 12000,
+        "type": "command",
+        "team": 1,
+        "command": {
+          "type": "turret",
+          "index": 2
+        }
+      },
+      {
+        "tick": 12000,
+        "type": "command",
+        "team": 1,
+        "command": {
+          "type": "sell"
+        }
+      }
+    ],
+    "digest": "96a418d8"
+  },
+  "receipts": []
+}

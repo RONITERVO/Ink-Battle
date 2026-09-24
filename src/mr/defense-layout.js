@@ -1,5 +1,5 @@
 /** One presentation layout shared by rendering, targeting and input. Slot order
- * follows the engine: first empty unlocked cannon, next dock, last cannon sold.
+ * follows the engine: first empty unlocked cannon, next dock, selected cannon sold.
  * Two foundations on each flank leave every age's base footprint unobstructed. */
 export const DOCK = Object.freeze({ width: 0.16, depth: 0.13, height: 0.044 });
 const Z = Object.freeze([-0.185, 0.46, -0.35, 0.6]);
@@ -9,16 +9,33 @@ export function dockPosition(slot, team = 1) {
   return { x: -team * 1.11, y: DOCK.height, z: Z[slot], slot };
 }
 
-export function defenseTarget(offer, state) {
+export function defenseTarget(offer, state, point) {
   const side = state?.player;
   if (!side) return null;
   let slot = -1;
   if (offer.kind === 'turret')
     slot = side.turrets.slice(0, side.unlockedSlots).indexOf(null);
   else if (offer.kind === 'slot') slot = side.unlockedSlots;
-  else if (offer.kind === 'eraser') slot = side.turrets.findLastIndex((t) => t !== null);
+  else if (offer.kind === 'eraser') {
+    const target = dockAt(point);
+    if (!target || target.slot >= side.unlockedSlots || side.turrets[target.slot] === null) return null;
+    slot = target.slot;
+  }
   const position = dockPosition(slot);
   return position && { ...position, y: offer.kind === 'slot' ? 0 : DOCK.height };
+}
+
+/** Choose the nearest physical dock before checking occupancy. This prevents an
+ * empty dock's tracking margin from selecting an occupied neighbor instead. */
+export function dockAt(point) {
+  if (!point || !Number.isFinite(point.x) || !Number.isFinite(point.z)) return null;
+  let target = null, distance = Infinity;
+  for (let slot = 0; slot < Z.length; slot++) {
+    const pad = dockPosition(slot);
+    const d = Math.hypot(point.x - pad.x, point.z - pad.z);
+    if (d < distance) { target = pad; distance = d; }
+  }
+  return onDock(point, target) ? target : null;
 }
 
 export function landingHeight(offer) {

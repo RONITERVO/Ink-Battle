@@ -116,6 +116,7 @@ export class TabletopScene {
     this.labelClock = 0;
     this.labels = new Map();
     this.offers = [];
+    this.highlightedDocks = [];
     this.renderer = new THREE.WebGLRenderer({
       canvas,
       antialias: true,
@@ -359,6 +360,11 @@ export class TabletopScene {
       );
     }
     this.army.begin();
+    this.highlightedDocks = [];
+    if (state) for (const item of heldItems) {
+      const target = defenseTarget(item.offer, state, item.targetPosition || item.position);
+      if (target && !this.highlightedDocks.includes(target.slot)) this.highlightedDocks.push(target.slot);
+    }
     let shadowCount = 0;
     if (state) {
       for (const team of [1, -1]) {
@@ -367,8 +373,7 @@ export class TabletopScene {
         baseModel(this.army, side.age, x, team, side.drawProgress);
         side.turrets.forEach((index, slot) => {
           const pad = dockPosition(slot, team);
-          const highlighted = team === 1 && heldItems.some((item) =>
-            defenseTarget(item.offer, state)?.slot === slot);
+          const highlighted = team === 1 && this.highlightedDocks.includes(slot);
           this.army.model(pad.x, 0, pad.z);
           dockModel(this.army, {
             built: slot < side.unlockedSlots,
@@ -486,6 +491,7 @@ export class TabletopScene {
       overflow: this.army.overflow + this.held.overflow + this.shop.overflow,
       geometries: this.renderer.info.memory.geometries,
       textures: this.renderer.info.memory.textures,
+      highlightedDocks: [...this.highlightedDocks],
     };
   }
 }

@@ -9,7 +9,7 @@ function boundedInteger(value, min, max, label) {
 }
 function cleanCommand(c) {
   if (!c || typeof c !== 'object' || Array.isArray(c)) throw new Error('Invalid command');
-  const fields = { unit: ['index'], turret: ['index'], upgrade: ['stat'], sell: [], slot: [], evolve: [], special: [] };
+  const fields = { unit: ['index'], turret: ['index'], upgrade: ['stat'], sell: ['slot'], slot: [], evolve: [], special: [] };
   if (!Object.hasOwn(fields, c.type)) throw new Error('Unknown command type');
   if (Object.keys(c).some(k => k !== 'type' && !fields[c.type].includes(k))) throw new Error('Unknown command field');
   return structuredClone(c);

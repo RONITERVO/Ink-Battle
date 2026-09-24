@@ -61,7 +61,7 @@ test('four physical docks enforce foundations, safe misses, sale, restore and ev
   assert.equal(host.grab('test', 'slot').error, 'max-docks');
   assert.equal(host.offer('slot').price, Infinity);
   const gold = host.observe().player.gold;
-  assert.ok(buy(host, 'sell').ok);
+  assert.ok(buy(host, 'sell', dockPosition(3)).ok);
   assert.equal(host.observe().player.gold, gold + 50);
   assert.deepEqual(host.observe().player.turrets, [0, 0, 0, null]);
   assert.equal(host.observe().player.unlockedSlots, 4);

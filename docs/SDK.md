@@ -18,14 +18,24 @@ Options: uint32 `seed`, `difficulty` (normal/hard/harder/impossible), `startAge`
 (zero-based), and `opponent` (boolean, default true). A new session is a new match.
 Observations expose both armies because this is a public-information lane game.
 
-Commands: `unit`/`turret` with `index`, `upgrade` with `stat` (hp/dmg/econ), and
-`sell`, `slot`, `evolve`, `special` without extra fields. Unknown fields/types throw;
+Commands: `unit`/`turret` with `index`, `upgrade` with `stat` (hp/dmg/econ), `sell`
+with an optional zero-based `slot`, and `slot`, `evolve`, `special` without extra
+fields. `{type:'sell',slot:0}` sells only the cannon in the first dock and refunds
+50% of its price. Invalid, locked or empty explicit slots fail without selling
+anything else. Omitting `slot` retains the original highest-occupied-slot sale,
+including for classic controls and old replays. Unknown fields/types throw;
 unaffordable or contextually illegal actions return `{ok:false,error}` without spending.
 Observe `legal(team, command)` to drive controls. Commands while paused/ended are denied.
 `advance(ticks)` returns resulting tick and events; `{events:false}` omits presentation
 events during bulk simulation. `pause`, `agreements`, `truce`, `emotion`, `checkpoint`,
 and `restore` are trusted host operations. `decide(team, style)` reads state to propose
 a legal tactical action or returns null; calling it never advances time.
+
+Selected sales are an additive command extension in 2.2.5. Existing command
+semantics, rules version 2.0.0 and old checkpoint digests are preserved. Replays
+containing an explicit sale slot need a 2.2.5+ reader; older readers reject that
+field. The selected slot is recorded as part of the command, so restoration and
+request retries do not infer a different cannon from the current layout.
 
 ## Terminal / tool loop
 

@@ -1,5 +1,6 @@
 import { Session } from '../sdk/session.js';
 import { commandError } from '../core/commands.js';
+import { defenseTarget } from './defense-layout.js';
 import {
   shopOffers,
   TOOLS,
@@ -81,18 +82,21 @@ export class TabletopHost {
     if (!token) return { ok: false, error: 'not-held' };
     this.holds.delete(owner);
     const { offer } = token,
-      zone = dropZone(offer, point, this.observe());
+      state = this.observe(),
+      zone = dropZone(offer, point, state);
     let result;
     if (zone) result = this.fail(zone);
-    else if (token.age !== (this.observe()?.player.age ?? null))
+    else if (token.age !== (state?.player.age ?? null))
       result = this.fail('stale-age');
     else {
-      const error = this.reason(offer);
+      const error = this.reason(offer, state);
       if (error) result = this.fail(error);
       else if (offer.action) result = this.tool(offer);
       // Taking the token out of holds makes release idempotent, including after
       // checkpoint restoration, without reusing a previous session receipt id.
-      else result = this.session.command(1, offer.command);
+      else result = this.session.command(1, offer.kind === 'eraser'
+        ? { ...offer.command, slot: defenseTarget(offer, state, point).slot }
+        : offer.command);
     }
     if (!result.ok && !zone)
       this.say('message', {

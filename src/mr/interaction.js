@@ -25,12 +25,13 @@ export class Interaction {
     this.grabs.set(owner, {
       token: result.token,
       world: { ...world },
+      targetWorld: { ...world },
       position: toLocal(world, this.table),
       history: [{ world: { ...world }, time }]
     });
     return true;
   }
-  move(owner, world, time = 0) {
+  move(owner, world, time = 0, targetWorld = world) {
     const item = this.grabs.get(owner);
     if (!item) return;
     if (item.handle) {
@@ -38,6 +39,7 @@ export class Interaction {
       return;
     }
     item.world = { ...world };
+    item.targetWorld = { ...targetWorld };
     item.position = toLocal(world, this.table);
     item.history.push({ world: { ...world }, time });
     while (item.history.length > 2 && item.history[0].time < time - 0.12)
@@ -106,7 +108,8 @@ export class Interaction {
         items.push({
           offer: item.token.offer,
           age: item.token.age,
-          position: toLocal(item.world, this.table)
+          position: toLocal(item.world, this.table),
+          targetPosition: toLocal(item.targetWorld, this.table)
         });
     for (const item of this.flights.values())
       items.push({

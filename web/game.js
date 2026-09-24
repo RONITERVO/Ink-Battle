@@ -237,7 +237,9 @@
         if (!p.turrets.slice(0, p.unlockedSlots).includes(null)) return "slots-full";
         return p.gold < age.turrets[c.index].cost ? "gold" : null;
       case "sell":
-        return p.turrets.some((t) => t !== null) ? null : "no-turret";
+        if (!Object.hasOwn(c, "slot")) return p.turrets.some((t) => t !== null) ? null : "no-turret";
+        if (!Number.isInteger(c.slot) || c.slot < 0 || c.slot >= p.unlockedSlots) return "invalid-slot";
+        return p.turrets[c.slot] === null ? "no-turret" : null;
       case "slot":
         return p.unlockedSlots >= 4 ? "slots-full" : p.gold < p.unlockedSlots * 500 ? "gold" : null;
       case "upgrade":
@@ -298,7 +300,7 @@
         break;
       }
       case "sell": {
-        const i = p.turrets.findLastIndex((t) => t !== null);
+        const i = Object.hasOwn(c, "slot") ? c.slot : p.turrets.findLastIndex((t) => t !== null);
         p.gold += age.turrets[p.turrets[i]].cost * 0.5;
         p.turrets[i] = null;
         p.turretTimers[i] = 0;
@@ -673,7 +675,7 @@
   }
   function cleanCommand(c) {
     if (!c || typeof c !== "object" || Array.isArray(c)) throw new Error("Invalid command");
-    const fields = { unit: ["index"], turret: ["index"], upgrade: ["stat"], sell: [], slot: [], evolve: [], special: [] };
+    const fields = { unit: ["index"], turret: ["index"], upgrade: ["stat"], sell: ["slot"], slot: [], evolve: [], special: [] };
     if (!Object.hasOwn(fields, c.type)) throw new Error("Unknown command type");
     if (Object.keys(c).some((k) => k !== "type" && !fields[c.type].includes(k))) throw new Error("Unknown command field");
     return structuredClone(c);

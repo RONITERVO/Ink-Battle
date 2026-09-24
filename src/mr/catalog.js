@@ -107,8 +107,8 @@ export function shopOffers(state) {
     {
       id: 'sell',
       kind: 'eraser',
-      label: 'Sell last cannon',
-      detail: 'Erase the highlighted cannon · keep its dock · 50% refund',
+      label: 'Sell cannon',
+      detail: 'Drop on any of your cannons · 50% refund',
       price: 0,
       command: { type: 'sell' },
       x: 0.66,
@@ -196,7 +196,7 @@ export function dropZone(offer, point, state) {
     return 'rally-area';
   if (
     ['turret', 'slot', 'eraser'].includes(offer.kind) &&
-    !onDock(point, defenseTarget(offer, state))
+    !onDock(point, defenseTarget(offer, state, point))
   )
     return { turret: 'cannon-dock', slot: 'dock-outline', eraser: 'sell-dock' }[offer.kind];
   return null;
@@ -219,7 +219,7 @@ export const REASONS = Object.freeze({
   'rally-area': 'Drop troops in the green rally area.',
   'cannon-dock': 'Place the cannon on the highlighted empty dock beside your base.',
   'dock-outline': 'Build the dock on the highlighted dashed outline beside your base.',
-  'sell-dock': 'Place the eraser on the highlighted cannon. Its dock stays.',
+  'sell-dock': 'Drop the eraser on an occupied dock beside your base. The dock stays.',
   'max-docks': 'All four cannon docks are built. Place a cannon on an empty dock.',
   'stale-age': 'The age changed. Choose a new piece.',
   'pause-first': 'Pause before starting a new canvas.',
