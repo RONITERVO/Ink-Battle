@@ -110,9 +110,10 @@ for (const input of ['mouse', 'touch']) test.describe(`${input} background orbit
         const current=JSON.stringify(await rounded());
         stable=current===previous?stable+1:0;previous=current;return stable;
       },{intervals:[100],timeout:5000}).toBeGreaterThanOrEqual(2);
-      const resting=await rounded();
+      const resting=(await camera()).position;
       first.x+=100;first.y-=80;await touches('touchMove',[first]);
-      expect(await rounded()).toEqual(resting);
+      // Allow the sub-pixel tail of damping, but no camera response to this drag.
+      expect(Math.hypot(...(await camera()).position.map((n,i)=>n-resting[i]))).toBeLessThan(.005);
       expect(await page.evaluate(()=>InkTabletop.diagnostics().holds)).toBe(0);
     }
     await up();
