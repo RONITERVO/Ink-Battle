@@ -1,22 +1,14 @@
 # Ink Battle
 
-A notebook lane-strategy game, from stone clubs to cosmic weapons. The original
-watercolor canvas, squiggly troops, music, controls and optional local Gemma chat
-now run on a standalone, deterministic game engine.
+A living pencil-and-watercolor battle on a 3D sketchbook, from stone clubs to
+cosmic weapons. The same physical troops, cannons and potions work with a mouse,
+a phone's touchscreen, and Quest 3 hands or controllers.
 
-[Play](https://ronitervo.github.io/Ink-Battle/) · [Release evidence](docs/ACCEPTANCE.md) ·
-[Architecture](docs/ARCHITECTURE.md) · [SDK / terminal play](docs/SDK.md) ·
-[Balance simulations](docs/SIMULATION.md)
-
-**Tabletop mixed reality:** [open the 3D sketchbook](https://ronitervo.github.io/Ink-Battle/mr.html)
-in Quest Browser, then choose **Enter mixed reality**. Grab physical troops,
-cannons and potions; carry the drawn rings with one hand or resize with two.
-Hands and controllers share the same rules. A desktop drag-and-drop preview is
-also available. [Controls, architecture and Quest acceptance](docs/TABLETOP.md).
+[Play](https://drawbattles.com/) · [Controls](docs/TABLETOP.md) ·
+[Tabletop tactics](docs/TACTICAL_BATTLEFIELD.md) · [SDK](docs/SDK.md) ·
+[Hosting](docs/HOSTING.md)
 
 ## Play and develop
-
-Open `ink-battle.html` directly, or serve the checkout:
 
 ```sh
 npm ci
@@ -24,23 +16,22 @@ npm run build
 npm start
 ```
 
-Open **http://127.0.0.1:4173**. Choose a difficulty, buy troops, defend with turrets,
-upgrade, evolve and time specials. Commander pacts such as `no ranged`, `no turrets`
-and `truce for 30 seconds` still work. Medals, music preferences and commander memory
-keep their existing storage keys. No account, network or model is needed to play.
-The PWA caches the game and fonts; music streams separately.
+Open **http://127.0.0.1:4173** or open `index.html` directly. Drag a difficulty
+seal onto the page to start. Drop troops across the rally strip, guide deployed
+troops, build cannon docks, place cannons, and toss upgrade potions. The hourglass
+pauses and the clock cycles 1×/2×/3×. Music retains its normal playback rate.
 
-Use the **1×** button beside **Pause** to cycle through **1×, 2× and 3×** game speed.
-The pause screen also lets you change speed before resuming. Both sides, income
-and cooldowns speed up together; music stays at its normal playback rate.
-Each new match starts at 1×.
+Use one finger or the left mouse button to move pieces. Start a drag outside the
+book and its pieces to rotate the view. With two fingers, pinch to zoom, drag to
+pan and twist to turn gently, all in the same gesture. On PC, scroll to zoom, middle-drag to pan and right-drag
+to orbit. No additional game buttons are needed. On Quest Browser, enter mixed
+reality; pinch or grip pieces, carry one drawn ring, or use two rings to scale/turn.
 
-**Optional Gemma on the web:** choose **Play with Gemma** on the start screen, or
-open its settings while paused. This downloads Gemma 4 E2B (2.01 GB) once and runs
-its replies locally on a compatible WebGPU GPU in Chrome/Edge. The game stays
-paused while loading. Turn it off or remove its download from the same settings.
-Gemma remains optional, and starts off when the page is reopened. See
-[web Gemma setup, testing and limitations](docs/GEMMA_WEB.md).
+The default game uses a deterministic opponent and works without a model or an
+account. The PWA caches the shell and fonts; music streams separately. Classic 2D
+and optional Gemma remain playable at `classic.html`, linked as an archive from
+help. Existing classic saves, settings and replays keep their rules. See
+[archived Gemma setup](docs/GEMMA_WEB.md) for the separate local-model benchmark.
 
 ## The engine is shared
 
@@ -51,7 +42,7 @@ use `Session`. Observing state never moves time. Commands are validated on both 
 
 ```js
 import { Session } from './src/sdk/session.js';
-const game = new Session({ seed: 42, difficulty: 'normal' });
+const game = new Session({ seed: 42, difficulty: 'normal', battlefield: 'tabletop' });
 game.client(1).command({ type: 'unit', index: 0 });
 game.advance(600); // ten game seconds, without waiting
 console.log(game.observe());
@@ -60,7 +51,7 @@ Session.fromReplay(game.replay()); // verifies deterministic replay
 
 `src/core` owns rules; `src/content` owns balance data; `src/sdk` owns the public
 session; `src/client` owns the classic presentation; `src/mr` owns the tabletop.
-`ink-battle.html` and `mr.html` are small page shells. `web/game.js`, `web/mr.js`
+`index.html` and `classic.html` are small page shells. `web/game.js`, `web/mr.js`
 and `service-worker.js` are generated, committed static-host artifacts.
 Edit source modules and run the build, rather than editing generated JavaScript.
 

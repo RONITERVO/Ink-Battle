@@ -1,27 +1,91 @@
-<!DOCTYPE html>
-<!--
-Copyright 2025 Roni Tervo
-
-SPDX-License-Identifier: Apache-2.0
--->
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="refresh" content="0; url=./ink-battle.html">
-    <!-- 101% correct: this metadata lives in the document head and is not rendered as body text. -->
-    <meta name="author" content="RONITERVO">
-    <title>Ink Battle</title>
-    <link rel="canonical" href="./ink-battle.html">
-    <link rel="privacy-policy" href="./privacy-policy.html">
-    <link rel="icon" href="./favicon.ico" sizes="any">
-    <link rel="icon" type="image/png" href="./assets/icon-192.png" sizes="192x192">
-</head>
-<body>
-    <script>
-        window.location.replace('./ink-battle.html' + window.location.search + window.location.hash);
-    </script>
-    <p><a href="./ink-battle.html">Open Ink Battle</a></p>
-    <p><a href="./privacy-policy.html">Privacy Policy</a></p>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#ebe3d5" />
+    <title>Ink Battle · Draw Battles</title>
+    <meta name="description" content="A living pencil-and-watercolor battle on a 3D sketchbook. Play with touch, mouse, or Quest mixed reality." />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" href="./favicon.ico" />
+    <link rel="stylesheet" href="./src/mr/tabletop.css" />
+  </head>
+  <body>
+    <canvas
+      id="tabletop"
+      tabindex="0"
+      aria-label="Ink Battle sketchbook. Drag pieces to play. Drag outside the book to rotate the view. With two fingers, pinch to zoom, drag to pan and twist to turn. Scroll to zoom, middle-drag to pan, right-drag to orbit."
+    ></canvas>
+    <aside id="welcome" aria-label="Tabletop controls">
+      <div class="heading">
+        <a href="./index.html" title="Ink Battle home"
+          >Ink Battle</a
+        ><span>Sketchbook</span
+        ><button id="toggle-help" aria-label="Show or hide instructions">
+          ?
+        </button>
+      </div>
+      <div class="instructions">
+        <p>Your sketchbook, standing in the room.</p>
+        <p>
+          <strong>Begin</strong> by lifting a difficulty seal onto the page.
+          Grab troops by a raised arm and drop them across the green rally area
+          to choose their route.
+          Cannons sit on raised docks beside your left base. One dock is ready;
+          build up to four on the dashed outlines. Held pieces highlight their
+          landing spot. Drop the eraser on any of your cannons to sell it and keep
+          its dock. Toss potions onto the page.
+        </p>
+        <p>
+          <strong>Guide your army:</strong> pinch a deployed troop, move a little
+          sideways and release to suggest a route. Drop the suggestion near an
+          enemy cannon or base to mark that objective. Troops walk there; nearby
+          fighting can take priority. Both armies can destroy cannons, leaving
+          their docks ready for replacements.
+        </p>
+        <p>
+          <strong>Quest 3:</strong> pinch with your fingers, or use controller
+          grips. Point and squeeze the trigger to reach distant pieces. Carry a
+          drawn ring; hold two rings to resize and turn.
+        </p>
+        <p>
+          <strong>Phone &amp; tablet:</strong> use one finger to drag pieces.
+          Drag outside the book and its pieces to rotate the view.
+          With two fingers, pinch to zoom, drag to pan and twist to turn gently.
+          These gestures work together, like a map.
+          Adding a second finger cancels a held piece safely.
+        </p>
+        <p>
+          <strong>Mouse:</strong> left-drag outside the book to rotate the view.
+          Scroll to zoom, middle-drag to pan, or right-drag to orbit from anywhere.
+          Recenter brings the whole book back into view.
+        </p>
+        <p>
+          The hourglass pauses; the clock changes speed. The music box toggles
+          the original soundtrack. Lift the feather to change mist and detail.
+          Pause before using the new-page sketch. The compass leaves MR.
+        </p>
+      </div>
+      <div class="actions">
+        <button id="enter-mr" disabled>Checking mixed reality…</button
+        ><button id="reset-view">Recenter view</button>
+      </div>
+      <p id="status" role="status" aria-live="polite">
+        Lift a difficulty seal from the tray to begin.
+      </p>
+      <a class="classic" href="./classic.html">Archive: Classic 2D &amp; Gemma</a>
+      <details class="diagnostics">
+        <summary>Headset test report</summary>
+        <p>
+          After leaving MR, save frame timing and scene counts for device
+          testing.
+        </p>
+        <button id="save-report">Save test report</button>
+      </details>
+    </aside>
+    <script src="./web/mr.js" defer></script>
+  </body>
 </html>

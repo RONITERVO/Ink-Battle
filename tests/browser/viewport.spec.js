@@ -3,7 +3,7 @@ import { AGES } from '../../src/content/ages.js';
 /* global InkBattle */
 
 async function ready(page) {
-  await page.goto('/ink-battle.html');
+  await page.goto('/classic.html');
   // Procedural watercolor generation is slower in WebKit's software renderer.
   await expect(page.locator('#preloader')).toBeHidden({ timeout: 15000 });
   await page.evaluate(() => document.fonts.ready);

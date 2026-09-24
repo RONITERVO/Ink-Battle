@@ -1,4 +1,19 @@
-# Ink Battle 2.3.0 release
+# Ink Battle 2.4.0 release
+
+Version 2.4.0 makes the 3D sketchbook the default on web, PWA and Android. Classic
+2D remains playable in the explicit `classic.html` archive. Previous launch URLs
+redirect to the new game, preserving query strings and fragments. The PWA retains
+its old identity so this updates the existing install rather than creating another.
+
+Phones use the same physical pieces as Quest and desktop. A one-finger or left-mouse
+drag starting outside the book and pieces rotates the view. Two fingers pinch to
+zoom, drag to pan and twist gently to turn, all together without a mode toggle;
+adding a second finger safely cancels a pending grab. Wheel zoom and
+middle-drag pan work on desktop. The book fits the initial viewport and the existing
+recenter control. No extra on-screen controls were added. Android supports device
+orientation, native Back-to-pause and lifecycle saving. Version code: 219.
+
+The custom domain is `drawbattles.com`; see [hosting](docs/HOSTING.md).
 
 Version 2.3.0 adds a wide tactical battlefield to new tabletop matches. Armies
 spread across both cannon flanks, cannons turn and fire from their own docks, and
@@ -65,7 +80,7 @@ The shell uses a classic script bundle, including for local file and Android loa
 The service worker caches the HTML, bundle, stylesheet, icons and bundled fonts;
 music is deliberately streamed independently.
 
-Keep `index.html`, `ink-battle.html`, `mr.html`, `privacy-policy.html`, `manifest.webmanifest`,
+Keep `index.html`, `classic.html`, `ink-battle.html`, `mr.html`, `CNAME`, `privacy-policy.html`, `manifest.webmanifest`,
 `service-worker.js`, `favicon.ico`, `web/`, `src/client/game.css`, `src/mr/tabletop.css`, and `assets/`
 together when deploying to a static host. Preserve relative paths for project Pages.
 
@@ -82,7 +97,7 @@ npm run build
 
 `syncWebAssets` copies the shared bundle, CSS and assets into
 `app/build/generated/web-assets`. Never hand-edit generated Android assets.
-The next Android build is configured as `2.3.0` / code `218`; this web/MR change
+The next Android build is configured as `2.4.0` / code `219`; this web/MR change
 does not publish an AAB. Quest Browser uses the hosted page and needs no Android
 package. Code `211` was the preceding published Android version; code `210` was
 rejected by Google Play with automatic protection enabled. The minimum

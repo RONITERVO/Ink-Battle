@@ -16,8 +16,8 @@ for (const suffix of ['js', 'wasm']) {
   await chmod(destination, 0o644);
 }
 const version = JSON.parse(await readFile('package.json', 'utf8')).version;
-await writeFile('web/build.json', JSON.stringify({ version, entry: 'game.js' }) + '\n');
-const shell = ['./', './index.html', './ink-battle.html', './mr.html', './src/mr/tabletop.css', './web/mr.js', './web/THREE-LICENSE.txt', './privacy-policy.html', './manifest.webmanifest', './favicon.ico',
+await writeFile('web/build.json', JSON.stringify({ version, entry: 'mr.js', archive: 'game.js' }) + '\n');
+const shell = ['./', './index.html', './ink-battle.html', './mr.html', './classic.html', './src/mr/tabletop.css', './web/mr.js', './web/THREE-LICENSE.txt', './privacy-policy.html', './manifest.webmanifest', './favicon.ico',
   './assets/icon-192.png', './assets/icon-512.png', './assets/fonts/caveat.ttf', './assets/fonts/patrick-hand.ttf', './src/client/game.css', './web/game.js', './web/gemma-worker.js'];
 const hash = createHash('sha256');
 for (const file of shell.filter(f => f !== './')) {

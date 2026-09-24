@@ -6,7 +6,7 @@ import { pathToFileURL } from 'node:url';
 /* global InkBattle, buyUnit, toggleDirectorPanel */
 
 async function ready(page) {
-  await page.goto('/ink-battle.html');
+  await page.goto('/classic.html');
   await expect(page.locator('#preloader')).toBeHidden();
   await page.evaluate(() => document.fonts.ready);
 }
@@ -202,7 +202,7 @@ test('narrow landscape keeps the known controls on the page', async ({ page }, i
 test('static file entry loads like the Android packaged app', async ({ page, browserName }) => {
   test.skip(browserName !== 'chromium', 'Android WebView uses Chromium');
   const errors = []; page.on('pageerror', e => errors.push(e.message));
-  await page.goto(pathToFileURL(resolve('ink-battle.html')).href);
+  await page.goto(pathToFileURL(resolve('classic.html')).href);
   await expect(page.locator('#preloader')).toBeHidden();
   await page.locator('#diff-btn-normal').click(); await page.locator('#btn-u1').click();
   expect(await page.evaluate(() => InkBattle.observe().units.length)).toBeGreaterThan(0);

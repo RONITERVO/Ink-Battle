@@ -135,16 +135,20 @@ export class TabletopScene {
     this.camera = new THREE.PerspectiveCamera(43, 1, 0.01, 30);
     this.camera.position.set(0.45, 2.45, 3.3);
     this.controls = new OrbitControls(this.camera, canvas);
+    this.autoFrame = true;
+    this.controls.addEventListener('start', () => { this.autoFrame = false; });
     this.controls.target.set(0, 0.1, 0.3);
     this.controls.enableDamping = true;
     this.controls.maxPolarAngle = Math.PI * 0.485;
     this.controls.minDistance = 0.4;
     this.controls.maxDistance = 8;
+    this.controls.zoomToCursor = true;
+    this.controls.screenSpacePanning = true;
     this.controls.mouseButtons = {
       RIGHT: THREE.MOUSE.ROTATE,
       MIDDLE: THREE.MOUSE.PAN,
     };
-    this.controls.touches = { TWO: THREE.TOUCH.DOLLY_ROTATE };
+    this.controls.touches = { TWO: THREE.TOUCH.DOLLY_PAN };
     this.scene.add(new THREE.HemisphereLight("#fffaf0", "#8c8f82", 1.9));
     const sun = new THREE.DirectionalLight("#fff8ed", 1.2);
     sun.position.set(-2, 4, 2);
@@ -274,6 +278,30 @@ export class TabletopScene {
       ),
     );
     this.camera.updateProjectionMatrix();
+    if (this.autoFrame) this.frameBook();
+  }
+  frameBook() {
+    this.autoFrame = true;
+    // Fit the whole book, its handles and score tab on narrow and short screens.
+    // This changes presentation only; pinching never changes battlefield scale.
+    const damping = this.controls.enableDamping;
+    this.controls.enableDamping = false;
+    this.controls.update();
+    this.camera.position.set(.45, 2.45, 3.3);
+    this.controls.target.set(0, .1, .3);
+    this.controls.update();
+    const target = this.controls.target, direction = this.camera.position.clone().sub(target).normalize();
+    const inverse = this.camera.quaternion.clone().invert();
+    const vertical = Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) * .88;
+    const horizontal = vertical * this.camera.aspect;
+    let distance = 0;
+    for (const x of [-1.46,1.46]) for (const y of [-.08,.48]) for (const z of [-.8,1.45]) {
+      const p = new THREE.Vector3(x,y,z).sub(target).applyQuaternion(inverse);
+      distance = Math.max(distance, p.z + Math.abs(p.x) / horizontal, p.z + Math.abs(p.y) / vertical);
+    }
+    this.camera.position.copy(target).addScaledVector(direction, distance);
+    this.controls.update();
+    this.controls.enableDamping = damping;
   }
   syncTable() {
     const t = this.table;

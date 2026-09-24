@@ -1,7 +1,8 @@
 # Ink Battle tabletop
 
-The tabletop is an additional client of the deterministic engine, served
-from `mr.html`. The classic game remains the default entry and retains its Gemma
+The tabletop is the default game at `index.html` from version 2.4.0, including
+the PWA and Android app. Old `mr.html` and `ink-battle.html` launch links redirect
+to it. Classic 2D is retained at `classic.html` as an explicit archive, with its Gemma
 settings, commander pacts and native Android bridge. The tabletop uses the standard
 deterministic opponent; it does not load the multi-GB Gemma model while rendering XR.
 From 2.3.0 new tabletop matches use a separately versioned wide battlefield with
@@ -11,7 +12,7 @@ classic/MR replays keep their original rules. See [tactics](TACTICAL_BATTLEFIELD
 Open [the hosted tabletop](https://ronitervo.github.io/Ink-Battle/mr.html) in Quest
 Browser over HTTPS. The browser's **Enter mixed reality** permission gesture is
 the only flat control needed to enter. Buying and match controls inside XR are
-physical objects. A desktop browser can preview the same scene without a headset.
+physical objects. Phones and desktop browsers play the same scene without a headset.
 
 ## Playing
 
@@ -44,10 +45,24 @@ physical objects. A desktop browser can preview the same scene without a headset
    The book stays horizontal; the soldiers stay upright. Width is bounded to
    0.48–3.84 meters; initial Quest width is 1.32 meters. Both left and right hands work.
 
-In desktop preview, drag pieces with the left mouse button, orbit with the right,
-and scroll to zoom. Touch supports dragging and two-finger orbit/zoom. Recenter
-preview restores the camera and book. Escape cancels held objects and pauses.
-The help card collapses during play and starts collapsed in small viewports.
+On desktop, drag pieces with the left mouse button, orbit with the right, pan with
+the middle button and scroll to zoom toward the pointer. On phones, one finger
+drags the same pieces. A one-finger or left-mouse drag starting outside the book,
+shop and pieces rotates the view. Starting on empty paper keeps the camera still;
+crossing onto the book during a rotation cannot grab or buy anything.
+Two fingers pan, pinch to zoom and twist to turn gently, like a map. These work
+together without a mode toggle. Twisting has a 35% response; use the outside-book
+drag to change the full viewing angle. Adding a second
+finger cancels a pending grab without buying or deploying it. There are no added
+on-screen purchase or navigation buttons. Recenter restores the camera and book,
+fitting the whole book into the current viewport. Escape cancels holds and pauses.
+The help card collapses during play and is a small heading on narrow/short screens;
+opening it exposes the original help, MR, recenter and archive controls.
+
+Android launches the same book from packaged local files and follows the device's
+orientation preference. Back first pauses a running match; leaving the app cancels
+held pieces and saves a paused checkpoint. An updated app package is needed for
+installed Android apps; a Pages deployment updates the browser/PWA version.
 
 Putting the headset aside, opening a system panel, losing viewer tracking, leaving
 XR, or hiding the page pauses the battle. Held/thrown purchases are cancelled.

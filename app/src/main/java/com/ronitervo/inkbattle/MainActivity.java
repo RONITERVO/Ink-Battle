@@ -53,7 +53,7 @@ public class MainActivity extends Activity {
 
         setContentView(webView);
         webView.post(this::hideSystemUi);
-        webView.loadUrl("file:///android_asset/ink-battle.html");
+        webView.loadUrl("file:///android_asset/index.html");
     }
 
     private void hideSystemUi() {
@@ -91,7 +91,7 @@ public class MainActivity extends Activity {
             return;
         }
         webView.evaluateJavascript(
-            "(function(){ var s = window.InkBattle && InkBattle.observe(); if (s && s.running && !s.paused) { togglePause(true); return true; } return false; })();",
+            "(function(){ var game = window.InkTabletop || window.InkBattle; var s = game && game.observe(); if (s && s.running && !s.paused) { if (window.InkTabletop) InkTabletop.pause(); else togglePause(true); return true; } return false; })();",
             value -> {
                 if (!"true".equals(value)) finish();
             }
@@ -119,7 +119,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onPause() {
         if (webView != null) {
-            webView.evaluateJavascript("if (window.InkBattle && InkBattle.observe() && InkBattle.observe().running) togglePause(true);", null);
+            webView.evaluateJavascript("if (window.InkTabletop) InkTabletop.pause(); else if (window.InkBattle && InkBattle.observe() && InkBattle.observe().running) togglePause(true);", null);
             webView.onPause();
             webView.pauseTimers();
         }
