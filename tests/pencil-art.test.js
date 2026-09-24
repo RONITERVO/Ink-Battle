@@ -15,6 +15,8 @@ import {
 } from "../src/mr/models.js";
 import { shopOffers, TOOLS } from "../src/mr/catalog.js";
 import { Session } from "../src/sdk/session.js";
+import { chapterPalette, pigmentTexture } from "../src/mr/watercolor.js";
+import { pageGeometry } from "../src/mr/book-paper.js";
 
 function signature(batch, draw) {
   batch.begin();
@@ -33,7 +35,7 @@ function signature(batch, draw) {
   return hash.digest("hex");
 }
 
-test("pencil surfaces contain strokes and open space instead of filled faces", () => {
+test("pencil contours retain real thickness independently of their painted surfaces", () => {
   const geometries = pencilGeometries();
   for (const geometry of Object.values(geometries)) {
     const pos = geometry.attributes.position.array;
@@ -56,7 +58,7 @@ test("pencil surfaces contain strokes and open space instead of filled faces", (
   assert.equal(
     ray.intersectObject(box).length,
     0,
-    "A box must not conceal the room behind its unmarked center",
+    "The contour geometry must stay separate from its painted skin",
   );
   ray.ray.origin.set(0.5, 0.5, 2);
   assert.ok(
@@ -65,6 +67,50 @@ test("pencil surfaces contain strokes and open space instead of filled faces", (
   );
   for (const geometry of Object.values(geometries)) geometry.dispose();
   box.material.dispose();
+});
+
+test("opaque paint conceals the room inside pieces and the book, with open space outside", () => {
+  const group = new THREE.Group();
+  const batch = new InkBatch(group);
+  batch.model(0, 0, 0);
+  batch.box([0, 0, 0], [1, 1, 1]);
+  batch.end();
+  group.updateMatrixWorld(true);
+  const ray = new THREE.Raycaster(
+    new THREE.Vector3(0, 0, 2),
+    new THREE.Vector3(0, 0, -1),
+  );
+  assert.ok(ray.intersectObject(batch.meshes.fill_box).length > 0);
+  assert.equal(batch.fillMaterial.transparent, false);
+  const page = new THREE.Mesh(
+    pageGeometry(),
+    new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }),
+  );
+  ray.ray.direction.set(0, -1, 0);
+  for (const x of [-1.2, -0.6, 0, 0.6, 1.2]) {
+    ray.ray.origin.set(x, 2, 0.3);
+    assert.ok(ray.intersectObject(page).length > 0, `Paper gap at ${x}`);
+  }
+  ray.ray.origin.set(1.4, 2, 0.3);
+  assert.equal(
+    ray.intersectObject(page).length,
+    0,
+    "The room stays visible outside the book",
+  );
+  const palette = new Set(AGES.map((_, age) => chapterPalette(age).accent));
+  assert.equal(
+    palette.size,
+    AGES.length,
+    "Every classic age keeps its color family",
+  );
+  assert.ok(
+    pigmentTexture().image.data.every(
+      (value, index) => index % 4 !== 3 || value === 255,
+    ),
+  );
+  batch.dispose();
+  page.geometry.dispose();
+  page.material.dispose();
 });
 
 test("every troop, defense, base, potion and tool has a stable distinct drawing", () => {

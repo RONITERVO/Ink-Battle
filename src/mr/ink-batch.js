@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { pencilGeometries } from "./pencil-geometry.js";
 import { PENCIL } from "./pencil-palette.js";
+import { fillGeometries, paintMaterial } from "./watercolor.js";
 
 const COLORS = new Map();
 const colorValue = (value) => {
@@ -10,7 +11,7 @@ const colorValue = (value) => {
   return COLORS.get(value);
 };
 
-/** Bounded, instanced pencil paths. No skin, face fill, or inverted hull. */
+/** Bounded, instanced pencil paths with opaque, grainy watercolor beneath. */
 export class InkBatch {
   constructor(parent, { capacity = 12000 } = {}) {
     this.material = new THREE.MeshBasicMaterial({ vertexColors: true });
@@ -27,19 +28,29 @@ export class InkBatch {
       );
     };
     this.material.customProgramCacheKey = () => "spatial-pencil-width-v1";
+    this.fillMaterial = paintMaterial();
     this.meshes = {};
     this.counts = {};
     this.overflow = 0;
     this.triangles = 0;
-    for (const [name, geometry] of Object.entries(pencilGeometries())) {
-      geometry.setAttribute(
-        "pencilRadius",
-        new THREE.InstancedBufferAttribute(
-          new Float32Array(capacity * 3),
-          3,
-        ).setUsage(THREE.DynamicDrawUsage),
+    for (const [name, geometry] of Object.entries({
+      ...pencilGeometries(),
+      ...fillGeometries(),
+    })) {
+      const filled = name.startsWith("fill_");
+      if (!filled)
+        geometry.setAttribute(
+          "pencilRadius",
+          new THREE.InstancedBufferAttribute(
+            new Float32Array(capacity * 3),
+            3,
+          ).setUsage(THREE.DynamicDrawUsage),
+        );
+      const mesh = new THREE.InstancedMesh(
+        geometry,
+        filled ? this.fillMaterial : this.material,
+        capacity,
       );
-      const mesh = new THREE.InstancedMesh(geometry, this.material, capacity);
       mesh.name = `pencil-${name}`;
       mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
       mesh.frustumCulled = false;
@@ -54,7 +65,7 @@ export class InkBatch {
     this.euler = new THREE.Euler();
     this.direction = new THREE.Vector3();
     this.up = new THREE.Vector3(0, 1, 0);
-    this.context = { x: 0, y: 0, z: 0, scale: 1, face: 1 };
+    this.context = { x: 0, y: 0, z: 0, scale: 1, face: 1, paint: PENCIL.paper };
     this.begin();
   }
   begin() {
@@ -62,7 +73,10 @@ export class InkBatch {
     this.overflow = 0;
   }
   model(x, y, z, scale = 1, face = 1) {
-    this.context = { x, y, z, scale, face };
+    this.context = { x, y, z, scale, face, paint: PENCIL.paper };
+  }
+  paint(color) {
+    this.context.paint = color;
   }
   point([x, y, z = 0]) {
     const c = this.context;
@@ -80,13 +94,13 @@ export class InkBatch {
     this.m.compose(this.p, q, this.s);
     mesh.setMatrixAt(index, this.m);
     mesh.setColorAt(index, colorValue(color));
-    mesh.geometry.attributes.pencilRadius.setXYZ(
+    mesh.geometry.attributes.pencilRadius?.setXYZ(
       index,
       ...s.map((v) => width / Math.max(Math.abs(v), 1e-8)),
     );
     this.counts[shape]++;
   }
-  part(shape, p, size, color = PENCIL.graphite, rotation = [0, 0, 0]) {
+  part(shape, p, size, color = PENCIL.graphite, rotation = [0, 0, 0], fill) {
     const scale = this.context.scale;
     this.q.setFromEuler(this.euler.set(...rotation));
     this.write(
@@ -96,6 +110,49 @@ export class InkBatch {
       color,
       this.q,
     );
+    if (this.meshes[`fill_${shape}`]) {
+      this.fill(
+        shape,
+        p,
+        size,
+        fill || (color === PENCIL.graphite ? this.context.paint : color),
+        rotation,
+      );
+    }
+  }
+  fill(shape, p, size, color, rotation = [0, 0, 0]) {
+    this.q.setFromEuler(this.euler.set(...rotation));
+    this.write(
+      `fill_${shape}`,
+      this.point(p),
+      size.map((v) => v * this.context.scale),
+      color,
+      this.q,
+    );
+  }
+  // Convex, planar patches for cloth and paper-cut equipment. Triangles share
+  // one instanced buffer, so a new bottle silhouette adds no draw calls.
+  panel(points, color) {
+    const mesh = this.meshes.fill_triangle;
+    const a = new THREE.Vector3(...this.point(points[0]));
+    for (let i = 2; i < points.length; i++) {
+      const index = this.counts.fill_triangle;
+      if (index >= mesh.instanceMatrix.count) {
+        this.overflow++;
+        return;
+      }
+      const u = new THREE.Vector3(...this.point(points[i - 1])).sub(a);
+      const v = new THREE.Vector3(...this.point(points[i])).sub(a);
+      const normal = new THREE.Vector3().crossVectors(u, v);
+      // A strip can narrow to a single point at a flask's bottom. Skip its
+      // zero-area half so instance transforms remain invertible in the shader.
+      if (normal.lengthSq() === 0) continue;
+      normal.normalize();
+      this.m.makeBasis(u, v, normal).setPosition(a);
+      mesh.setMatrixAt(index, this.m);
+      mesh.setColorAt(index, colorValue(color));
+      this.counts.fill_triangle++;
+    }
   }
   line(a, b, radius = 0.004, color = "#342d2b") {
     const p = this.point(a),
@@ -136,7 +193,14 @@ export class InkBatch {
     this.part("sphere", p, [radius, radius, radius], color);
   }
   outlineBall(p, radius, color = PENCIL.graphite) {
-    this.sphere(p, radius, color);
+    this.part(
+      "sphere",
+      p,
+      [radius, radius, radius],
+      color,
+      [0, 0, 0],
+      color === PENCIL.graphite ? PENCIL.paper : color,
+    );
   }
   box(p, size, color = PENCIL.graphite) {
     this.part("box", p, size, color);
@@ -146,10 +210,14 @@ export class InkBatch {
     for (const [name, mesh] of Object.entries(this.meshes)) {
       mesh.count = this.counts[name];
       mesh.instanceMatrix.needsUpdate = true;
-      mesh.geometry.attributes.pencilRadius.needsUpdate = true;
+      if (mesh.geometry.attributes.pencilRadius)
+        mesh.geometry.attributes.pencilRadius.needsUpdate = true;
       if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
       this.triangles +=
-        (mesh.count * mesh.geometry.attributes.position.count) / 3;
+        (mesh.count *
+          (mesh.geometry.index?.count ??
+            mesh.geometry.attributes.position.count)) /
+        3;
     }
   }
   dispose() {
@@ -158,5 +226,6 @@ export class InkBatch {
       mesh.geometry.dispose();
     }
     this.material.dispose();
+    this.fillMaterial.dispose();
   }
 }

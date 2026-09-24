@@ -20,6 +20,7 @@ import {
   pencilMesh,
 } from "./sketchbook.js";
 import { pencilGeometries } from "./pencil-geometry.js";
+import { BookPaper } from "./book-paper.js";
 
 export const HANDLES = [-1, 1].flatMap((x) =>
   [-0.65, 1.34].map((z) => ({
@@ -32,7 +33,8 @@ export const HANDLES = [-1, 1].flatMap((x) =>
 const ink = "#342d2b";
 
 class Label {
-  constructor(parent, width, height, { flat = true } = {}) {
+  constructor(parent, width, height, { flat = true, backing = false } = {}) {
+    this.backing = backing;
     this.canvas = document.createElement("canvas");
     this.canvas.width = 768;
     this.canvas.height = Math.round((768 * height) / width);
@@ -61,6 +63,22 @@ class Label {
       canvas: { width: w, height: h },
     } = this;
     c.clearRect(0, 0, w, h);
+    if (this.backing) {
+      // A paper tab travels with the book. Floating text needs its own opaque
+      // backing because it can extend beyond the page against a busy room.
+      c.fillStyle = "#fff0d5";
+      c.beginPath();
+      c.moveTo(4, 7);
+      c.lineTo(w * 0.53, 3);
+      c.lineTo(w - 4, 8);
+      c.lineTo(w - 7, h - 5);
+      c.lineTo(7, h - 3);
+      c.closePath();
+      c.fill();
+      c.strokeStyle = "#927454";
+      c.lineWidth = 2;
+      c.stroke();
+    }
     c.strokeStyle = "#a49b87";
     c.lineWidth = 2;
     c.beginPath();
@@ -133,13 +151,18 @@ export class TabletopScene {
     this.held = new InkBatch(this.root, { capacity: 600 });
     this.details = new InkBatch(this.root, { capacity: 100 });
     this.book = pencilMesh(bookPaths(), "#514a42", 0.002);
+    this.paper = new BookPaper();
+    this.root.add(this.paper);
     this.root.add(this.book);
     this.landscape = null;
     this.chapter = new Label(this.root, 0.92, 0.063);
     this.chapter.mesh.position.set(0, 0.003, -0.65);
     this.zone(-0.66, 0.395, 0.44, 0.51, "#438e72");
     this.zone(-1.06, 0.13, 0.27, 1.02, "#a98440");
-    this.status = new Label(this.root, 1.38, 0.22, { flat: false });
+    this.status = new Label(this.root, 1.38, 0.22, {
+      flat: false,
+      backing: true,
+    });
     this.status.mesh.position.set(0.02, 0.2, -0.58);
     this.hint = new Label(this.root, 1.85, 0.105);
     this.hint.mesh.position.set(0, 0.004, -0.17);
@@ -209,6 +232,7 @@ export class TabletopScene {
   refreshArt(age) {
     if (age === this.age) return;
     this.age = age;
+    this.paper.setAge(age);
     if (this.landscape) {
       this.landscape.removeFromParent();
       this.landscape.geometry.dispose();

@@ -1,4 +1,4 @@
-# Ink Battle 2.2.1 release
+# Ink Battle 2.2.2 release
 
 This release rebuilds the single-file demo around one standalone engine while
 retaining the notebook presentation, six ages, four difficulties, music, menus,
@@ -8,11 +8,12 @@ the replay rules version remain 2.0.0. Version 2.2.0 adds the 3D tabletop and
 Quest mixed-reality entry at `mr.html`. See [tabletop acceptance](docs/TABLETOP.md);
 physical Quest testing is a separate release-owner check after hosting the build.
 
-Version 2.2.1 redraws the tabletop as an open spatial pencil sketchbook. All six
-ages have distinct troops, defenses, bases, landscapes and effects; surfaces are
-open contours and hatching. See [the art guide](docs/PENCIL_ART.md). The game rules,
-classic 2D art and saved checkpoint format are unchanged. The player reported that
-2.2.0 plays well; the new pencil artwork still needs a visual check on Quest.
+Version 2.2.2 adds watercolor fills to the spatial pencil sketchbook after a Quest
+screenshot showed thin unfilled drawings disappearing against the room. Opaque
+grainy paper, six washes derived from the classic age palette, painted pieces and
+a paper score tab improve contrast while retaining the pencil contours. See
+[the art guide](docs/PENCIL_ART.md). Game rules, classic 2D art, controls and saved
+checkpoints are unchanged. The new fills need a follow-up visual check on Quest.
 
 ## Build and verify
 
@@ -48,7 +49,7 @@ npm run build
 
 `syncWebAssets` copies the shared bundle, CSS and assets into
 `app/build/generated/web-assets`. Never hand-edit generated Android assets.
-The next Android build is configured as `2.2.1` / code `213`; this web/MR change
+The next Android build is configured as `2.2.2` / code `214`; this web/MR change
 does not publish an AAB. Quest Browser uses the hosted page and needs no Android
 package. Code `211` was the preceding published Android version; code `210` was
 rejected by Google Play with automatic protection enabled. The minimum
