@@ -16,6 +16,103 @@ import { applyCommand } from "../src/core/commands.js";
 import { step } from "../src/core/engine.js";
 import { Session } from "../src/sdk/session.js";
 import { TabletopHost } from "../src/mr/host.js";
+import { BASE_WIDTH, CANVAS_WIDTH } from "../src/core/constants.js";
+
+test("defenses recover after a shot but only prepare against drawable enemies in range", () => {
+  for (const [age, data] of AGES.entries())
+    for (const [index, defense] of data.turrets.entries()) {
+      for (const team of [1, -1]) {
+        const state = createState({ startAge: age, opponent: false });
+        const side = team === 1 ? state.player : state.enemy;
+        side.gold = 1e8;
+        assert.ok(applyCommand(state, team, { type: "turret", index }).ok);
+        assert.ok(applyCommand(state, -team, { type: "unit", index: 0 }).ok);
+        side.turretProgress[0] = 1;
+        const target = state.units[0];
+        const x =
+          (team === 1 ? BASE_WIDTH : CANVAS_WIDTH - BASE_WIDTH) - team * 10;
+        target.drawProgress = 1;
+        target.x = x + team * 50;
+        step(state);
+        assert.equal(defenseMotion(state, team, 0).strike, 1);
+        state.units = [];
+        assert.equal(
+          defenseMotion(state, team, 0).strike,
+          1,
+          "The completed shot still recovers after its target disappears",
+        );
+        for (
+          let tick = 0;
+          tick < Math.ceil(defense.attackSpeed * 60) + 1;
+          tick++
+        ) {
+          step(state);
+          assert.equal(
+            defenseMotion(state, team, 0).prepare,
+            0,
+            "An empty battlefield never triggers another windup",
+          );
+        }
+        side.turretTimers[0] = 0.001;
+        state.units = [target];
+        target.drawProgress = 0.8;
+        target.x = x + team * defense.range;
+        assert.ok(
+          defenseMotion(state, team, 0).prepare > 0,
+          "An enemy on the range boundary permits preparation",
+        );
+        target.x += team * 0.001;
+        assert.equal(
+          defenseMotion(state, team, 0).prepare,
+          0,
+          "An out-of-range enemy cannot trigger preparation",
+        );
+        target.x = x + team * 50;
+        target.drawProgress = 0.79;
+        assert.equal(
+          defenseMotion(state, team, 0).prepare,
+          0,
+          "An unfinished target is excluded just as in combatTick",
+        );
+        target.drawProgress = 1;
+        target.team = team;
+        assert.equal(
+          defenseMotion(state, team, 0).prepare,
+          0,
+          "Allies cannot trigger preparation",
+        );
+        state.running = false;
+        side.turretTimers[0] = defense.attackSpeed;
+        assert.deepEqual(defenseMotion(state, team, 0), REST);
+      }
+    }
+});
+
+test("every winning troop returns to rest without advancing the finished engine", () => {
+  for (const [age, data] of AGES.entries())
+    for (const [index] of data.units.entries()) {
+      const state = createState({ startAge: age, opponent: false });
+      state.player.gold = 1e8;
+      state.enemy.hp = 1;
+      assert.ok(applyCommand(state, 1, { type: "unit", index }).ok);
+      const unit = state.units[0];
+      unit.drawProgress = 1;
+      unit.x = CANVAS_WIDTH - BASE_WIDTH - 10;
+      for (let tick = 0; tick < 120 && state.running; tick++) step(state);
+      assert.equal(state.running, false, data.units[index].name);
+      assert.ok(
+        unitMotion(unit).strike > 0,
+        "Winning attack was still in progress",
+      );
+      const before = structuredClone(state);
+      assert.deepEqual(unitMotion(unit, state.running), REST);
+      assert.deepEqual(
+        state,
+        before,
+        "Settling the presentation does not alter the final replay state",
+      );
+    }
+});
 
 function signature(batch, draw) {
   batch.begin();
@@ -57,11 +154,11 @@ test("attacks start on actual engine hits or shots for every troop and defense",
       state.units = [target];
       target.x = 220;
       assert.ok(applyCommand(state, 1, { type: "turret", index }).ok);
-      assert.deepEqual(defenseMotion(state.player, 0), REST);
+      assert.deepEqual(defenseMotion(state, 1, 0), REST);
       state.player.turretProgress[0] = 1;
       step(state);
       assert.equal(
-        defenseMotion(state.player, 0).strike,
+        defenseMotion(state, 1, 0).strike,
         1,
         data.turrets[index].name,
       );

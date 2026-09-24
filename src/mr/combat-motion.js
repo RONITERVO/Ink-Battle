@@ -1,4 +1,5 @@
 import { AGES } from "../content/ages.js";
+import { BASE_WIDTH, CANVAS_WIDTH } from "../core/constants.js";
 
 export const REST = Object.freeze({
   strike: 0,
@@ -27,7 +28,8 @@ export function attackMotion(cooldown, period, engaged = false, progress = 1) {
   };
 }
 
-export function unitMotion(unit) {
+export function unitMotion(unit, running = true) {
+  if (!running) return REST;
   return attackMotion(
     unit.attackCooldown,
     unit.attackSpeed,
@@ -36,13 +38,26 @@ export function unitMotion(unit) {
   );
 }
 
-export function defenseMotion(side, slot) {
+export function defenseMotion(state, team, slot) {
+  if (!state.running) return REST;
+  const side = team === 1 ? state.player : state.enemy;
   const index = side.turrets[slot];
   if (index === null) return REST;
+  const data = AGES[side.age].turrets[index];
+  const x = (team === 1 ? BASE_WIDTH : CANVAS_WIDTH - BASE_WIDTH) - team * 10;
+  // Read-only eligibility mirrors combatTick's defense target filter. Keep
+  // preparation tied to a drawable enemy actually inside this defense's range;
+  // recovery from an already-fired shot still finishes after that enemy leaves.
+  const engaged = state.units.some(
+    (unit) =>
+      unit.team !== team &&
+      unit.drawProgress >= 0.8 &&
+      Math.abs(unit.x - x) <= data.range + 1e-6,
+  );
   return attackMotion(
     side.turretTimers[slot],
-    AGES[side.age].turrets[index].attackSpeed,
-    true,
+    data.attackSpeed,
+    engaged,
     side.turretProgress[slot],
   );
 }

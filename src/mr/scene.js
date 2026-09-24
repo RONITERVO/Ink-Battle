@@ -379,7 +379,7 @@ export class TabletopScene {
             index,
             TEAM_COLORS[team],
             false,
-            defenseMotion(side, slot),
+            defenseMotion(state, team, slot),
             this.host.quality !== "comfort",
           );
         });
@@ -396,8 +396,8 @@ export class TabletopScene {
           scale,
           team: unit.team,
           time: comfort ? 0 : combatTime + unit.id,
-          walking: !comfort && unit.moving,
-          motion: unitMotion(unit),
+          walking: state.running && !comfort && unit.moving,
+          motion: unitMotion(unit, state.running),
           detailed: !comfort,
         });
         if (!comfort) {
@@ -417,7 +417,7 @@ export class TabletopScene {
         );
         this.shadow.setMatrixAt(shadowCount++, this.shadowMatrix);
       }
-      for (const p of state.projectiles) {
+      for (const p of state.running ? state.projectiles : []) {
         if (!Number.isFinite(p.x) || !Number.isFinite(p.y)) continue;
         this.army.model(
           (p.x / 1280 - 0.5) * TABLE.width,
@@ -431,7 +431,7 @@ export class TabletopScene {
           p.team === 1 ? state.player.age : state.enemy.age,
         );
       }
-      for (const special of state.specials) {
+      for (const special of state.running ? state.specials : []) {
         const x = (special.x / 1280 - 0.5) * TABLE.width;
         this.army.model(x, 0.012, TABLE.lane);
         specialModel(

@@ -35,7 +35,12 @@ battle, the engine decides every attack, target, projectile, hit and cooldown.
 `turretTimers / attackSpeed` for defenses. A fresh cooldown marks a real shot or
 hit; recovery fades, then preparation leads into the next eligible attack.
 Zero cooldowns and unfinished drawings produce a resting pose. Preparation can
-settle when a target leaves range, but cannot invent another shot. Shop and held
+settle when a target leaves range, but cannot invent another shot. A defense
+prepares only if a target passes the engine's enemy, drawing-progress and range
+conditions; it can still finish recovering from a shot after the target leaves.
+Finished matches return troops and defenses to rest and hide transient projectiles
+and specials, without advancing or changing the terminal engine state. A paused
+ongoing match instead preserves its exact pose. Shop and held
 pieces rest even when a battlefield piece of the same type is attacking.
 
 Poses need no wall clock, random numbers, previous render frame, extra replay

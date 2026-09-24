@@ -101,7 +101,7 @@ npx playwright test tests/browser/tabletop.spec.js --project=chromium
 npm run simulate -- --release
 ```
 
-The 2.2.3 local run on 2026-09-24 passed 37 unit tests. The tabletop sweep completed **192
+The 2.2.3 local run on 2026-09-24 passed 39 unit tests. The tabletop sweep completed **192
 matches**, **5,580 physical purchases**, **415 deliberately missed drops**, and
 **5.62 simulated hours in 7.9 seconds**. All terminal states replayed identically.
 The shared release sweep completed **2,304 matches**, **294 composition trials**

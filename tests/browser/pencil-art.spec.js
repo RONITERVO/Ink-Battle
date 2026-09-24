@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 import { build } from "esbuild";
 /* global drawPencilGallery, poseCombatGallery, readableBook, checkCombatClock */
 
-test("live combat rendering freezes on pause and follows engine time at 3x and in comfort mode", async ({
+test("live combat poses follow pause and speed, then rest at victory, defeat or draw", async ({
   page,
   browserName,
 }) => {
@@ -34,6 +34,7 @@ test("live combat rendering freezes on pause and follows engine time at 3x and i
     "comfortMoves",
   ])
     expect(result[field], field).toBe(true);
+  expect(result.resultRests).toEqual(Array(8).fill(true));
   expect(result.overflow).toBe(0);
 });
 
