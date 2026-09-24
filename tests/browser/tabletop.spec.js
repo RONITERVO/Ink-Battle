@@ -71,16 +71,28 @@ test('tabletop desktop grabs, invalid drops, pause, speed and saves', async ({
   expect(errors).toEqual([]);
 });
 
-test('desktop cannon drops require a foundation and fill four visible docks', async ({ page, browserName }, info) => {
-  test.skip(browserName !== 'chromium', 'MR input uses the Chromium render target.');
-  await ready(page);
+async function restoreDefenses(page, count) {
   const session = new Session({ opponent: false });
   session.advance(36000);
   session.advance(15000);
+  for (let slot = 0; slot < count; slot++) {
+    if (slot) expect(session.command(1, { type: 'slot' }).ok).toBe(true);
+    expect(session.command(1, { type: 'turret', index: 0 }).ok).toBe(true);
+  }
+  session.advance(120);
   await page.evaluate((cp) => InkTabletop.restore(cp), session.checkpoint());
   await drag(page, hourglass, center);
   await expect.poll(() => page.evaluate(() => InkTabletop.observe().paused)).toBe(false);
-  for (let slot = 0; slot < 4; slot++) {
+}
+
+// Each location gets a separate context and timeout budget on software CI.
+// Prior foundations come from a real replayable Session; the new dock and cannon
+// still have to be purchased through actual mouse input in every case.
+for (let slot = 0; slot < 4; slot++) {
+  test(`desktop cannon dock ${slot + 1} requires its own foundation`, async ({ page, browserName }, info) => {
+    test.skip(browserName !== 'chromium', 'MR input uses the Chromium render target.');
+    await ready(page);
+    await restoreDefenses(page, slot);
     if (slot) {
       const p = dockPosition(slot);
       await drag(page, { x: 0.37, y: 0.07, z: 1.16 }, { ...p, y: 0 });
@@ -90,10 +102,16 @@ test('desktop cannon drops require a foundation and fill four visible docks', as
     expect(await page.evaluate(() => InkTabletop.observe().player.turrets.filter((t) => t !== null).length)).toBe(slot);
     await drag(page, cannon, dockPosition(slot));
     await expect.poll(() => page.evaluate(() => InkTabletop.observe().player.turrets.filter((t) => t !== null).length)).toBe(slot + 1);
-  }
+    await page.screenshot({ path: info.outputPath(`cannon-dock-${slot + 1}.png`) });
+  });
+}
+
+test('desktop cannon docks stop at four and persist after selling and reloading', async ({ page, browserName }) => {
+  test.skip(browserName !== 'chromium', 'MR input uses the Chromium render target.');
+  await ready(page);
+  await restoreDefenses(page, 4);
   await drag(page, { x: 0.37, y: 0.07, z: 1.16 }, center);
   expect(await page.evaluate(() => InkTabletop.observe().player.unlockedSlots)).toBe(4);
-  await page.screenshot({ path: info.outputPath('four-cannon-docks.png') });
   await drag(page, { x: 0.66, y: 0.07, z: 1.16 }, dockPosition(3));
   await expect.poll(() => page.evaluate(() => InkTabletop.observe().player.turrets[3])).toBe(null);
   expect(await page.evaluate(() => InkTabletop.observe().player.unlockedSlots)).toBe(4);
