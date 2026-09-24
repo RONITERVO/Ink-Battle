@@ -3,13 +3,14 @@ import { RULES_VERSION, TICK_RATE } from '../core/constants.js';
 import { applyCommand, commandError } from '../core/commands.js';
 import { step } from '../core/engine.js';
 import { chooseAction } from '../core/opponent.js';
+import { TABLETOP_RULES_VERSION } from '../core/battlefield.js';
 
 function boundedInteger(value, min, max, label) {
   if (!Number.isSafeInteger(value) || value < min || value > max) throw new Error(`Invalid ${label}`);
 }
 function cleanCommand(c) {
   if (!c || typeof c !== 'object' || Array.isArray(c)) throw new Error('Invalid command');
-  const fields = { unit: ['index'], turret: ['index'], upgrade: ['stat'], sell: ['slot'], slot: [], evolve: [], special: [] };
+  const fields = { unit: ['index', 'z'], guide: ['id', 'x', 'z'], turret: ['index'], upgrade: ['stat'], sell: ['slot'], slot: [], evolve: [], special: [] };
   if (!Object.hasOwn(fields, c.type)) throw new Error('Unknown command type');
   if (Object.keys(c).some(k => k !== 'type' && !fields[c.type].includes(k))) throw new Error('Unknown command field');
   return structuredClone(c);
@@ -33,9 +34,10 @@ export class Session {
   #receipts = new Map();
   constructor(options = {}) {
     if (!options || typeof options !== 'object' || Array.isArray(options)) throw new Error('Invalid options');
-    if (Object.keys(options).some(k => !['seed', 'difficulty', 'startAge', 'opponent'].includes(k))) throw new Error('Unknown option');
+    if (Object.keys(options).some(k => !['seed', 'difficulty', 'startAge', 'opponent', 'battlefield'].includes(k))) throw new Error('Unknown option');
     this.#state = createState(options);
     this.#options = { seed: this.#state.seed, difficulty: this.#state.difficulty, startAge: this.#state.player.age, opponent: this.#state.opponent.enabled };
+    if (this.#state.battlefield) this.#options.battlefield = this.#state.battlefield;
   }
   observe() { const observation = structuredClone(this.#state); observation.events = []; return observation; }
   get tick() { return this.#state.tick; }
@@ -99,7 +101,7 @@ export class Session {
     return result;
   }
   digest() { return digest(this.observe()); }
-  replay() { return { version: RULES_VERSION, options: structuredClone(this.#options), ticks: this.tick, entries: structuredClone(this.#log), digest: this.digest() }; }
+  replay() { return { version: this.#state.version, options: structuredClone(this.#options), ticks: this.tick, entries: structuredClone(this.#log), digest: this.digest() }; }
   checkpoint() { return { replay: this.replay(), receipts: structuredClone([...this.#receipts]) }; }
   static restore(checkpoint) {
     if (!checkpoint || !Array.isArray(checkpoint.receipts) || checkpoint.receipts.length > 10000) throw new Error('Invalid checkpoint');
@@ -109,9 +111,10 @@ export class Session {
     return session;
   }
   static fromReplay(replay) {
-    if (!replay || replay.version !== RULES_VERSION || !Array.isArray(replay.entries) || replay.entries.length > 250000) throw new Error('Unsupported replay');
+    if (!replay || ![RULES_VERSION, TABLETOP_RULES_VERSION].includes(replay.version) || !Array.isArray(replay.entries) || replay.entries.length > 250000) throw new Error('Unsupported replay');
     boundedInteger(replay.ticks, 0, 5184000, 'replay duration');
     const session = new Session(replay.options);
+    if (session.#state.version !== replay.version) throw new Error('Replay battlefield mismatch');
     const advanceTo = tick => {
       boundedInteger(tick, session.tick, replay.ticks, 'entry tick');
       while (session.tick < tick) {

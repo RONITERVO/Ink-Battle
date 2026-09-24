@@ -1,9 +1,12 @@
 # Ink Battle tabletop
 
-The tabletop is an additional client of the existing deterministic game, served
+The tabletop is an additional client of the deterministic engine, served
 from `mr.html`. The classic game remains the default entry and retains its Gemma
 settings, commander pacts and native Android bridge. The tabletop uses the standard
 deterministic opponent; it does not load the multi-GB Gemma model while rendering XR.
+From 2.3.0 new tabletop matches use a separately versioned wide battlefield with
+aiming defenses, destructible cannons and troop guidance. Classic 2D and existing
+classic/MR replays keep their original rules. See [tactics](TACTICAL_BATTLEFIELD.md).
 
 Open [the hosted tabletop](https://ronitervo.github.io/Ink-Battle/mr.html) in Quest
 Browser over HTTPS. The browser's **Enter mixed reality** permission gesture is
@@ -18,7 +21,10 @@ physical objects. A desktop browser can preview the same scene without a headset
 2. Lift a difficulty seal from the tray and drop it onto the page to begin.
 3. Pinch a troop's arm/head area, or hold a controller grip near the piece. Point
    and hold the trigger for distant pieces. Drop troops in the green rally area.
-   They deploy from the normal base; placement cannot bypass combat or spacing.
+   They deploy from the normal base; placement chooses their route across the
+   width and cannot bypass combat or spacing. Pinch a deployed soldier and move
+   sideways to suggest a route. Release near an enemy cannon or base to suggest
+   that objective. The soldier walks there, but nearby fighting takes priority.
 4. Cannons sit on raised foundations beside your left base: two on each flank,
    four maximum. One dock is included at the start. Lift a cannon to highlight
    its next empty built dock; place it on that platform. Lift a cannon dock to
@@ -26,7 +32,9 @@ physical objects. A desktop browser can preview the same scene without a headset
    Move the eraser over any of your cannons to highlight its dock. Release there
    to sell that cannon for 50% of its price; its dock stays for a replacement.
    Dropping inside the base, on a locked outline or on the wrong dock spends nothing.
-   Evolution clears/refunds cannons and keeps all purchased docks. Potions are
+   Evolution clears/refunds cannons and keeps all purchased docks.
+   Cannons turn toward their targets. Both armies can destroy cannons; the paid
+   foundations remain available for rebuilding. Potions are
    damage, health, income, evolution and specials. Toss them onto the page.
    Specials retain their normal automatic targeting. A missed throw spends nothing.
 5. Lift the hourglass and drop it onto the page to pause/resume. The clock cycles
@@ -71,7 +79,9 @@ engine. Throws are cosmetic until their segment intersects the page or raised do
 host validates the current age, balance and rules. Tokens are consumed before
 execution, preventing duplicate releases. Simultaneous hands cannot bypass the
 engine's deployment cooldown. Misses, lost input, rejected drops and stale offers
-never debit gold. No separate MR balance rules exist.
+never debit gold. New matches opt into the versioned tabletop combat profile;
+the shared content catalog, economy, fixed clock and Session contract remain.
+Only logical route/target commands enter the engine, never tracking coordinates.
 
 All eighteen troop types have depth and distinct equipment. Version 2.2.2 adds
 opaque watercolor beneath the spatial pencil contours following real Quest

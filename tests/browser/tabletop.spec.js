@@ -3,6 +3,7 @@ import { build } from 'esbuild';
 import { Session } from '../../src/sdk/session.js';
 import { AGES } from '../../src/content/ages.js';
 import { dockPosition } from '../../src/mr/defense-layout.js';
+import { worldX, worldZ } from '../../src/core/battlefield.js';
 /* global InkTabletop, xrDevice, handConfig, controllerConfig, measureMRStress */
 
 async function ready(page) {
@@ -85,6 +86,49 @@ function defenseCheckpoint(count, types = []) {
   session.advance(120);
   return session.checkpoint();
 }
+function tacticalCheckpoint() {
+  const session=new Session({battlefield:'tabletop',opponent:false});
+  expect(session.command(1,{type:'unit',index:0,z:-150}).ok).toBe(true);
+  session.advance(90);
+  return session.checkpoint();
+}
+async function soldierPoint(page) {
+  const u=await page.evaluate(()=>InkTabletop.observe().units.find(u=>u.team===1));
+  return {x:worldX(u.x),y:.13*Math.min(1.8,u.size/50),z:worldZ(u.z)};
+}
+test('desktop suggests a live troop route without teleporting it, then reloads the instruction',async({page,browserName},info)=>{
+  test.skip(browserName!=='chromium','MR input uses Chromium.');
+  // Drive game time explicitly: a slow software renderer must not let the
+  // moving soldier escape between reading its position and the real mouse click.
+  await page.clock.install({time:new Date('2026-01-01T00:00:00Z')});
+  await ready(page);
+  await page.clock.pauseAt(new Date('2026-01-01T01:00:00Z'));
+  await page.evaluate(cp=>InkTabletop.restore(cp),tacticalCheckpoint());
+  await page.clock.runFor(16);
+  await drag(page,hourglass,center);
+  await page.clock.runFor(16);
+  const p=await soldierPoint(page),screen=await page.evaluate(p=>InkTabletop.project(p),p);
+  await page.mouse.move(screen.x,screen.y);await page.mouse.down();
+  await expect.poll(()=>page.evaluate(()=>InkTabletop.diagnostics().holds)).toBe(1);
+  const before=await page.evaluate(()=>InkTabletop.observe().units[0]);
+  await page.clock.runFor(200);
+  expect((await page.evaluate(()=>InkTabletop.observe().units[0])).x).toBeGreaterThan(before.x);
+  const end=await page.evaluate(p=>InkTabletop.project(p),{x:p.x,y:0,z:.45});
+  await page.mouse.move(end.x,end.y,{steps:4});
+  await page.clock.runFor(16);
+  await page.screenshot({path:info.outputPath('troop-guidance.png')});
+  const justBefore=await page.evaluate(()=>InkTabletop.observe().units[0]);
+  await page.mouse.up();
+  await page.clock.runFor(16);
+  await expect.poll(()=>page.evaluate(()=>InkTabletop.observe().units[0].guide!==null)).toBe(true);
+  const after=await page.evaluate(()=>InkTabletop.observe().units[0]);
+  expect(Math.abs(after.z-justBefore.z)).toBeLessThan(10);
+  expect(after.guide.z).toBeGreaterThan(after.z+50);
+  expect(await page.evaluate(()=>InkTabletop.replay().entries.at(-1).command.type)).toBe('guide');
+  await drag(page,hourglass,center);await page.reload();
+  await expect(page.locator('body')).toHaveAttribute('data-ready','true');
+  expect((await page.evaluate(()=>InkTabletop.observe().units[0])).guide).toEqual(after.guide);
+});
 async function restoreDefenses(page, count, types) {
   await page.evaluate((cp) => InkTabletop.restore(cp), defenseCheckpoint(count, types));
   await drag(page, hourglass, center);
@@ -382,6 +426,26 @@ async function hand(page, side, point, pinched) {
 }
 
 for (const device of ['controller', 'hand']) {
+  test(`emulated ${device} nudges a living troop across the battlefield`,async({page,browserName})=>{
+    test.skip(browserName!=='chromium','IWER uses Chromium WebGL.');
+    await emulated(page);
+    if(device==='hand') await page.evaluate(()=>{xrDevice.primaryInputMode='hand';});
+    const move=device==='hand'?hand:controller;
+    await move(page,'right',center,false);await move(page,'right',center,true);await move(page,'right',center,false);
+    await expect.poll(()=>page.evaluate(()=>InkTabletop.diagnostics().placing)).toBe(false);
+    await page.evaluate(cp=>InkTabletop.restore(cp),tacticalCheckpoint());
+    await move(page,'right',hourglass,false);await move(page,'right',hourglass,true);await move(page,'right',{...center,y:.05},false);
+    await expect.poll(()=>page.evaluate(()=>InkTabletop.observe().paused)).toBe(false);
+    await move(page,'right',await soldierPoint(page),false);
+    await move(page,'right',await soldierPoint(page),true);
+    await expect.poll(()=>page.evaluate(()=>InkTabletop.diagnostics().holds)).toBe(1);
+    await move(page,'right',{x:-.6,y:.22,z:.45},true);await move(page,'right',{x:-.6,y:.22,z:.45},false);
+    await expect.poll(()=>page.evaluate(()=>InkTabletop.observe().units[0].guide!==null)).toBe(true);
+    const u=await page.evaluate(()=>InkTabletop.observe().units[0]);
+    expect(u.guide.z).toBeGreaterThan(-50);expect(u.z).toBeLessThan(-50);
+    expect(await page.evaluate(()=>InkTabletop.replay().entries.at(-1).command.type)).toBe('guide');
+    await page.evaluate(()=>xrDevice.activeSession.end());
+  });
   test(`emulated ${device} erases the chosen older cannon instead of the last one`, async ({ page, browserName }) => {
     test.skip(browserName !== 'chromium', 'IWER uses Chromium WebGL.');
     await emulated(page);

@@ -4,6 +4,8 @@ import { side, income } from './state.js';
 import { applyCommand } from './commands.js';
 import { combatTick } from './combat.js';
 import { opponentTick } from './opponent.js';
+import { tabletopCombatTick } from './tabletop-combat.js';
+import { wide } from './battlefield.js';
 
 // Internal in-place tick for simulation throughput. Only Session owns this state.
 export function step(s) {
@@ -22,7 +24,8 @@ export function step(s) {
     for (let i = 0; i < 4; i++) p.turretProgress[i] = Math.min(1, p.turretProgress[i] + FIXED_DT * .5);
   }
   opponentTick(s);
-  combatTick(s);
+  if (wide(s)) tabletopCombatTick(s);
+  else combatTick(s);
   return true;
 }
 

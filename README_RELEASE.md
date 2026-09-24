@@ -1,10 +1,17 @@
-# Ink Battle 2.2.5 release
+# Ink Battle 2.3.0 release
+
+Version 2.3.0 adds a wide tactical battlefield to new tabletop matches. Armies
+spread across both cannon flanks, cannons turn and fire from their own docks, and
+both sides can destroy defenses. Pinch a deployed soldier to suggest a route or
+enemy structure; it walks under its own power and prioritizes immediate combat.
+Foundations survive destroyed cannons. Classic 2D behavior and old saved battles
+remain compatible. See [tabletop tactics](docs/TACTICAL_BATTLEFIELD.md).
 
 This release rebuilds the single-file demo around one standalone engine while
 retaining the notebook presentation, six ages, four difficulties, music, menus,
 medals, pacts and optional native Gemma bridge. Version 2.1.0 adds optional local
-Gemma on the web with a separate, reusable real-model benchmark. Combat rules and
-the replay rules version remain 2.0.0. Version 2.2.0 adds the 3D tabletop and
+Gemma on the web with a separate, reusable real-model benchmark. Classic combat
+and its replay rules version remain 2.0.0. Version 2.2.0 adds the 3D tabletop and
 Quest mixed-reality entry at `mr.html`. See [tabletop acceptance](docs/TABLETOP.md);
 physical Quest testing is a separate release-owner check after hosting the build.
 
@@ -75,7 +82,7 @@ npm run build
 
 `syncWebAssets` copies the shared bundle, CSS and assets into
 `app/build/generated/web-assets`. Never hand-edit generated Android assets.
-The next Android build is configured as `2.2.5` / code `217`; this web/MR change
+The next Android build is configured as `2.3.0` / code `218`; this web/MR change
 does not publish an AAB. Quest Browser uses the hosted page and needs no Android
 package. Code `211` was the preceding published Android version; code `210` was
 rejected by Google Play with automatic protection enabled. The minimum

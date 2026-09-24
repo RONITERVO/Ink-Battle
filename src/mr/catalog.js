@@ -1,6 +1,7 @@
 import { AGES } from '../content/ages.js';
 import { UPGRADE_COSTS } from '../core/constants.js';
 import { defenseTarget, onDock } from './defense-layout.js';
+import { wide } from '../core/battlefield.js';
 
 export const TABLE = Object.freeze({
   width: 2.4,
@@ -42,7 +43,11 @@ export function shopOffers(state) {
       id: `unit-${index}`,
       kind: 'unit',
       label: unit.name,
-      detail: 'Drop in the green rally area',
+      detail: wide(state) ? [
+        'Light infantry · surround heavies; resist siege splash',
+        'Ranged · strong against light infantry; heavy armor resists shots',
+        'Heavy · withstand ranged fire; break defenses'
+      ][index] + ' · Drop across the rally area to choose a route' : 'Drop in the green rally area',
       price: unit.cost,
       command: { type: 'unit', index },
       x: -1.02 + index * 0.34,
@@ -189,11 +194,14 @@ export function dropZone(offer, point, state) {
     !(
       point.x >= -0.88 &&
       point.x <= -0.44 &&
-      point.z >= 0.14 &&
+      point.z >= (state && wide(state) ? -0.36 : 0.14) &&
       point.z <= 0.65
     )
   )
     return 'rally-area';
+  if (
+    offer.kind === 'nudge' && (point.z < -0.37 || point.z > 0.65)
+  ) return 'off-table';
   if (
     ['turret', 'slot', 'eraser'].includes(offer.kind) &&
     !onDock(point, defenseTarget(offer, state, point))
@@ -203,6 +211,9 @@ export function dropZone(offer, point, state) {
 }
 
 export const REASONS = Object.freeze({
+  'guide-cooldown': 'Let this troop react before nudging it again.',
+  'unavailable-unit': 'That troop is no longer available to guide.',
+  'wrong-battlefield': 'Start a new tabletop battle to use troop guidance.',
   gold: 'More gold is needed. The piece returns to the shop.',
   xp: 'More XP is needed for the next age.',
   paused: 'Drop the hourglass onto the page to resume first.',

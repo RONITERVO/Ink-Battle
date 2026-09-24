@@ -123,7 +123,7 @@ export function bookPaths() {
   return d.paths;
 }
 
-export function landscapePaths(age) {
+export function landscapePaths(age, wide = false) {
   const d = drawing();
   // Hand-scored route: the old side-view horizon becomes a map on the spread.
   for (let row = 0; row < 3; row++) {
@@ -140,6 +140,7 @@ export function landscapePaths(age) {
       z = 0.55 + Math.sin(i * 4.3) * 0.026;
     d.path([x, 0.001, z], [x + 0.04, 0.001, z + 0.018]);
   }
+  const terrainStart = d.paths.length;
   // Terrain is deliberately in the rear field, away from purchases and combat.
   for (const side of [-1, 1]) {
     const x = side * 0.54;
@@ -254,7 +255,12 @@ export function landscapePaths(age) {
       }
     }
   }
-  return d.paths;
+  if (!wide) return d.paths;
+  // Keep the chapter motifs in the back margin; three lightly scored routes
+  // span the entire frontage without turning the page into rigid board lanes.
+  const routes = [-.35, .14, .61].map(z => Array.from({length: 30},(_,i) =>
+    [-.91 + i*.063, .001, z + Math.sin(i*1.7)*.006]));
+  return [...routes, ...d.paths.slice(terrainStart).map(path => path.map(([x,y,z]) => [x,y*.7,-.525 + z*.14]))];
 }
 
 export function pencilMesh(paths, color = "#635b51", radius = 0.0011) {

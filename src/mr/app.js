@@ -58,7 +58,7 @@ const host = new TabletopHost({
       music.start();
       panel.classList.add('compact');
       message(
-        'Troops go in the green rally area. Cannons sit on docks beside your base. One dock is ready; build up to four.'
+        'Drop troops across the green rally area to choose a route. Pinch a deployed troop and nudge it to suggest a new route or enemy cannon. Nearby fighting takes priority.'
       );
     }
     if (event.type === 'drop' && event.result.ok) {
@@ -368,7 +368,9 @@ async function init() {
         : 'mist';
       message(
         host.session.running
-          ? 'Saved battle restored. Drop the hourglass onto the page to resume.'
+          ? host.observe().battlefield === 'tabletop'
+            ? 'Saved battle restored. Drop the hourglass onto the page to resume.'
+            : 'Saved battle keeps its original rules. Resume with the hourglass, or use the new page for wider battles and troop guidance.'
           : 'Your last battle ended. Drop a difficulty seal for a new page.'
       );
     }
@@ -386,7 +388,7 @@ async function init() {
   document.querySelector('#save-report').addEventListener('click', () => {
     const state = host.observe(),
       report = {
-        version: '2.2.5',
+        version: '2.3.0',
         date: new Date().toISOString(),
         browser: navigator.userAgent,
         quality: host.quality,

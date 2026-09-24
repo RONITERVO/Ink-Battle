@@ -1,12 +1,14 @@
 /** One presentation layout shared by rendering, targeting and input. Slot order
  * follows the engine: first empty unlocked cannon, next dock, selected cannon sold.
  * Two foundations on each flank leave every age's base footprint unobstructed. */
+import { FIELD, cannonPoint, worldX, worldZ } from '../core/battlefield.js';
 export const DOCK = Object.freeze({ width: 0.16, depth: 0.13, height: 0.044 });
-const Z = Object.freeze([-0.185, 0.46, -0.35, 0.6]);
+const Z = FIELD.dockZ;
 
 export function dockPosition(slot, team = 1) {
   if (!Number.isInteger(slot) || slot < 0 || slot >= Z.length) return null;
-  return { x: -team * 1.11, y: DOCK.height, z: Z[slot], slot };
+  const p = cannonPoint(team,slot);
+  return { x: worldX(p.x), y: DOCK.height, z: worldZ(p.z), slot };
 }
 
 export function defenseTarget(offer, state, point) {

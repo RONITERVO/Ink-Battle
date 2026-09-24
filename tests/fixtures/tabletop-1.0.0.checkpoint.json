@@ -1,0 +1,77 @@
+{
+  "replay": {
+    "version": "tabletop-1.0.0",
+    "options": {
+      "seed": 17,
+      "difficulty": "normal",
+      "startAge": 5,
+      "opponent": false,
+      "battlefield": "tabletop"
+    },
+    "ticks": 3721,
+    "entries": [
+      {
+        "tick": 3600,
+        "type": "command",
+        "team": 1,
+        "command": {
+          "type": "turret",
+          "index": 2
+        }
+      },
+      {
+        "tick": 3600,
+        "type": "command",
+        "team": 1,
+        "command": {
+          "type": "unit",
+          "index": 2,
+          "z": 140
+        }
+      },
+      {
+        "tick": 3600,
+        "type": "command",
+        "team": -1,
+        "command": {
+          "type": "turret",
+          "index": 2
+        }
+      },
+      {
+        "tick": 3600,
+        "type": "command",
+        "team": -1,
+        "command": {
+          "type": "unit",
+          "index": 2,
+          "z": -140
+        }
+      },
+      {
+        "tick": 3660,
+        "type": "command",
+        "team": 1,
+        "command": {
+          "type": "guide",
+          "id": 2,
+          "x": 1170,
+          "z": -180
+        }
+      },
+      {
+        "tick": 3660,
+        "type": "command",
+        "team": -1,
+        "command": {
+          "type": "guide",
+          "id": 4,
+          "x": 110,
+          "z": 180
+        }
+      }
+    ],
+    "digest": "2b64d76e"
+  },
+  "receipts": []
+}

@@ -68,15 +68,17 @@ export class InkBatch {
     this.frames = [];
     this.depth = 0;
     this.poseTranslation = new THREE.Matrix4();
-    this.context = { x: 0, y: 0, z: 0, scale: 1, face: 1, paint: PENCIL.paper };
+    this.modelRotation = new THREE.Quaternion();
+    this.context = { x: 0, y: 0, z: 0, scale: 1, face: 1, yaw: 0, cos: 1, sin: 0, paint: PENCIL.paper };
     this.begin();
   }
   begin() {
     for (const name of Object.keys(this.meshes)) this.counts[name] = 0;
     this.overflow = 0;
   }
-  model(x, y, z, scale = 1, face = 1) {
-    this.context = { x, y, z, scale, face, paint: PENCIL.paper };
+  model(x, y, z, scale = 1, face = 1, yaw = 0) {
+    this.context = { x, y, z, scale, face, yaw, cos: Math.cos(yaw), sin: Math.sin(yaw), paint: PENCIL.paper };
+    this.modelRotation.setFromAxisAngle(this.up, yaw);
     this.depth = 0;
   }
   paint(color) {
@@ -90,7 +92,8 @@ export class InkBatch {
       y = this.p.y;
       z = this.p.z;
     }
-    return [c.x + x * c.scale * c.face, c.y + y * c.scale, c.z + z * c.scale];
+    const dx = x * c.scale * c.face, dz = z * c.scale;
+    return [c.x + dx * c.cos + dz * c.sin, c.y + y * c.scale, c.z - dx * c.sin + dz * c.cos];
   }
   // Articulated local joints. Reuse a tiny stack of transforms; both strokes
   // and paint follow the same pose, without per-piece meshes or skeletons.
@@ -130,6 +133,7 @@ export class InkBatch {
     // determinants (the filled primitives themselves are symmetric).
     this.q.y *= this.context.face;
     this.q.z *= this.context.face;
+    this.q.premultiply(this.modelRotation);
     return this.q;
   }
   write(shape, p, s, color, q, width = 0.0015 * this.context.scale) {

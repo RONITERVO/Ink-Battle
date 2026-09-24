@@ -48,7 +48,7 @@ export function defenseMotion(state, team, slot) {
   // Read-only eligibility mirrors combatTick's defense target filter. Keep
   // preparation tied to a drawable enemy actually inside this defense's range;
   // recovery from an already-fired shot still finishes after that enemy leaves.
-  const engaged = state.units.some(
+  const engaged = state.battlefield === 'tabletop' ? !!side.turretAim[slot].target : state.units.some(
     (unit) =>
       unit.team !== team &&
       unit.drawProgress >= 0.8 &&

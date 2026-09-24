@@ -65,11 +65,11 @@ export function paintPage(canvas, age) {
         0.07,
       );
   }
-  // A warm, rubbed-pencil path connects the opposing bases across both leaves.
-  for (let i = 0; i < 16; i++)
-    blob(0.07 + i * 0.056, 0.55, 0.057, 0.06, "#ba9660", 0.06);
+  // Light washes span the center and both flanks of the open battlefield.
+  for (const row of [.174,.405,.627]) for (let i = 0; i < 16; i++)
+    blob(0.07 + i * 0.056, row, 0.057, 0.045, "#ba9660", 0.04);
   // Subtle colored paint under the existing deployment markings.
-  blob(0.229, 0.526, 0.09, 0.11, "#319788", 0.13);
+  blob(0.229, 0.405, 0.09, 0.235, "#319788", 0.11);
   blob(0.067, 0.401, 0.045, 0.225, "#c49737", 0.16);
   c.globalAlpha = 1;
   const crease = c.createLinearGradient(w * 0.476, 0, w * 0.524, 0);

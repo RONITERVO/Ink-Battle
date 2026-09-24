@@ -1,5 +1,6 @@
 import { Session } from '../sdk/session.js';
 import { AGES } from '../content/ages.js';
+import { FIELD, wide, unitRadius } from '../core/battlefield.js';
 
 export const STYLES = ['adaptive', 'melee', 'ranged', 'heavy', 'turtle', 'mixed'];
 export function assertInvariants(s) {
@@ -10,10 +11,15 @@ export function assertInvariants(s) {
   const ids = new Set();
   for (const u of s.units) {
     if (ids.has(u.id)) throw new Error('Duplicate unit id'); ids.add(u.id);
-    if (![u.hp, u.x, u.y, u.attackCooldown].every(Number.isFinite) || u.x < 180 - 1e-6 || u.x > 1100 + 1e-6) throw new Error('Unit outside valid lane');
+    if (![u.hp, u.x, u.y, u.attackCooldown].every(Number.isFinite) || u.x < (wide(s) ? FIELD.minX : 180) - 1e-6 || u.x > (wide(s) ? FIELD.maxX : 1100) + 1e-6) throw new Error('Unit outside valid lane');
+    if (wide(s) && (!Number.isFinite(u.z) || !Number.isFinite(u.heading) || u.z < FIELD.minZ + unitRadius(u) - 1e-6 || u.z > FIELD.maxZ - unitRadius(u) + 1e-6)) throw new Error('Unit outside battlefield width');
     if (u.hp <= 0 || u.hp > u.maxHp + 1e-6) throw new Error('Invalid living unit');
   }
   for (const p of s.projectiles) if (![p.x, p.y, p.vx, p.vy].every(Number.isFinite)) throw new Error('Non-finite projectile');
+  if (wide(s)) for (const p of [s.player,s.enemy]) for (let slot=0;slot<4;slot++) {
+    if (!Number.isFinite(p.turretHp[slot]) || p.turretHp[slot] < 0 || p.turretHp[slot] > p.turretMaxHp[slot] ||
+      (p.turrets[slot] === null) !== (p.turretIds[slot] === null)) throw new Error('Invalid defense health or identity');
+  }
 }
 
 export function runMatch({ seed = 1, difficulty = 'normal', startAge = 0, style = 'adaptive', limitSeconds = 1200, verifyReplay = false } = {}) {
@@ -38,8 +44,8 @@ export function runMatch({ seed = 1, difficulty = 'normal', startAge = 0, style 
 // Equal-budget opening tests: buy each composition through the public command API.
 // No opponent, specials, turrets, upgrades or evolution. Same budget and cadence on both sides.
 export const COMPOSITIONS = [[0], [1], [2], [0, 1], [0, 2], [1, 2], [0, 1, 2]];
-export function runComposition({ age = 0, left = [0], right = [1], seed = 1, seconds = 120 } = {}) {
-  const session = new Session({ seed, startAge: age, opponent: false });
+export function runComposition({ age = 0, left = [0], right = [1], seed = 1, seconds = 120, battlefield } = {}) {
+  const session = new Session({ seed, startAge: age, opponent: false, battlefield });
   const opening = session.observe().player.gold, spent = { '1': 0, '-1': 0 }, cursor = { '1': 0, '-1': 0 };
   while (session.running && session.tick < seconds * 60) {
     for (const [team, mix] of [[1, left], [-1, right]]) {
