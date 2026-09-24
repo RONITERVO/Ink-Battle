@@ -8,6 +8,12 @@ now run on a standalone, deterministic game engine.
 [Architecture](docs/ARCHITECTURE.md) · [SDK / terminal play](docs/SDK.md) ·
 [Balance simulations](docs/SIMULATION.md)
 
+**Tabletop mixed reality:** [open the 3D sketchbook](https://ronitervo.github.io/Ink-Battle/mr.html)
+in Quest Browser, then choose **Enter mixed reality**. Grab physical troops,
+cannons and potions; carry the brass rings with one hand or resize with two.
+Hands and controllers share the same rules. A desktop drag-and-drop preview is
+also available. [Controls, architecture and Quest acceptance](docs/TABLETOP.md).
+
 ## Play and develop
 
 Open `ink-battle.html` directly, or serve the checkout:
@@ -53,8 +59,9 @@ Session.fromReplay(game.replay()); // verifies deterministic replay
 ```
 
 `src/core` owns rules; `src/content` owns balance data; `src/sdk` owns the public
-session; `src/client` owns presentation. `ink-battle.html` is the small page shell.
-`web/game.js` and `service-worker.js` are generated, committed static-host artifacts.
+session; `src/client` owns the classic presentation; `src/mr` owns the tabletop.
+`ink-battle.html` and `mr.html` are small page shells. `web/game.js`, `web/mr.js`
+and `service-worker.js` are generated, committed static-host artifacts.
 Edit source modules and run the build, rather than editing generated JavaScript.
 
 ## Verify changes and expansions
@@ -64,6 +71,7 @@ npm run check
 npx playwright install chromium firefox webkit
 npm run test:browser
 npm run simulate -- --release
+npm run test:tabletop
 ```
 
 For the separate, opt-in GPU/model benchmark, run `npm start` in one terminal and

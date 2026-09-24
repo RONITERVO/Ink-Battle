@@ -685,5 +685,5 @@ function fillScribble(x, y, w, h, color, density = 5, progress = 1.0) {
             runtime.ctx.restore();
         }
 
-return { draw };
+return { draw, drawBackground };
 }

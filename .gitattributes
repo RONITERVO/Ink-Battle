@@ -21,6 +21,8 @@
 
 # Built assets and measured data are reviewed through their source modules/reports.
 web/game.js linguist-generated=true
+web/mr.js linguist-generated=true
+web/THREE-LICENSE.txt linguist-vendored=true
 web/gemma-worker.js linguist-generated=true
 web/vendor/** linguist-vendored=true
 *.wasm binary
