@@ -436,6 +436,10 @@ async function init() {
       clearTimeout(detectionTimer);
     }
   })();
+  // Readiness includes the first camera pose and shop targets, even when the
+  // browser delays its first animation frame while compiling WebGL shaders.
+  view.update(host.observe(), [], 0);
+  view.render();
   view.renderer.setAnimationLoop((time, frame) => {
     const dt = lastTime === null ? 0 : Math.max(0, (time - lastTime) / 1000);
     lastTime = time;
