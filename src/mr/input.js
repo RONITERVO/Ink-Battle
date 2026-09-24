@@ -77,6 +77,7 @@ export class TabletopInput {
   candidates() {
     return [
       ...HANDLES,
+      ...(this.view.troops || []),
       ...this.view.offers.map((o) => ({
         ...o,
         y: o.kind === 'unit' ? 0.15 : 0.07
@@ -93,7 +94,7 @@ export class TabletopInput {
         local.y - item.y,
         local.z - item.z
       );
-      if (d < (item.id.startsWith('handle-') ? 0.12 : 0.13) && d < distance) {
+      if (d < (item.id.startsWith('troop-') ? item.pickRadius : item.id.startsWith('handle-') ? 0.12 : 0.13) && d < distance) {
         chosen = item;
         distance = d;
       }
@@ -103,7 +104,7 @@ export class TabletopInput {
     let best = Infinity;
     for (const item of this.candidates()) {
       const center = new THREE.Vector3().copy(toWorld(item, this.view.table));
-      const sphere = new THREE.Sphere(center, 0.105 * this.view.table.scale);
+      const sphere = new THREE.Sphere(center, (item.pickRadius || 0.105) * this.view.table.scale);
       const hit = ray.intersectSphere(sphere, new THREE.Vector3());
       if (!hit) continue;
       const dist = ray.origin.distanceTo(hit);

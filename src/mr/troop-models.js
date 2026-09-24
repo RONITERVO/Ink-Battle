@@ -106,6 +106,7 @@ export function unitModel(
     z = 0,
     scale = 1,
     team = 1,
+    yaw = 0,
     time = 0,
     walking = false,
     held = false,
@@ -113,7 +114,7 @@ export function unitModel(
     detailed = true,
   } = {},
 ) {
-  b.model(x, y, z, scale, team);
+  b.model(x, y, z, scale, team, yaw);
   b.paint(chapterPalette(age).body);
   const form = UNIT_FORMS[age]?.[index] || "club",
     color = TEAM_COLORS[team];

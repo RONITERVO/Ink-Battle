@@ -25,6 +25,7 @@ import { pencilGeometries } from "./pencil-geometry.js";
 import { BookPaper } from "./book-paper.js";
 import { dockPosition, defenseTarget } from './defense-layout.js';
 import { dockModel } from './dock-model.js';
+import { wide, worldX, worldZ, fieldX, fieldZ, guidance, resolveTarget } from '../core/battlefield.js';
 
 export const HANDLES = [-1, 1].flatMap((x) =>
   [-0.65, 1.34].map((z) => ({
@@ -162,7 +163,9 @@ export class TabletopScene {
     this.landscape = null;
     this.chapter = new Label(this.root, 0.92, 0.063);
     this.chapter.mesh.position.set(0, 0.003, -0.65);
-    this.zone(-0.66, 0.395, 0.44, 0.51, "#438e72");
+    this.rallyClassic = this.zone(-0.66, 0.395, 0.44, 0.51, "#438e72");
+    this.rallyWide = this.zone(-0.66, 0.145, 0.44, 1.01, "#438e72");
+    this.troops = [];
     this.status = new Label(this.root, 1.38, 0.22, {
       flat: false,
       backing: true,
@@ -203,6 +206,8 @@ export class TabletopScene {
     this.syncTable();
   }
   zone(x, z, width, depth, color) {
+    const group = new THREE.Group();
+    this.root.add(group);
     const marks = [];
     for (let i = 0; i < 12; i++) {
       const xx = x - width / 2 + (i * width) / 12;
@@ -211,7 +216,7 @@ export class TabletopScene {
         [xx + 0.018, 0.003, z + depth / 2 - 0.006],
       ]);
     }
-    this.root.add(pencilMesh(marks, color, 0.0009));
+    group.add(pencilMesh(marks, color, 0.0009));
     const points = [
       [x - width / 2, 0.004, z - depth / 2],
       [x + width / 2, 0.004, z - depth / 2],
@@ -224,7 +229,8 @@ export class TabletopScene {
       new THREE.LineDashedMaterial({ color, dashSize: 0.035, gapSize: 0.018 }),
     );
     border.computeLineDistances();
-    this.root.add(border);
+    group.add(border);
+    return group;
   }
   makeMist() {
     const mesh = pencilMesh(mistPaths(), "#91897c", 0.00055);
@@ -233,16 +239,20 @@ export class TabletopScene {
     mesh.material.depthWrite = false;
     return mesh;
   }
-  refreshArt(age) {
-    if (age === this.age) return;
+  refreshArt(age, tactical = true) {
+    if (age === this.age && tactical === this.tactical) return;
     this.age = age;
+    this.tactical = tactical;
+    this.rallyClassic.visible = !tactical;
+    this.rallyWide.visible = tactical;
+    this.hint.mesh.position.z = tactical ? -.43 : -.17;
     this.paper.setAge(age);
     if (this.landscape) {
       this.landscape.removeFromParent();
       this.landscape.geometry.dispose();
       this.landscape.material.dispose();
     }
-    this.landscape = pencilMesh(landscapePaths(age), "#635b51", 0.00165);
+    this.landscape = pencilMesh(landscapePaths(age, tactical), "#635b51", 0.00165);
     this.root.add(this.landscape);
     this.chapter.text([CHAPTERS[age].title]);
   }
@@ -339,7 +349,9 @@ export class TabletopScene {
     const combatTime = (state?.tick || 0) / TICK_RATE;
     this.time += dt;
     this.labelClock -= dt;
-    this.refreshArt(state?.player.age || 0);
+    const tactical = !!state && wide(state);
+    this.refreshArt(state?.player.age || 0, !state || tactical);
+    this.troops = [];
     this.syncTable();
     if (this.labelClock <= 0) {
       this.labelClock = 0.25;
@@ -360,6 +372,10 @@ export class TabletopScene {
       );
     }
     this.army.begin();
+    // Limit lingering route annotations, not simulation commands. Hundreds of
+    // dashed lines would obscure the pencil battlefield and waste headset fill.
+    const visibleGuides = new Set((state?.units || []).filter(u=>u.team===1 && u.guide)
+      .sort((a,b)=>b.guide.until-a.guide.until || b.id-a.id).slice(0,12).map(u=>u.id));
     this.highlightedDocks = [];
     if (state) for (const item of heldItems) {
       const target = defenseTarget(item.offer, state, item.targetPosition || item.position);
@@ -388,6 +404,7 @@ export class TabletopScene {
             pad.z,
             0.83 * Math.max(0.02, side.turretProgress[slot]),
             team,
+            tactical ? -(side.turretAim[slot].heading - (team === 1 ? 0 : Math.PI)) : 0,
           );
           cannonModel(
             this.army,
@@ -398,11 +415,16 @@ export class TabletopScene {
             defenseMotion(state, team, slot),
             this.host.quality !== "comfort",
           );
+          if (tactical && side.turretHp[slot] < side.turretMaxHp[slot]) {
+            this.army.model(pad.x, pad.y + .18, pad.z);
+            this.army.line([-.04,0,0],[.04,0,0],.003,'#a87867');
+            this.army.line([-.04,0,.001],[-.04 + .08 * Math.max(0,side.turretHp[slot] / side.turretMaxHp[slot]),0,.001],.003,TEAM_COLORS[team]);
+          }
         });
       }
       for (const unit of state.units) {
         const x = (unit.x / 1280 - 0.5) * TABLE.width,
-          z = TABLE.lane + ((unit.id % 5) - 2) * 0.024;
+          z = tactical ? worldZ(unit.z) : TABLE.lane + ((unit.id % 5) - 2) * 0.024;
         const scale =
           Math.max(0.02, unit.drawProgress) * Math.min(1.8, unit.size / 50);
         const comfort = this.host.quality === "comfort";
@@ -411,11 +433,16 @@ export class TabletopScene {
           z,
           scale,
           team: unit.team,
+          yaw: tactical ? -(unit.heading - (unit.team === 1 ? 0 : Math.PI)) : 0,
           time: comfort ? 0 : combatTime + unit.id,
           walking: state.running && !comfort && unit.moving,
           motion: unitMotion(unit, state.running),
           detailed: !comfort,
         });
+        if (tactical && unit.team === 1 && unit.drawProgress >= 1 && state.running && !state.paused) {
+          this.troops.push({ id: `troop-${unit.id}`, x, y: .13 * scale, z, pickRadius: .055 * Math.min(1.5, scale) });
+          if (visibleGuides.has(unit.id)) this.guideMark(this.army, unit, unit.guide, false);
+        }
         if (!comfort) {
           this.army.model(x, 0.23 * scale, z, 1);
           this.army.line([-0.035, 0, 0], [0.035, 0, 0], 0.0028, "#aa8f7e");
@@ -435,10 +462,17 @@ export class TabletopScene {
       }
       for (const p of state.running ? state.projectiles : []) {
         if (!Number.isFinite(p.x) || !Number.isFinite(p.y)) continue;
+        if (tactical && p.type === 'laser') {
+          this.army.model(0,0,0);
+          this.army.line([worldX(p.startX), (600-p.startY)*TABLE.width/1280, worldZ(p.startZ)],
+            [worldX(p.x), Math.max(.025,(600-p.y)*TABLE.width/1280), worldZ(p.z)], .0028, TEAM_COLORS[p.team]);
+          continue;
+        }
         this.army.model(
           (p.x / 1280 - 0.5) * TABLE.width,
           Math.max(0.035, ((600 - p.y) / 1280) * TABLE.width),
-          TABLE.lane,
+          tactical ? worldZ(p.z) : TABLE.lane,
+          1, 1, tactical ? -(Math.atan2(p.targetZ - p.startZ, p.targetX - p.startX) - (p.team === 1 ? 0 : Math.PI)) : 0,
         );
         projectileModel(
           this.army,
@@ -449,7 +483,7 @@ export class TabletopScene {
       }
       for (const special of state.running ? state.specials : []) {
         const x = (special.x / 1280 - 0.5) * TABLE.width;
-        this.army.model(x, 0.012, TABLE.lane);
+        this.army.model(x, 0.012, tactical ? worldZ(special.z) : TABLE.lane);
         specialModel(
           this.army,
           special.age,
@@ -465,6 +499,20 @@ export class TabletopScene {
     this.shadow.visible = this.host.quality !== "comfort";
     this.held.begin();
     for (const item of heldItems) {
+      if (item.offer.kind === 'nudge') {
+        const u = state?.units.find(u => u.id === item.offer.command.id);
+        if (u) {
+          const p = item.targetPosition || item.position;
+          const guide = guidance(state, 1, u, { x: fieldX(p.x), z: fieldZ(p.z) });
+          this.guideMark(this.held, u, guide, true);
+          const target = resolveTarget(state, guide.target);
+          if (target) {
+            this.held.model(worldX(target.x),.015,worldZ(target.z));
+            this.held.ellipse([0,0,0],[.11,.1],'xz','#b5862a');
+          }
+        }
+        continue;
+      }
       const p = item.position,
         unit = item.offer.kind === "unit";
       objectModel(this.held, item.offer, item.age || 0, {
@@ -479,6 +527,16 @@ export class TabletopScene {
     this.mist.visible = this.host.quality === "mist";
     this.mist.position.z = Math.sin(this.time * 0.18) * 0.012;
     if (!this.renderer.xr.isPresenting) this.controls.update();
+  }
+  guideMark(batch, unit, guide, held) {
+    const x = worldX(unit.x), z = worldZ(unit.z), endX = x + unit.team * .12, endZ = worldZ(guide.z);
+    const color = unit.intent === 'engaged' ? '#9c6818' : '#246c54';
+    batch.model(0,.012,0);
+    for (let i = 0; i < 4; i++) batch.line([x+(endX-x)*i/4,0,z+(endZ-z)*i/4],
+      [x+(endX-x)*(i+.55)/4,0,z+(endZ-z)*(i+.55)/4],.0035,color);
+    batch.line([endX-.025*unit.team,0,endZ-.02],[endX,0,endZ],.002,color);
+    batch.line([endX-.025*unit.team,0,endZ+.02],[endX,0,endZ],.002,color);
+    if (held) batch.ellipse([x,0,z],[.065,.045],'xz',color,12);
   }
   render() {
     this.renderer.render(this.scene, this.camera);

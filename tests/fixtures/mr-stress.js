@@ -6,13 +6,13 @@ import { AGES } from "../../src/content/ages.js";
 // Renderer-only fixture: deliberately exercises the engine's maximum capacity.
 // It never feeds invented units into a playable Session or a release replay.
 window.measureMRStress = async () => {
-  let state = new Session().observe();
+  let state = new Session({battlefield:'tabletop'}).observe();
   const host = new TabletopHost({ session: { observe: () => state } }),
     view = new TabletopScene(document.querySelector("canvas"), host),
     results = [];
   await document.fonts.ready;
   for (let age = 0; age < AGES.length; age++) {
-    state = new Session({ startAge: age }).observe();
+    state = new Session({ startAge: age, battlefield:'tabletop' }).observe();
     state.units = Array.from({ length: 160 }, (_, i) => {
       const index = i % 3,
         data = AGES[age].units[index];
@@ -23,6 +23,10 @@ window.measureMRStress = async () => {
         age,
         team: i % 2 ? 1 : -1,
         x: 180 + (i / 160) * 920,
+        z: -230 + (i % 9) * 57,
+        heading: (i % 2 ? 0 : Math.PI) + (i % 5 - 2) * .14,
+        guide: i % 2 ? {z:-190+(i%7)*60,until:720,target:null} : null,
+        intent: 'following',
         y: 600,
         hp: data.hp,
         maxHp: data.hp,
@@ -35,6 +39,10 @@ window.measureMRStress = async () => {
     state.player.unlockedSlots = state.enemy.unlockedSlots = 4;
     state.enemy.turrets = [0, 1, 2, 2];
     state.player.turretProgress = state.enemy.turretProgress = [1, 1, 1, 1];
+    for (const [team,p] of [[1,state.player],[-1,state.enemy]]) {
+      p.turretHp=[50,50,50,50];p.turretMaxHp=[100,100,100,100];
+      p.turretAim=p.turrets.map((_,slot)=>({heading:(team===1?0:Math.PI)+(slot-2)*.2,target:{kind:'unit',id:1}}));
+    }
     view.labelClock = 0;
     for (let frame = 0; frame < 12; frame++) {
       await new Promise(requestAnimationFrame);

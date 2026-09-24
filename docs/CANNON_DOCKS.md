@@ -13,6 +13,11 @@ cannons highlights its dock. Releasing sells that cannon, refunding half its own
 price and keeping the foundation for a replacement. Evolution also keeps
 all purchased foundations. The enemy's foundations reflect its real slot count.
 
+New tabletop matches in 2.3.0 also give installed cannons health and aiming.
+Either army can destroy a weapon, leaving its foundation available to rebuild.
+Simulation and rendering share the dock positions in `core/battlefield.js`.
+See [tabletop tactics](TACTICAL_BATTLEFIELD.md) for guidance and combat rules.
+
 ## Layout and input contract
 
 `src/mr/defense-layout.js` owns positions, dimensions, target selection and landing

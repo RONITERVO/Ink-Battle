@@ -214,12 +214,12 @@ test('all 18 troop forms have volume and 160-unit rendering stays within instanc
   batch.dispose();
 });
 
-test('MR speed and interruptions have the same deterministic clock as classic play', () => {
+test('MR speed and interruptions preserve the tabletop deterministic clock', () => {
   for (const speed of [1, 2, 3]) {
     const host = new TabletopHost();
     host.start();
     host.speed = speed;
-    const reference = new Session();
+    const reference = new Session({ battlefield: 'tabletop' });
     host.update(1);
     reference.advance(60 * speed);
     assert.equal(host.session.digest(), reference.digest());

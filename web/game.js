@@ -136,6 +136,123 @@
     impossible: { name: "Impossible", color: "hsl(var(--diff-impossible))", hpMult: 2, dmgMult: 1.5, econMult: 4, xpMult: 2.5, baseGold: 1500, baseHpMult: 2, thinkRate: 0.28, aiAggression: 1 }
   });
 
+  // src/core/battlefield.js
+  var TABLETOP_RULES_VERSION = "tabletop-1.0.0";
+  var FIELD = Object.freeze({
+    minX: 95,
+    maxX: 1185,
+    minZ: -270,
+    maxZ: 270,
+    worldScale: 2.4 / CANVAS_WIDTH,
+    centerZ: 0.14,
+    dockX: 48,
+    dockZ: Object.freeze([-0.185, 0.46, -0.35, 0.6].map((z) => (z - 0.14) / (2.4 / CANVAS_WIDTH))),
+    guideTicks: 720,
+    guideCooldown: 60,
+    maxNudge: 160
+  });
+  var wide = (s) => s.battlefield === "tabletop";
+  var clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  var round = (v) => Math.round(v * 1e6) / 1e6;
+  var unitRadius = (u) => Math.min(34, u.size * 0.3);
+  var distance = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
+  var spawnX = (team) => team === 1 ? BASE_WIDTH : CANVAS_WIDTH - BASE_WIDTH;
+  function basePoint(team) {
+    return { kind: "base", team, x: team === 1 ? 75 : 1205, z: 0, radius: 70 };
+  }
+  function cannonPoint(team, slot) {
+    return {
+      kind: "turret",
+      team,
+      slot,
+      x: team === 1 ? FIELD.dockX : CANVAS_WIDTH - FIELD.dockX,
+      z: FIELD.dockZ[slot],
+      radius: 32
+    };
+  }
+  function defenseHealth(age, index, hpMultiplier = 1) {
+    return AGES[age].baseHp * (0.24 + index * 0.08) * hpMultiplier;
+  }
+  function resolveTarget(s, ref) {
+    if (!ref) return null;
+    if (ref.kind === "unit") return s.units.find((u) => u.id === ref.id && u.hp > 0) ?? null;
+    const owner = ref.team === 1 ? s.player : s.enemy;
+    if (ref.kind === "base") return owner.hp > 0 ? { ...basePoint(ref.team), hp: owner.hp } : null;
+    if (ref.kind === "turret" && owner.turrets[ref.slot] !== null && owner.turretIds[ref.slot] === ref.id)
+      return { ...cannonPoint(ref.team, ref.slot), id: ref.id, hp: owner.turretHp[ref.slot] };
+    return null;
+  }
+  function targetRef(target) {
+    return target.kind === "base" ? { kind: "base", team: target.team } : target.kind === "turret" ? { kind: "turret", team: target.team, slot: target.slot, id: target.id } : { kind: "unit", id: target.id };
+  }
+  function chooseSpawnZ(s, team, data, requested) {
+    const candidates = requested === void 0 ? [0, -200, 200, -100, 100] : [requested];
+    let best = null, score = Infinity;
+    for (const z of candidates) {
+      const point = { x: spawnX(team), z };
+      if (s.units.some((u) => distance(u, point) < unitRadius(u) + unitRadius(data) + 5)) continue;
+      const own = s.units.filter((u) => u.team === team && Math.abs(u.z - z) < 75).length;
+      const threat = s.units.filter((u) => u.team !== team && Math.abs(u.x - point.x) < 400 && Math.abs(u.z - z) < 90).length;
+      const value = own * 2 - Math.min(2, threat) + Math.abs(z) / 1e3;
+      if (value < score) {
+        score = value;
+        best = z;
+      }
+    }
+    return best;
+  }
+  function guideError(s, team, c) {
+    if (!wide(s)) return "wrong-battlefield";
+    if (!Number.isSafeInteger(c.id)) return "invalid-unit";
+    const u = s.units.find((u2) => u2.id === c.id && u2.team === team && u2.hp > 0);
+    if (!u || u.drawProgress < 1) return "unavailable-unit";
+    if (![c.x, c.z].every(Number.isFinite) || c.x < FIELD.minX || c.x > FIELD.maxX || c.z < FIELD.minZ || c.z > FIELD.maxZ) return "invalid-position";
+    return s.tick < u.guideReady ? "guide-cooldown" : null;
+  }
+  function guidance(s, team, u, point) {
+    const owner = team === 1 ? s.enemy : s.player;
+    let target = null, best = Infinity;
+    if ((point.x - 640) * team > 350) {
+      for (const t of [basePoint(-team), ...owner.turrets.flatMap((v, slot) => v === null ? [] : [{ ...cannonPoint(-team, slot), id: owner.turretIds[slot] }])]) {
+        const d = distance(point, t);
+        if (d < best) {
+          best = d;
+          target = targetRef(t);
+        }
+      }
+    }
+    return { z: round(clamp(
+      point.z,
+      Math.max(FIELD.minZ + unitRadius(u), u.z - FIELD.maxNudge),
+      Math.min(FIELD.maxZ - unitRadius(u), u.z + FIELD.maxNudge)
+    )), target, until: s.tick + FIELD.guideTicks };
+  }
+  var catapult = [
+    -0.02 + 0.078 * Math.cos(-1.05) - 0.075 * Math.sin(-1.05),
+    0.076 + 0.078 * Math.sin(-1.05) + 0.075 * Math.cos(-1.05)
+  ];
+  var rockets = [
+    0.047 * Math.cos(0.16) - 0.036 * Math.sin(0.16) - 0.016,
+    0.05 + 0.047 * Math.sin(0.16) + 0.036 * Math.cos(0.16)
+  ];
+  var MUZZLES = [
+    [catapult, [0.022, 0.132], [0.039, 0.204]],
+    [catapult, [0.112, 0.084], [0.055, 0.12]],
+    [[0.074, 0.092], [0.074, 0.092], [0.019, 0.162]],
+    [[0.083, 0.0852], rockets, [0.119, 0.1536]],
+    [[0.063, 0.10792], [0.089, 0.1154], [0.1, 0.123]],
+    [[0.064, 0.1242], [0.012, 0.126], [0.025, 0.137]]
+  ];
+  function cannonMuzzle(team, slot, age, index, heading) {
+    const p = cannonPoint(team, slot), [length, height] = MUZZLES[age][index];
+    const reach = length * 0.83 / FIELD.worldScale;
+    return {
+      x: p.x + Math.cos(heading) * reach,
+      z: p.z + Math.sin(heading) * reach,
+      y: 600 - (0.044 + height * 0.83) / FIELD.worldScale
+    };
+  }
+
   // src/core/state.js
   function side(state, team) {
     return team === 1 ? state.player : state.enemy;
@@ -159,11 +276,12 @@
   function emit(state, type, data = {}) {
     state.events.push({ tick: state.tick, type, ...data });
   }
-  function createState({ seed = 1, difficulty = "normal", startAge = 0, opponent = true } = {}) {
+  function createState({ seed = 1, difficulty = "normal", startAge = 0, opponent = true, battlefield } = {}) {
     if (!Number.isInteger(seed) || seed < 0 || seed > 4294967295) throw new Error("seed must be a uint32");
     if (!Object.hasOwn(DIFFICULTY_SETTINGS, difficulty)) throw new Error("Unknown difficulty");
     if (!Number.isInteger(startAge) || startAge < 0 || startAge >= AGES.length) throw new Error("Invalid startAge");
     if (typeof opponent !== "boolean") throw new Error("opponent must be boolean");
+    if (battlefield !== void 0 && battlefield !== "tabletop") throw new Error("Unknown battlefield");
     const config = DIFFICULTY_SETTINGS[difficulty];
     const makeSide = (team) => {
       const maxHp = AGES[startAge].baseHp * (team === -1 ? config.baseHpMult : 1);
@@ -181,11 +299,18 @@
         specialTimer: 0,
         drawProgress: 1,
         deployTimer: 0,
-        rng: (seed || 1) >>> 0
+        rng: (seed || 1) >>> 0,
+        ...battlefield ? {
+          turretHp: [0, 0, 0, 0],
+          turretMaxHp: [0, 0, 0, 0],
+          turretIds: [null, null, null, null],
+          turretAim: Array.from({ length: 4 }, () => ({ heading: team === 1 ? 0 : Math.PI, target: null }))
+        } : {}
       };
     };
     return {
-      version: RULES_VERSION,
+      version: battlefield ? TABLETOP_RULES_VERSION : RULES_VERSION,
+      ...battlefield ? { battlefield } : {},
       seed,
       difficulty,
       tick: 0,
@@ -221,14 +346,16 @@
     if (!s.running) return "match-ended";
     if (s.paused) return "paused";
     const p = side(s, team), age = AGES[p.age], pacts = team === -1 ? s.agreements : {};
+    if (c.type === "guide") return guideError(s, team, c);
     if (p.drawProgress < 1) return "base-drawing";
     switch (c.type) {
       case "unit":
         if (!Number.isInteger(c.index) || !age.units[c.index]) return "invalid-unit";
+        if (Object.hasOwn(c, "z") && (!wide(s) || !Number.isFinite(c.z) || c.z < FIELD.minZ + unitRadius(age.units[c.index]) || c.z > FIELD.maxZ - unitRadius(age.units[c.index]))) return "invalid-position";
         if (pacts.meleeOnly && age.units[c.index].type === "ranged") return "pact";
         if (team === -1 && s.tick < s.restraintUntil) return "truce";
         if (p.deployTimer > 0) return "deploying";
-        if (s.units.some((u) => u.team === team && u.range <= age.units[c.index].range && Math.abs(u.x - (team === 1 ? BASE_WIDTH : CANVAS_WIDTH - BASE_WIDTH)) < (u.size + age.units[c.index].size) / 2 + 10)) return "deployment-blocked";
+        if (wide(s) ? chooseSpawnZ(s, team, age.units[c.index], c.z) === null : s.units.some((u) => u.team === team && u.range <= age.units[c.index].range && Math.abs(u.x - (team === 1 ? BASE_WIDTH : CANVAS_WIDTH - BASE_WIDTH)) < (u.size + age.units[c.index].size) / 2 + 10)) return "deployment-blocked";
         if (s.units.filter((u) => u.team === team).length >= MAX_UNITS) return "unit-cap";
         return p.gold < age.units[c.index].cost ? "gold" : null;
       case "turret":
@@ -286,6 +413,16 @@
           animTimer: 0,
           animOffset: s.nextId * 17 % 100
         };
+        if (wide(s)) Object.assign(u, {
+          z: chooseSpawnZ(s, team, data, c.z),
+          heading: team === 1 ? 0 : Math.PI,
+          target: null,
+          thinkAt: 0,
+          guide: null,
+          guideReady: 0,
+          intent: "advancing"
+        });
+        if (wide(s)) u.routeZ = u.z;
         s.units.push(u);
         s.metrics.spawned[team]++;
         emit(s, "spawn", { team, id: u.id, index: c.index, x: u.x, y: u.y, size: u.size });
@@ -297,6 +434,11 @@
         p.turrets[slot] = c.index;
         p.turretProgress[slot] = 0;
         p.turretTimers[slot] = 0;
+        if (wide(s)) {
+          p.turretHp[slot] = p.turretMaxHp[slot] = defenseHealth(p.age, c.index, multiplier(s, team, "hp"));
+          p.turretIds[slot] = s.nextId++;
+          p.turretAim[slot] = { heading: team === 1 ? 0 : Math.PI, target: null };
+        }
         break;
       }
       case "sell": {
@@ -304,6 +446,19 @@
         p.gold += age.turrets[p.turrets[i]].cost * 0.5;
         p.turrets[i] = null;
         p.turretTimers[i] = 0;
+        if (wide(s)) {
+          p.turretHp[i] = p.turretMaxHp[i] = 0;
+          p.turretIds[i] = null;
+          p.turretAim[i].target = null;
+        }
+        break;
+      }
+      case "guide": {
+        const u = s.units.find((u2) => u2.id === c.id);
+        u.guide = guidance(s, team, u, c);
+        u.guideReady = s.tick + FIELD.guideCooldown;
+        u.thinkAt = 0;
+        emit(s, "guide", { team, id: u.id, z: u.guide.z, target: u.guide.target });
         break;
       }
       case "slot":
@@ -324,16 +479,22 @@
         p.turrets.fill(null);
         p.turretTimers.fill(0);
         p.turretProgress.fill(1);
+        if (wide(s)) {
+          p.turretHp.fill(0);
+          p.turretMaxHp.fill(0);
+          p.turretIds.fill(null);
+          for (const aim of p.turretAim) aim.target = null;
+        }
         s.metrics.evolutions.push({ tick: s.tick, team, age: p.age });
         emit(s, "evolve", { team, age: p.age });
         break;
       case "special": {
         p.specialTimer = age.special.cooldown;
         const targets = s.units.filter((u) => u.team !== team);
-        const radius = p.age === 4 ? 150 : 300;
-        const cluster = targets.map((u) => ({ x: u.x, value: targets.filter((v) => Math.abs(v.x - u.x) < radius).reduce((n, v) => n + v.cost, 0) })).sort((a, b) => b.value - a.value || (a.x - b.x) * team)[0];
+        const radius2 = p.age === 4 ? 150 : 300;
+        const cluster = targets.map((u) => ({ x: u.x, ...wide(s) ? { z: u.z } : {}, value: targets.filter((v) => (wide(s) ? Math.hypot(v.x - u.x, v.z - u.z) : Math.abs(v.x - u.x)) < radius2).reduce((n, v) => n + v.cost, 0) })).sort((a, b) => b.value - a.value || (a.x - b.x) * team)[0];
         const x = cluster?.x ?? (team === 1 ? CANVAS_WIDTH - 300 : 300);
-        s.specials.push({ id: s.nextId++, team, age: p.age, x, remaining: Math.round(age.special.duration * TICK_RATE), nextPulse: 0 });
+        s.specials.push({ id: s.nextId++, team, age: p.age, x, ...wide(s) ? { z: cluster?.z ?? 0 } : {}, remaining: Math.round(age.special.duration * TICK_RATE), nextPulse: 0 });
         emit(s, "special", { team, age: p.age });
         break;
       }
@@ -351,7 +512,7 @@
   // src/core/combat.js
   var baseX = (team) => team === 1 ? BASE_WIDTH : CANVAS_WIDTH - BASE_WIDTH;
   var separation = (a, b) => Math.round(Math.abs(a - b) * 1e6) / 1e6;
-  var distance = (u, v) => Math.max(0, (v.x - u.x) * u.team - (u.size + v.size) / 2);
+  var distance2 = (u, v) => Math.max(0, (v.x - u.x) * u.team - (u.size + v.size) / 2);
   function combatTick(s) {
     const hits = [], moves = [], shots = [];
     for (const team of [1, -1]) {
@@ -368,7 +529,7 @@
         }
         const target = enemies.find((e) => (e.x - u.x) * team >= -(u.size + e.size) / 2);
         const targetIsBase = !target;
-        const range = target ? distance(u, target) : Math.max(0, (baseX(-team) - u.x) * team - u.size / 2);
+        const range = target ? distance2(u, target) : Math.max(0, (baseX(-team) - u.x) * team - u.size / 2);
         u.isAttacking = range <= u.range + 1e-6;
         u.moving = !u.isAttacking;
         if (u.isAttacking) {
@@ -538,8 +699,8 @@
       const data = AGES[sp.age].special, owner = side(s, sp.team);
       const cx = sp.x;
       if (data.type === "laser" || data.type === "orbital") {
-        const radius = data.type === "laser" ? 150 : 300, dmg = (data.type === "laser" ? 800 : 2500) * FIXED_DT;
-        for (const u of s.units) if (u.team !== sp.team && Math.abs(u.x - cx) < radius) hits.push({ team: sp.team, targetId: u.id, dmg });
+        const radius2 = data.type === "laser" ? 150 : 300, dmg = (data.type === "laser" ? 800 : 2500) * FIXED_DT;
+        for (const u of s.units) if (u.team !== sp.team && Math.abs(u.x - cx) < radius2) hits.push({ team: sp.team, targetId: u.id, dmg });
       } else {
         sp.nextPulse--;
         if (sp.nextPulse <= 0) {
@@ -549,7 +710,7 @@
             cannons: [6, 300, 120, "cannonball", 1200],
             airstrike: [8, 400, 120, "bombDrop", 800]
           };
-          const [rate, dmg, radius, type, speed] = profiles[data.type];
+          const [rate, dmg, radius2, type, speed] = profiles[data.type];
           sp.nextPulse += TICK_RATE / rate;
           const position = BASE_WIDTH + 50 + random(owner) * (CANVAS_WIDTH - BASE_WIDTH - 50);
           const x = sp.team === 1 ? position : CANVAS_WIDTH - position;
@@ -562,7 +723,7 @@
             type,
             speed,
             dmg,
-            radius,
+            radius: radius2,
             targetId: null,
             targetIsBase: false,
             isSpecial: true
@@ -648,6 +809,313 @@
     } else s.opponent.order = "hold";
   }
 
+  // src/core/tabletop-combat.js
+  var radius = (t) => t.radius ?? unitRadius(t);
+  var gap = (u, t) => Math.max(0, distance(u, t) - unitRadius(u) - radius(t));
+  var angleDelta = (a, b) => Math.atan2(Math.sin(b - a), Math.cos(b - a));
+  var turn = (a, b, rate) => round(a + clamp(angleDelta(a, b), -rate * FIXED_DT, rate * FIXED_DT));
+  function structures(s, team) {
+    const p = side(s, team);
+    return [basePoint(team), ...p.turrets.flatMap((index, slot) => index === null ? [] : [{ ...cannonPoint(team, slot), id: p.turretIds[slot] }])];
+  }
+  function clearShot(from, to, team) {
+    const base = basePoint(team), dx = to.x - from.x, dz = to.z - from.z;
+    const t = clamp(((base.x - from.x) * dx + (base.z - from.z) * dz) / (dx * dx + dz * dz || 1), 0, 1);
+    return Math.hypot(from.x + dx * t - base.x, from.z + dz * t - base.z) > base.radius;
+  }
+  function chooseTarget(s, u, enemies) {
+    const old = resolveTarget(s, u.target);
+    const nearby = enemies.filter((e) => e.drawProgress >= 0.8 && gap(u, e) < Math.max(u.uType === 2 && !u.guide ? 450 : 180, u.range + 70));
+    const immediate = nearby.filter((e) => gap(u, e) < 75);
+    const threats = immediate.length ? immediate : nearby;
+    if (threats.length) {
+      threats.sort((a, b) => gap(u, a) - (old?.id === a.id ? 45 : 0) - (gap(u, b) - (old?.id === b.id ? 45 : 0)) || a.id - b.id);
+      u.intent = u.guide ? "engaged" : "fighting";
+      return targetRef(threats[0]);
+    }
+    const instructed = resolveTarget(s, u.guide?.target);
+    if (instructed) {
+      u.intent = "following";
+      return targetRef(instructed);
+    }
+    const route = u.guide?.z ?? u.routeZ;
+    const goals = structures(s, -u.team);
+    const score = (t) => Math.abs(t.z - route) * 1.35 + (t.kind === "turret" ? u.uType === 2 ? -65 : 5 : 0) + (old?.kind === t.kind && old?.slot === t.slot ? -20 : 0);
+    goals.sort((a, b) => score(a) - score(b) || (a.slot ?? -1) - (b.slot ?? -1));
+    u.intent = u.guide ? "following" : goals[0].kind === "turret" ? "flanking" : "advancing";
+    return targetRef(goals[0]);
+  }
+  function keepInField(point, u, obstacles) {
+    const r = unitRadius(u);
+    point.x = clamp(point.x, FIELD.minX, FIELD.maxX);
+    point.z = clamp(point.z, FIELD.minZ + r, FIELD.maxZ - r);
+    for (const obstacle of obstacles) {
+      const dx = point.x - obstacle.x, dz = point.z - obstacle.z;
+      const d = Math.hypot(dx, dz), minimum = obstacle.radius + r;
+      if (d < minimum) {
+        point.x = obstacle.x + (d ? dx / d : obstacle.team) * minimum;
+        point.z = obstacle.z + (d ? dz / d : 0) * minimum;
+      }
+    }
+    point.x = round(clamp(point.x, FIELD.minX, FIELD.maxX));
+    point.z = round(clamp(point.z, FIELD.minZ + r, FIELD.maxZ - r));
+  }
+  function moveUnits(s, plans) {
+    const obstacles = [1, -1].flatMap((team) => [
+      basePoint(team),
+      ...Array.from({ length: side(s, team).unlockedSlots }, (_, slot) => cannonPoint(team, slot))
+    ]);
+    const offsets = plans.map(() => ({ x: 0, z: 0 }));
+    for (let i = 0; i < plans.length; i++) for (let j = i + 1; j < plans.length; j++) {
+      const a = plans[i], b = plans[j], dx = b.x - a.x, dz = b.z - a.z;
+      const limit = unitRadius(a.u) + unitRadius(b.u) + 3;
+      if (Math.abs(dx) >= limit || Math.abs(dz) >= limit) continue;
+      const d = Math.hypot(dx, dz);
+      if (d >= limit) continue;
+      const push = Math.min(1.4, (limit - d) * 0.5);
+      const nx = d ? dx / d : a.u.team !== b.u.team ? a.u.team : 0;
+      const nz = d ? dz / d : a.u.team === b.u.team ? 1 : 0;
+      offsets[i].x -= nx * push;
+      offsets[i].z -= nz * push;
+      offsets[j].x += nx * push;
+      offsets[j].z += nz * push;
+    }
+    for (let i = 0; i < plans.length; i++) {
+      const plan = plans[i], u = plan.u;
+      plan.x += offsets[i].x;
+      plan.z += offsets[i].z;
+      keepInField(plan, u, obstacles);
+      const d = distance(plan, u), maximum = u.speed * FIXED_DT;
+      if (d > maximum) {
+        plan.x = u.x + (plan.x - u.x) * maximum / d;
+        plan.z = u.z + (plan.z - u.z) * maximum / d;
+      }
+      plan.x = round(plan.x);
+      plan.z = round(plan.z);
+      u.moving = distance(plan, u) > 0.01;
+      u.x = plan.x;
+      u.z = plan.z;
+    }
+  }
+  function tabletopCombatTick(s) {
+    const hits = [], shots = [], plans = [];
+    const armies = { "1": s.units.filter((u) => u.team === 1), "-1": s.units.filter((u) => u.team === -1) };
+    for (const u of s.units) {
+      u.attackCooldown = Math.max(0, u.attackCooldown - FIXED_DT);
+      u.animTimer = Math.max(0, u.animTimer - FIXED_DT);
+      if (u.guide && s.tick >= u.guide.until) {
+        u.routeZ = u.guide.z;
+        u.guide = null;
+        u.thinkAt = 0;
+      }
+      if (u.drawProgress < 1) {
+        u.drawProgress = Math.min(1, u.drawProgress + FIXED_DT * 2);
+        continue;
+      }
+      if (s.tick >= u.thinkAt || !resolveTarget(s, u.target)) {
+        u.target = chooseTarget(s, u, armies[-u.team]);
+        u.thinkAt = s.tick + 12;
+      }
+      const target = resolveTarget(s, u.target);
+      if (!target) continue;
+      const range = gap(u, target), structure = u.target.kind !== "unit";
+      u.isAttacking = range <= u.range + 1e-6;
+      const heading = Math.atan2(target.z - u.z, target.x - u.x);
+      const plan = { u, x: u.x, z: u.z };
+      if (!u.isAttacking) {
+        const route = u.guide?.z ?? u.routeZ;
+        const z = structure && Math.abs(target.x - u.x) > Math.max(260, u.range + 100) ? route : target.z;
+        const dx = structure && Math.abs(z - u.z) > 8 ? Math.sign(target.x - u.x) * Math.min(220, Math.abs(target.x - u.x)) : target.x - u.x;
+        const dz = z - u.z, d = Math.hypot(dx, dz) || 1;
+        const travel = Math.min(u.speed * FIXED_DT, Math.max(0, range - u.range));
+        plan.x += dx / d * travel;
+        plan.z += dz / d * travel;
+        u.heading = turn(u.heading, Math.atan2(dz, dx), 7);
+      } else {
+        u.heading = turn(u.heading, heading, 9);
+        if (u.siegeMultiplier && !structure && range > 35) {
+          const d = distance(u, target) || 1;
+          plan.x += (target.x - u.x) / d * u.speed * FIXED_DT * 0.3;
+          plan.z += (target.z - u.z) / d * u.speed * FIXED_DT * 0.3;
+        }
+        if (s.metrics.firstContactTick === null) s.metrics.firstContactTick = s.tick;
+        if (u.attackCooldown <= 1e-9 && Math.abs(angleDelta(u.heading, heading)) < 0.18) {
+          u.attackCooldown = u.attackSpeed;
+          u.animTimer = 0.3;
+          const dmg = u.dmg * multiplier(s, u.team, "dmg") * (structure ? u.siegeMultiplier || 1 : 1);
+          if (u.projType) shots.push({
+            x: u.x + Math.cos(heading) * unitRadius(u),
+            y: u.y - u.size * 0.7,
+            z: u.z + Math.sin(heading) * unitRadius(u),
+            target,
+            ref: u.target,
+            type: u.projType,
+            speed: u.projSpeed,
+            dmg,
+            team: u.team,
+            sourceRole: u.uType,
+            splashRadius: u.splashRadius || 0
+          });
+          else {
+            hits.push({ team: u.team, ref: u.target, dmg });
+            emit(s, "melee", { team: u.team, x: u.x, y: u.y - u.size / 2, z: u.z });
+          }
+        }
+      }
+      plans.push(plan);
+    }
+    for (const team of [1, -1]) {
+      const p = side(s, team);
+      for (let slot = 0; slot < p.unlockedSlots; slot++) {
+        p.turretTimers[slot] = Math.max(0, p.turretTimers[slot] - FIXED_DT);
+        if (p.turrets[slot] === null) continue;
+        const data = AGES[p.age].turrets[p.turrets[slot]], origin = cannonPoint(team, slot), aim = p.turretAim[slot];
+        const targets = armies[-team].filter((u) => u.drawProgress >= 0.8 && distance(origin, u) <= data.range + 120 && clearShot(origin, u, team));
+        targets.sort((a, b) => distance(origin, a) - (a.id === aim.target?.id ? 35 : 0) - distance(origin, b) + (b.id === aim.target?.id ? 35 : 0) || a.id - b.id);
+        const target = targets[0];
+        aim.target = target ? targetRef(target) : null;
+        if (!target || p.turretProgress[slot] < 1) continue;
+        const heading = Math.atan2(target.z - origin.z, target.x - origin.x);
+        aim.heading = turn(aim.heading, heading, 3.8);
+        if (p.turretTimers[slot] > 1e-9 || Math.abs(angleDelta(aim.heading, heading)) > 0.045) continue;
+        aim.heading = heading;
+        shots.push({
+          ...cannonMuzzle(team, slot, p.age, p.turrets[slot], heading),
+          target,
+          ref: aim.target,
+          sourceSlot: slot,
+          sourceId: p.turretIds[slot],
+          type: data.projType,
+          speed: data.projSpeed,
+          dmg: data.dmg * multiplier(s, team, "dmg"),
+          team
+        });
+        p.turretTimers[slot] = data.attackSpeed;
+      }
+    }
+    moveUnits(s, plans);
+    for (const shot of shots) launch2(s, shot);
+    specialTick2(s, hits);
+    projectileTick2(s, hits);
+    for (const hit of hits) damage(s, hit);
+    finishTick(s);
+  }
+  function launch2(s, shot) {
+    const { target, ref, ...data } = shot;
+    const targetY = target.kind ? GROUND_Y - (target.kind === "base" ? 65 : 60) : target.y - target.size / 2;
+    const ticks = shot.type === "laser" ? 1 : Math.max(1, Math.ceil(distance(shot, target) / shot.speed * TICK_RATE));
+    s.projectiles.push({
+      ...data,
+      id: s.nextId++,
+      target: { ...ref },
+      targetId: ref.id ?? null,
+      targetIsBase: ref.kind === "base",
+      targetX: target.x,
+      targetY,
+      targetZ: target.z,
+      startX: shot.x,
+      startY: shot.y,
+      startZ: shot.z,
+      flightTicks: ticks,
+      elapsed: 0,
+      vx: (target.x - shot.x) / (ticks / TICK_RATE),
+      vy: (targetY - shot.y) / (ticks / TICK_RATE),
+      arc: ["arc", "meteor", "arrow", "cannonball"].includes(shot.type),
+      active: true,
+      hit: false,
+      life: shot.type === "laser" ? 0.12 : 0
+    });
+  }
+  function projectileTick2(s, hits) {
+    for (const p of s.projectiles) {
+      if (p.hit) {
+        p.life -= FIXED_DT;
+        p.active = p.life > 0;
+        continue;
+      }
+      const t = Math.min(1, ++p.elapsed / p.flightTicks), duration = p.flightTicks / TICK_RATE;
+      p.x = p.startX + (p.targetX - p.startX) * t;
+      p.z = p.startZ + (p.targetZ - p.startZ) * t;
+      p.y = p.startY + (p.targetY - p.startY) * t - (p.arc ? Math.min(180, 220 * duration) * t * (1 - t) : 0);
+      if (t < 1) continue;
+      const target = resolveTarget(s, p.target);
+      if (target && distance(target, { x: p.targetX, z: p.targetZ }) <= (target.size || radius(target)) + 20) {
+        const reduced = p.splashRadius && target.uType === 0;
+        const armor = p.sourceRole === 1 && target.uType === 2 ? 0.5 : 1;
+        const infantry = p.sourceRole === 1 && target.uType === 0 ? 1.5 : 1;
+        hits.push({ team: p.team, ref: p.target, dmg: p.dmg * (reduced ? 0.5 : 1) * armor * infantry });
+        if (p.splashRadius) {
+          const impact = { x: p.targetX, z: p.targetZ };
+          const nearby = s.units.filter((u) => u.team !== p.team && u.id !== target.id && distance(u, impact) < p.splashRadius).sort((a, b) => distance(a, impact) - distance(b, impact) || a.id - b.id).slice(0, 2);
+          for (const u of nearby) hits.push({ team: p.team, ref: targetRef(u), dmg: p.dmg * 0.35 * (u.uType === 0 ? 0.5 : 1) });
+        }
+      }
+      p.hit = true;
+      p.active = p.life > 0;
+      emit(s, "impact", { x: p.x, y: p.y, z: p.z, projectileType: p.type });
+    }
+    s.projectiles = s.projectiles.filter((p) => p.active);
+  }
+  function specialTick2(s, hits) {
+    for (const sp of s.specials) {
+      const type = AGES[sp.age].special.type;
+      const continuous = type === "laser" || type === "orbital";
+      if (continuous || --sp.nextPulse <= 0) {
+        const profiles = { meteor: [8, 150, 150], arrows: [30, 40, 60], cannons: [6, 300, 120], airstrike: [8, 400, 120], laser: [60, 800 / 60, 150], orbital: [60, 2500 / 60, 300] };
+        const [rate, dmg, radius2] = profiles[type];
+        sp.nextPulse += TICK_RATE / rate;
+        const owner = side(s, sp.team);
+        const x = continuous ? sp.x : sp.x + sp.team * (random(owner) - 0.5) * 420;
+        const z = continuous ? sp.z : sp.z + (random(owner) - 0.5) * 260;
+        for (const u of s.units) if (u.team !== sp.team && distance(u, { x, z }) < radius2) hits.push({ team: sp.team, ref: targetRef(u), dmg });
+        for (const t of structures(s, -sp.team)) if (t.kind === "turret" && distance(t, { x, z }) < radius2) hits.push({ team: sp.team, ref: targetRef(t), dmg: dmg * 0.5 });
+      }
+      sp.remaining--;
+    }
+    s.specials = s.specials.filter((sp) => sp.remaining > 0);
+  }
+  function damage(s, hit) {
+    const target = resolveTarget(s, hit.ref);
+    if (!target) return;
+    const owner = side(s, hit.ref.team), turret = hit.ref.kind === "turret";
+    s.metrics.damage[hit.team] += Math.min(Math.max(0, target.hp), hit.dmg);
+    if (turret) owner.turretHp[hit.ref.slot] -= hit.dmg;
+    else if (hit.ref.kind === "base") owner.hp -= hit.dmg;
+    else target.hp -= hit.dmg;
+    emit(s, "damage", { team: hit.team, targetId: hit.ref.id ?? null, target: hit.ref, amount: hit.dmg, x: target.x, y: GROUND_Y - 50, z: target.z });
+  }
+  function finishTick(s) {
+    const config = DIFFICULTY_SETTINGS[s.difficulty];
+    for (const team of [1, -1]) {
+      const owner = side(s, team);
+      for (let slot = 0; slot < 4; slot++) if (owner.turrets[slot] !== null && owner.turretHp[slot] <= 0) {
+        emit(s, "cannon-destroyed", { team, slot, id: owner.turretIds[slot], ...cannonPoint(team, slot) });
+        owner.turrets[slot] = null;
+        owner.turretIds[slot] = null;
+        owner.turretHp[slot] = owner.turretMaxHp[slot] = owner.turretTimers[slot] = 0;
+        owner.turretProgress[slot] = 1;
+        owner.turretAim[slot].target = null;
+      }
+    }
+    for (const u of s.units) if (u.hp <= 0) {
+      const winner = side(s, -u.team), loser = side(s, u.team);
+      winner.gold += u.killGold * (u.team === 1 ? config.econMult : 1);
+      winner.xp += u.killXp * (u.team === 1 ? config.xpMult : 1);
+      loser.xp += u.killXp * 0.5 * (u.team === -1 ? config.xpMult : 1);
+      s.metrics.kills[-u.team]++;
+      emit(s, "death", { team: u.team, id: u.id, x: u.x, y: u.y, z: u.z, size: u.size, gold: u.killGold, xp: u.killXp });
+    }
+    s.units = s.units.filter((u) => u.hp > 0);
+    s.metrics.peakUnits = Math.max(s.metrics.peakUnits, s.units.length);
+    if (s.player.hp <= 0 || s.enemy.hp <= 0) {
+      s.player.hp = Math.max(0, s.player.hp);
+      s.enemy.hp = Math.max(0, s.enemy.hp);
+      s.winner = s.player.hp === 0 && s.enemy.hp === 0 ? 0 : s.enemy.hp === 0 ? 1 : -1;
+      s.running = false;
+      emit(s, "end", { winner: s.winner });
+    }
+  }
+
   // src/core/engine.js
   function step(s) {
     if (!s.running || s.paused) return false;
@@ -665,7 +1133,8 @@
       for (let i = 0; i < 4; i++) p.turretProgress[i] = Math.min(1, p.turretProgress[i] + FIXED_DT * 0.5);
     }
     opponentTick(s);
-    combatTick(s);
+    if (wide(s)) tabletopCombatTick(s);
+    else combatTick(s);
     return true;
   }
 
@@ -675,7 +1144,7 @@
   }
   function cleanCommand(c) {
     if (!c || typeof c !== "object" || Array.isArray(c)) throw new Error("Invalid command");
-    const fields = { unit: ["index"], turret: ["index"], upgrade: ["stat"], sell: ["slot"], slot: [], evolve: [], special: [] };
+    const fields = { unit: ["index", "z"], guide: ["id", "x", "z"], turret: ["index"], upgrade: ["stat"], sell: ["slot"], slot: [], evolve: [], special: [] };
     if (!Object.hasOwn(fields, c.type)) throw new Error("Unknown command type");
     if (Object.keys(c).some((k) => k !== "type" && !fields[c.type].includes(k))) throw new Error("Unknown command field");
     return structuredClone(c);
@@ -697,9 +1166,10 @@
     #receipts = /* @__PURE__ */ new Map();
     constructor(options = {}) {
       if (!options || typeof options !== "object" || Array.isArray(options)) throw new Error("Invalid options");
-      if (Object.keys(options).some((k) => !["seed", "difficulty", "startAge", "opponent"].includes(k))) throw new Error("Unknown option");
+      if (Object.keys(options).some((k) => !["seed", "difficulty", "startAge", "opponent", "battlefield"].includes(k))) throw new Error("Unknown option");
       this.#state = createState(options);
       this.#options = { seed: this.#state.seed, difficulty: this.#state.difficulty, startAge: this.#state.player.age, opponent: this.#state.opponent.enabled };
+      if (this.#state.battlefield) this.#options.battlefield = this.#state.battlefield;
     }
     observe() {
       const observation = structuredClone(this.#state);
@@ -791,7 +1261,7 @@
       return digest(this.observe());
     }
     replay() {
-      return { version: RULES_VERSION, options: structuredClone(this.#options), ticks: this.tick, entries: structuredClone(this.#log), digest: this.digest() };
+      return { version: this.#state.version, options: structuredClone(this.#options), ticks: this.tick, entries: structuredClone(this.#log), digest: this.digest() };
     }
     checkpoint() {
       return { replay: this.replay(), receipts: structuredClone([...this.#receipts]) };
@@ -803,9 +1273,10 @@
       return session;
     }
     static fromReplay(replay) {
-      if (!replay || replay.version !== RULES_VERSION || !Array.isArray(replay.entries) || replay.entries.length > 25e4) throw new Error("Unsupported replay");
+      if (!replay || ![RULES_VERSION, TABLETOP_RULES_VERSION].includes(replay.version) || !Array.isArray(replay.entries) || replay.entries.length > 25e4) throw new Error("Unsupported replay");
       boundedInteger(replay.ticks, 0, 5184e3, "replay duration");
       const session = new _Session(replay.options);
+      if (session.#state.version !== replay.version) throw new Error("Replay battlefield mismatch");
       const advanceTo = (tick) => {
         boundedInteger(tick, session.tick, replay.ticks, "entry tick");
         while (session.tick < tick) {
@@ -1252,10 +1723,10 @@
           let isCorner = Math.random() > 0.3;
           let cx = isCorner ? Math.random() > 0.5 ? Math.random() * 400 : CANVAS_WIDTH - Math.random() * 400 : Math.random() * CANVAS_WIDTH;
           let cy = isCorner ? Math.random() > 0.5 ? Math.random() * 300 : CANVAS_HEIGHT - Math.random() * 300 : Math.random() * CANVAS_HEIGHT;
-          let radius = 100 + Math.random() * 250;
-          this.drawWatercolorBlob(xctx, cx, cy, radius, hslBg, 0.08);
+          let radius2 = 100 + Math.random() * 250;
+          this.drawWatercolorBlob(xctx, cx, cy, radius2, hslBg, 0.08);
           if (Math.random() < 0.25) {
-            this.drawWatercolorBlob(xctx, cx, cy, radius * 0.6, hslAcc, 0.04);
+            this.drawWatercolorBlob(xctx, cx, cy, radius2 * 0.6, hslAcc, 0.04);
           }
         }
         for (let i = 0; i < 15; i++) {
@@ -1543,14 +2014,14 @@
         return (Array.isArray(value) ? value : []).map((item) => this.cleanLine(item, maxLen)).filter(Boolean).slice(-maxItems);
       },
       normalizeTurnList(value) {
-        return (Array.isArray(value) ? value : []).map((turn) => ({
-          role: turn && turn.role === "model" ? "model" : "player",
-          time: Math.round(Number(turn && turn.time) || 0),
-          ages: this.cleanLine(turn && turn.ages, 80),
-          text: this.cleanLine(turn && turn.text, 180),
-          action: this.cleanLine(turn && turn.action, 80),
-          reason: this.cleanLine(turn && turn.reason, 90)
-        })).filter((turn) => turn.text).slice(-this.maxRecentTurns);
+        return (Array.isArray(value) ? value : []).map((turn2) => ({
+          role: turn2 && turn2.role === "model" ? "model" : "player",
+          time: Math.round(Number(turn2 && turn2.time) || 0),
+          ages: this.cleanLine(turn2 && turn2.ages, 80),
+          text: this.cleanLine(turn2 && turn2.text, 180),
+          action: this.cleanLine(turn2 && turn2.action, 80),
+          reason: this.cleanLine(turn2 && turn2.reason, 90)
+        })).filter((turn2) => turn2.text).slice(-this.maxRecentTurns);
       },
       normalizeActionList(value) {
         return (Array.isArray(value) ? value : []).map((action) => ({

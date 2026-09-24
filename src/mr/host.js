@@ -1,6 +1,7 @@
 import { Session } from '../sdk/session.js';
 import { commandError } from '../core/commands.js';
 import { defenseTarget } from './defense-layout.js';
+import { wide, FIELD, fieldX, fieldZ, worldX, worldZ, clamp } from '../core/battlefield.js';
 import {
   shopOffers,
   TOOLS,
@@ -28,6 +29,14 @@ export class TabletopHost {
     return [...shopOffers(state), ...TOOLS];
   }
   offer(id) {
+    if (typeof id !== 'string') return null;
+    if (id.startsWith('troop-')) {
+      const state = this.observe(), unit = state?.units.find(u => `troop-${u.id}` === id && u.team === 1);
+      if (!unit || !wide(state)) return null;
+      return { id, kind: 'nudge', label: unit.name, detail: 'Suggest a route; nearby fighting takes priority',
+        price: 0, command: { type: 'guide', id: unit.id, x: unit.x, z: unit.z },
+        x: worldX(unit.x), z: worldZ(unit.z) };
+    }
     return this.offers().find((o) => o.id === id);
   }
   reason(offer, state = this.observe()) {
@@ -48,7 +57,7 @@ export class TabletopHost {
   start(difficulty = 'normal', options = {}) {
     if (!DIFFICULTIES.includes(difficulty)) return this.fail('unknown-offer');
     this.cancelAll();
-    this.session = new Session({ ...options, difficulty });
+    this.session = new Session({ ...options, difficulty, battlefield: 'tabletop' });
     this.accumulator = 0;
     this.speed = 1;
     this.say('start', { difficulty });
@@ -86,7 +95,7 @@ export class TabletopHost {
       zone = dropZone(offer, point, state);
     let result;
     if (zone) result = this.fail(zone);
-    else if (token.age !== (state?.player.age ?? null))
+    else if (offer.kind !== 'nudge' && token.age !== (state?.player.age ?? null))
       result = this.fail('stale-age');
     else {
       const error = this.reason(offer, state);
@@ -94,9 +103,18 @@ export class TabletopHost {
       else if (offer.action) result = this.tool(offer);
       // Taking the token out of holds makes release idempotent, including after
       // checkpoint restoration, without reusing a previous session receipt id.
-      else result = this.session.command(1, offer.kind === 'eraser'
-        ? { ...offer.command, slot: defenseTarget(offer, state, point).slot }
-        : offer.command);
+      else {
+        let command = offer.command;
+        if (offer.kind === 'eraser') command = { ...command, slot: defenseTarget(offer, state, point).slot };
+        else if (offer.kind === 'unit' && wide(state)) command = { ...command, z: clamp(fieldZ(point.z), FIELD.minZ + 34, FIELD.maxZ - 34) };
+        else if (offer.kind === 'nudge') command = { ...command,
+          x: clamp(fieldX(point.x), FIELD.minX, FIELD.maxX), z: clamp(fieldZ(point.z), FIELD.minZ, FIELD.maxZ) };
+        result = this.session.command(1, command);
+        if (result.ok && offer.kind === 'nudge') {
+          const u = this.observe().units.find(u => u.id === command.id);
+          this.say('message', { text: `${u.name}: route suggested. ${u.isAttacking ? 'Fighting nearby first.' : 'Walking there.'}` });
+        }
+      }
     }
     if (!result.ok && !zone)
       this.say('message', {
@@ -182,7 +200,11 @@ export class TabletopHost {
     if (!this.session) return;
     const wasRunning = this.session.running,
       result = this.session.advance(ticks);
+    for (const [owner, token] of this.holds) if (token.offer.kind === 'nudge' &&
+      !this.observe().units.some(u => u.id === token.offer.command.id)) this.cancel(owner);
     if (result.events.length) this.say('combat', { events: result.events });
+    if (result.events.some(e=>e.type==='cannon-destroyed' && e.team===1))
+      this.say('message',{text:'Your cannon was destroyed. Its dock can hold a replacement.'});
     if (wasRunning && !this.session.running) {
       this.cancelAll();
       this.say('finish', { winner: this.session.winner });

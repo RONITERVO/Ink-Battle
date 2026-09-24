@@ -15,8 +15,9 @@ const restored = Session.fromReplay(replay);
 ```
 
 Options: uint32 `seed`, `difficulty` (normal/hard/harder/impossible), `startAge`
-(zero-based), and `opponent` (boolean, default true). A new session is a new match.
-Observations expose both armies because this is a public-information lane game.
+(zero-based), `opponent` (boolean, default true), and optional `battlefield: 'tabletop'`.
+Omitting `battlefield` preserves classic rules. A new session is a new match.
+Observations expose both armies because this is a public-information battle.
 
 Commands: `unit`/`turret` with `index`, `upgrade` with `stat` (hp/dmg/econ), `sell`
 with an optional zero-based `slot`, and `slot`, `evolve`, `special` without extra
@@ -36,6 +37,20 @@ semantics, rules version 2.0.0 and old checkpoint digests are preserved. Replays
 containing an explicit sale slot need a 2.2.5+ reader; older readers reject that
 field. The selected slot is recorded as part of the command, so restoration and
 request retries do not infer a different cannon from the current layout.
+
+Tabletop 2.3.0 uses rules version `tabletop-1.0.0`. Create it with
+`new Session({battlefield:'tabletop'})`. `unit` accepts optional `z` in simulation
+coordinates to choose deployment width; omission selects a free route. Deployed
+troops accept `{type:'guide',id,x,z}` from their own team. This records a bounded,
+temporary route/objective preference, never a position change. Guidance is free,
+rate-limited per unit and can yield to nearby combat. Check `unit.intent` for
+`following`, `engaged`, `flanking`, `fighting` or `advancing`. Cannons expose health,
+stable installation IDs and aim state. See [tabletop tactics](TACTICAL_BATTLEFIELD.md).
+
+Classic `2.0.0` replays still load without changing their state or rules. Replay
+versions must match their battlefield option; older readers reject tabletop
+replays. Old MR saves continue their original battle; starting a new tabletop
+match selects the wider rules. The classic 2D client never opts into them.
 
 ## Terminal / tool loop
 

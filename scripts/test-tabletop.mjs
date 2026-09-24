@@ -6,17 +6,19 @@ import { Session } from '../src/sdk/session.js';
 import { AGES } from '../src/content/ages.js';
 import { DIFFICULTIES } from '../src/mr/catalog.js';
 import { defenseTarget, dockPosition } from '../src/mr/defense-layout.js';
+import { chooseSpawnZ, worldZ, worldX } from '../src/core/battlefield.js';
+import { assertInvariants } from '../src/simulation/run.js';
 
 // Same adapter as hands and controllers, with the wall clock removed. No model.
 const started = performance.now(),
   matches = [];
 for (let age = 0; age < AGES.length; age++)
   for (const difficulty of DIFFICULTIES)
-    for (const style of ['adaptive', 'melee', 'ranged', 'heavy'])
-      for (let seed = 1; seed <= 2; seed++) {
+    for (const style of ['adaptive', 'melee', 'ranged', 'heavy', 'turtle', 'mixed'])
+      for (let seed = 1; seed <= 4; seed++) {
         const host = new TabletopHost();
         host.start(difficulty, { startAge: age, seed });
-        let drops = 0,
+        let drops = 0, guides = 0,
           misses = 0;
         while (host.session.running && host.session.tick < 60 * 60 * 20) {
           const command = host.session.decide(1, style);
@@ -31,7 +33,7 @@ for (let age = 0; age < AGES.length; age++)
             if (host.grab('simulated-hand', offer.id).ok) {
               const p =
                 offer.kind === 'unit'
-                  ? { x: -0.65, y: 0, z: 0.4 }
+                  ? { x: -0.65, y: 0, z: worldZ(chooseSpawnZ(host.observe(),1,AGES[host.observe().player.age].units[command.index])) }
                   : offer.kind === 'eraser'
                     ? dockPosition(command.slot ?? host.observe().player.turrets.findLastIndex((t) => t !== null))
                   : ['turret', 'slot'].includes(offer.kind)
@@ -51,6 +53,16 @@ for (let age = 0; age < AGES.length; age++)
               assert.equal(host.drop('simulated-hand', p).error, 'not-held');
               drops++;
             }
+          }
+          if (host.session.tick % 240 === 0) {
+            const s=host.observe();
+            const u=s.units.find(u=>u.team===1 && u.drawProgress===1 && s.tick>=u.guideReady);
+            if(u && host.grab('guide-hand',`troop-${u.id}`).ok) {
+              const point=guides%2 ? {x:1.1,y:0,z:guides%4===1 ? -.3 : .55}
+                : {x:worldX(u.x),y:0,z:worldZ(Math.max(-230,Math.min(230,u.z+(guides%4===0?120:-120))))};
+              assert.ok(host.drop('guide-hand',point).ok); guides++;
+            }
+            assertInvariants(host.observe());
           }
           host.advance(24);
         }
@@ -72,6 +84,7 @@ for (let age = 0; age < AGES.length; age++)
           seconds: host.session.tick / 60,
           drops,
           misses,
+          guides,
           digest: host.session.digest()
         });
       }
@@ -81,6 +94,7 @@ const report = {
   wallSeconds: (performance.now() - started) / 1000,
   purchases: matches.reduce((s, m) => s + m.drops, 0),
   misses: matches.reduce((s, m) => s + m.misses, 0),
+  guides: matches.reduce((s, m) => s + m.guides, 0),
   results: matches
 };
 await mkdir('artifacts/tabletop', { recursive: true });

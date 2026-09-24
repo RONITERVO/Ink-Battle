@@ -55,6 +55,10 @@ export class Interaction {
     }
     if (!this.host.holds.has(owner)) return;
     const position = toLocal(item.world, this.table);
+    if (item.token.offer.kind === 'nudge') {
+      this.host.drop(owner, { ...toLocal(item.targetWorld, this.table), y: 0 });
+      return;
+    }
     // Hand/controller grips are at a raised arm or bottle neck; land the feet/base.
     position.y -= item.token.offer.kind === 'unit' ? 0.226 : 0.06;
     const floor = landingHeight(item.token.offer);
