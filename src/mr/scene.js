@@ -1,35 +1,42 @@
-import * as THREE from 'three';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { InkBatch } from './ink-batch.js';
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { InkBatch } from "./ink-batch.js";
 import {
   unitModel,
   baseModel,
   cannonModel,
   objectModel,
-  TEAM_COLORS
-} from './models.js';
-import { TABLE } from './catalog.js';
-import { AGES } from '../content/ages.js';
-import { COLORS } from '../client/palette.js';
-import { createWatercolor } from '../client/watercolor.js';
-import { createRenderer } from '../client/renderer.js';
+  projectileModel,
+  specialModel,
+  TEAM_COLORS,
+} from "./models.js";
+import { TABLE } from "./catalog.js";
+import { AGES } from "../content/ages.js";
+import {
+  CHAPTERS,
+  bookPaths,
+  landscapePaths,
+  mistPaths,
+  pencilMesh,
+} from "./sketchbook.js";
+import { pencilGeometries } from "./pencil-geometry.js";
 
 export const HANDLES = [-1, 1].flatMap((x) =>
   [-0.65, 1.34].map((z) => ({
     id: `handle-${x}-${z}`,
     x: x * 1.28,
     y: 0.035,
-    z
-  }))
+    z,
+  })),
 );
-const ink = '#342d2b';
+const ink = "#342d2b";
 
 class Label {
   constructor(parent, width, height, { flat = true } = {}) {
-    this.canvas = document.createElement('canvas');
+    this.canvas = document.createElement("canvas");
     this.canvas.width = 768;
     this.canvas.height = Math.round((768 * height) / width);
-    this.ctx = this.canvas.getContext('2d');
+    this.ctx = this.canvas.getContext("2d");
     this.texture = new THREE.CanvasTexture(this.canvas);
     this.texture.colorSpace = THREE.SRGBColorSpace;
     this.mesh = new THREE.Mesh(
@@ -38,12 +45,12 @@ class Label {
         map: this.texture,
         transparent: true,
         side: THREE.DoubleSide,
-        depthWrite: false
-      })
+        depthWrite: false,
+      }),
     );
     this.mesh.rotation.x = flat ? -Math.PI / 2 : -0.35;
     parent.add(this.mesh);
-    this.last = '';
+    this.last = "";
   }
   text(lines, color = ink) {
     const key = JSON.stringify([lines, color]);
@@ -51,19 +58,21 @@ class Label {
     this.last = key;
     const {
       ctx: c,
-      canvas: { width: w, height: h }
+      canvas: { width: w, height: h },
     } = this;
     c.clearRect(0, 0, w, h);
-    c.fillStyle = '#fff5df';
-    c.fillRect(0, 0, w, h);
-    c.strokeStyle = '#a49b87';
+    c.strokeStyle = "#a49b87";
     c.lineWidth = 2;
-    c.strokeRect(2, 2, w - 4, h - 4);
-    c.textAlign = 'center';
-    c.textBaseline = 'middle';
+    c.beginPath();
+    c.moveTo(8, h - 5);
+    c.lineTo(w * 0.53, h - 3);
+    c.lineTo(w - 8, h - 6);
+    c.stroke();
+    c.textAlign = "center";
+    c.textBaseline = "middle";
     c.fillStyle = color;
     lines.forEach((line, i) => {
-      c.font = `${i === 0 ? 'bold ' : ''}${Math.floor((h / lines.length) * 0.61)}px 'Patrick Hand', cursive`;
+      c.font = `${i === 0 ? "bold " : ""}${Math.floor((h / lines.length) * 0.61)}px 'Patrick Hand', cursive`;
       c.fillText(line, w / 2, ((i + 0.5) * h) / lines.length, w - 24);
     });
     this.texture.needsUpdate = true;
@@ -89,16 +98,16 @@ export class TabletopScene {
       canvas,
       antialias: true,
       alpha: true,
-      powerPreference: 'high-performance'
+      powerPreference: "high-performance",
     });
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75));
     this.renderer.xr.enabled = true;
-    this.renderer.xr.setReferenceSpaceType('local-floor');
+    this.renderer.xr.setReferenceSpaceType("local-floor");
     this.renderer.xr.setFramebufferScaleFactor(0.9);
     this.renderer.xr.setFoveation(0.7);
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color('#ded7c8');
+    this.scene.background = new THREE.Color("#f5f1e8");
     this.camera = new THREE.PerspectiveCamera(43, 1, 0.01, 30);
     this.camera.position.set(0.45, 2.45, 3.3);
     this.controls = new OrbitControls(this.camera, canvas);
@@ -109,11 +118,11 @@ export class TabletopScene {
     this.controls.maxDistance = 8;
     this.controls.mouseButtons = {
       RIGHT: THREE.MOUSE.ROTATE,
-      MIDDLE: THREE.MOUSE.PAN
+      MIDDLE: THREE.MOUSE.PAN,
     };
     this.controls.touches = { TWO: THREE.TOUCH.DOLLY_ROTATE };
-    this.scene.add(new THREE.HemisphereLight('#fffaf0', '#8c8f82', 1.9));
-    const sun = new THREE.DirectionalLight('#fff8ed', 1.2);
+    this.scene.add(new THREE.HemisphereLight("#fffaf0", "#8c8f82", 1.9));
+    const sun = new THREE.DirectionalLight("#fff8ed", 1.2);
     sun.position.set(-2, 4, 2);
     this.scene.add(sun);
     this.root = new THREE.Group();
@@ -123,75 +132,41 @@ export class TabletopScene {
     this.shop = new InkBatch(this.root, { capacity: 1200 });
     this.held = new InkBatch(this.root, { capacity: 600 });
     this.details = new InkBatch(this.root, { capacity: 100 });
-    const paper = document.createElement('canvas');
-    paper.width = 1280;
-    paper.height = 720;
-    this.paperRuntime = {
-      ctx: paper.getContext('2d'),
-      COLORS: { ...COLORS },
-      gameState: { player: { age: 0 }, ageTransition: 0 },
-      globalTime: 0
-    };
-    Object.assign(this.paperRuntime, createWatercolor(this.paperRuntime));
-    this.paperPainter = createRenderer(this.paperRuntime);
-    this.paperTexture = new THREE.CanvasTexture(paper);
-    this.paperTexture.colorSpace = THREE.SRGBColorSpace;
-    this.paperTexture.anisotropy = Math.min(
-      4,
-      this.renderer.capabilities.getMaxAnisotropy()
-    );
-    this.page = new THREE.Mesh(
-      new THREE.PlaneGeometry(TABLE.width, TABLE.depth),
-      new THREE.MeshStandardMaterial({
-        map: this.paperTexture,
-        roughness: 1,
-        side: THREE.DoubleSide
-      })
-    );
-    this.page.rotation.x = -Math.PI / 2;
-    this.root.add(this.page);
-    const shelf = new THREE.Mesh(
-      new THREE.BoxGeometry(2.4, 0.027, 0.65),
-      new THREE.MeshStandardMaterial({ color: '#dbcaab', roughness: 1 })
-    );
-    shelf.position.set(0, -0.019, 1.025);
-    this.root.add(shelf);
-    const backing = new THREE.Mesh(
-      new THREE.BoxGeometry(2.42, 0.025, 1.37),
-      new THREE.MeshStandardMaterial({ color: '#665345', roughness: 1 })
-    );
-    backing.position.y = -0.02;
-    this.root.add(backing);
-    this.zone(-0.66, 0.395, 0.44, 0.51, '#438e72');
-    this.zone(-1.06, 0.13, 0.27, 1.02, '#a98440');
+    this.book = pencilMesh(bookPaths(), "#514a42", 0.002);
+    this.root.add(this.book);
+    this.landscape = null;
+    this.chapter = new Label(this.root, 0.92, 0.063);
+    this.chapter.mesh.position.set(0, 0.003, -0.65);
+    this.zone(-0.66, 0.395, 0.44, 0.51, "#438e72");
+    this.zone(-1.06, 0.13, 0.27, 1.02, "#a98440");
     this.status = new Label(this.root, 1.38, 0.22, { flat: false });
     this.status.mesh.position.set(0.02, 0.2, -0.58);
     this.hint = new Label(this.root, 1.85, 0.105);
     this.hint.mesh.position.set(0, 0.004, -0.17);
     this.hint.text([
-      'Lift a difficulty seal from the tray. Drop it onto the page.'
+      "Lift a difficulty seal from the tray. Drop it onto the page.",
     ]);
     this.shadow = new THREE.InstancedMesh(
-      new THREE.CircleGeometry(1, 12),
+      pencilGeometries().shadow,
       new THREE.MeshBasicMaterial({
-        color: '#382f2b',
+        color: "#382f2b",
         transparent: true,
-        opacity: 0.16,
-        depthWrite: false
+        opacity: 0.42,
+        depthWrite: false,
       }),
-      170
+      170,
     );
     this.shadow.frustumCulled = false;
     this.root.add(this.shadow);
     this.shadowMatrix = new THREE.Matrix4();
     this.shadowQuaternion = new THREE.Quaternion().setFromEuler(
-      new THREE.Euler(-Math.PI / 2, 0, 0)
+      new THREE.Euler(-Math.PI / 2, 0, 0),
     );
     this.mist = this.makeMist();
     this.root.add(this.mist);
     this.reticle = new THREE.Mesh(
       new THREE.RingGeometry(0.09, 0.115, 32).rotateX(-Math.PI / 2),
-      new THREE.MeshBasicMaterial({ color: '#74c4a5', side: THREE.DoubleSide })
+      new THREE.MeshBasicMaterial({ color: "#74c4a5", side: THREE.DoubleSide }),
     );
     this.reticle.visible = false;
     this.reticle.matrixAutoUpdate = false;
@@ -201,62 +176,47 @@ export class TabletopScene {
     this.syncTable();
   }
   zone(x, z, width, depth, color) {
-    const plane = new THREE.Mesh(
-      new THREE.PlaneGeometry(width, depth),
-      new THREE.MeshBasicMaterial({
-        color,
-        transparent: true,
-        opacity: 0.12,
-        depthWrite: false
-      })
-    );
-    plane.rotation.x = -Math.PI / 2;
-    plane.position.set(x, 0.002, z);
-    this.root.add(plane);
+    const marks = [];
+    for (let i = 0; i < 12; i++) {
+      const xx = x - width / 2 + (i * width) / 12;
+      marks.push([
+        [xx, 0.003, z + depth / 2 - 0.035],
+        [xx + 0.018, 0.003, z + depth / 2 - 0.006],
+      ]);
+    }
+    this.root.add(pencilMesh(marks, color, 0.0009));
     const points = [
       [x - width / 2, 0.004, z - depth / 2],
       [x + width / 2, 0.004, z - depth / 2],
       [x + width / 2, 0.004, z + depth / 2],
       [x - width / 2, 0.004, z + depth / 2],
-      [x - width / 2, 0.004, z - depth / 2]
+      [x - width / 2, 0.004, z - depth / 2],
     ].map((p) => new THREE.Vector3(...p));
     const border = new THREE.Line(
       new THREE.BufferGeometry().setFromPoints(points),
-      new THREE.LineDashedMaterial({ color, dashSize: 0.035, gapSize: 0.018 })
+      new THREE.LineDashedMaterial({ color, dashSize: 0.035, gapSize: 0.018 }),
     );
     border.computeLineDistances();
     this.root.add(border);
   }
   makeMist() {
-    return new THREE.Mesh(
-      new THREE.PlaneGeometry(2.33, 1.26)
-        .rotateX(-Math.PI / 2)
-        .translate(0, 0.035, 0),
-      new THREE.ShaderMaterial({
-        transparent: true,
-        depthWrite: false,
-        side: THREE.DoubleSide,
-        uniforms: { time: { value: 0 } },
-        vertexShader:
-          'varying vec2 vUv; void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}',
-        fragmentShader:
-          'varying vec2 vUv; uniform float time; void main(){vec2 p=vUv;float edge=smoothstep(0.0,0.18,p.x)*smoothstep(0.0,0.18,1.0-p.x)*smoothstep(0.0,0.16,p.y)*smoothstep(0.0,0.16,1.0-p.y);float n=0.55+0.22*sin(p.x*24.0+sin(p.y*14.0+time*0.17))+0.18*sin(p.y*37.0-p.x*11.0+time*0.12);gl_FragColor=vec4(0.91,0.93,0.88,edge*n*0.24);}'
-      })
-    );
+    const mesh = pencilMesh(mistPaths(), "#91897c", 0.00055);
+    mesh.material.transparent = true;
+    mesh.material.opacity = 0.33;
+    mesh.material.depthWrite = false;
+    return mesh;
   }
   refreshArt(age) {
     if (age === this.age) return;
     this.age = age;
-    const r = this.paperRuntime;
-    r.gameState.player.age = age;
-    if (!r.WatercolorEngine.canvases[age])
-      r.WatercolorEngine.canvases[age] = r.WatercolorEngine.renderWash(age);
-    r.ctx.fillStyle = '#f4eddc';
-    r.ctx.fillRect(0, 0, 1280, 720);
-    r.COLORS.pencil = `hsl(${AGES[age].theme.fg})`;
-    r.COLORS.pencilLight = `hsl(${AGES[age].theme.fg} / .5)`;
-    this.paperPainter.drawBackground(1);
-    this.paperTexture.needsUpdate = true;
+    if (this.landscape) {
+      this.landscape.removeFromParent();
+      this.landscape.geometry.dispose();
+      this.landscape.material.dispose();
+    }
+    this.landscape = pencilMesh(landscapePaths(age), "#635b51", 0.00165);
+    this.root.add(this.landscape);
+    this.chapter.text([CHAPTERS[age].title]);
   }
   resize() {
     const canvas = this.renderer.domElement,
@@ -271,9 +231,9 @@ export class TabletopScene {
         2 *
           Math.atan(
             Math.tan(THREE.MathUtils.degToRad(43 / 2)) *
-              Math.max(1, 1 / this.camera.aspect)
-          )
-      )
+              Math.max(1, 1 / this.camera.aspect),
+          ),
+      ),
     );
     this.camera.updateProjectionMatrix();
   }
@@ -285,7 +245,7 @@ export class TabletopScene {
     this.root.updateMatrixWorld(true);
   }
   immersive(active) {
-    this.scene.background = active ? null : new THREE.Color('#ded7c8');
+    this.scene.background = active ? null : new THREE.Color("#f5f1e8");
     this.controls.enabled = !active;
     if (!active) this.resize();
   }
@@ -304,14 +264,14 @@ export class TabletopScene {
     for (const offer of this.offers) {
       objectModel(this.shop, offer, state?.player.age || 0, {
         x: offer.x,
-        z: offer.z
+        z: offer.z,
       });
       let label = this.labels.get(offer.id);
       if (!label) {
         label = new Label(
           this.root,
-          offer.kind === 'seal' ? 0.39 : 0.245,
-          0.072
+          offer.kind === "seal" ? 0.39 : 0.245,
+          0.072,
         );
         this.labels.set(offer.id, label);
       }
@@ -319,30 +279,30 @@ export class TabletopScene {
       const error = this.host.reason(offer, state);
       const cost =
         offer.price === Infinity
-          ? 'MAX'
+          ? "MAX"
           : offer.price
-            ? `${offer.price} ${offer.currency || 'gold'}`
-            : offer.action === 'speed'
+            ? `${offer.price} ${offer.currency || "gold"}`
+            : offer.action === "speed"
               ? `${this.host.speed}×`
-              : offer.action === 'quality'
+              : offer.action === "quality"
                 ? this.host.quality
-                : offer.command?.type === 'special' &&
+                : offer.command?.type === "special" &&
                     state?.player.specialTimer > 0
                   ? `${Math.ceil(state.player.specialTimer)}s`
-                  : '';
+                  : "";
       label.text(
-        [offer.label, cost || (offer.action ? 'Lift & drop' : 'Ready')],
-        error ? '#81766a' : ink
+        [offer.label, cost || (offer.action ? "Lift & drop" : "Ready")],
+        error ? "#81766a" : ink,
       );
     }
     this.shop.end();
     this.details.begin();
     for (const handle of HANDLES) {
       this.details.model(handle.x, handle.y, handle.z);
-      this.details.part('ring', [0, 0, 0], [0.075, 0.075, 0.075], '#8b7051', [
+      this.details.part("ring", [0, 0, 0], [0.075, 0.075, 0.075], "#8b7051", [
         Math.PI / 2,
         0,
-        0
+        0,
       ]);
     }
     this.details.end();
@@ -361,13 +321,13 @@ export class TabletopScene {
               state.running
                 ? `${AGES[state.player.age].name}  ·  ${Math.floor(state.player.gold)} gold  ·  ${Math.floor(state.player.xp)} XP`
                 : state.winner === 0
-                  ? 'A draw. Both pages fell together.'
+                  ? "A draw. Both pages fell together."
                   : state.winner === 1
-                    ? 'Victory! The page is yours.'
-                    : 'Defeat. A new page awaits.',
-              `${Math.ceil(state.player.hp)} / ${Math.ceil(state.player.maxHp)} HP   —   Enemy ${Math.ceil(state.enemy.hp)} HP   ·   ${state.paused ? 'PAUSED' : `${this.host.speed}×`}`
+                    ? "Victory! The page is yours."
+                    : "Defeat. A new page awaits.",
+              `${Math.ceil(state.player.hp)} / ${Math.ceil(state.player.maxHp)} HP   —   Enemy ${Math.ceil(state.enemy.hp)} HP   ·   ${state.paused ? "PAUSED" : `${this.host.speed}×`}`,
             ]
-          : ['INK BATTLE · TABLETOP', 'Choose a seal. Lift a world.']
+          : ["INK BATTLE · THE SKETCHBOOK", "Choose a seal. Lift a world."],
       );
     }
     this.army.begin();
@@ -384,7 +344,7 @@ export class TabletopScene {
             0.04,
             -0.28 + slot * 0.13,
             0.83 * Math.max(0.02, side.turretProgress[slot]),
-            team
+            team,
           );
           cannonModel(this.army, side.age, index, TEAM_COLORS[team]);
         });
@@ -394,7 +354,7 @@ export class TabletopScene {
           z = TABLE.lane + ((unit.id % 5) - 2) * 0.024;
         const scale =
           Math.max(0.02, unit.drawProgress) * Math.min(1.8, unit.size / 50);
-        const comfort = this.host.quality === 'comfort';
+        const comfort = this.host.quality === "comfort";
         unitModel(this.army, unit.age, unit.uType, {
           x,
           z,
@@ -402,22 +362,22 @@ export class TabletopScene {
           team: unit.team,
           time: comfort ? 0 : this.time + unit.id,
           walking: !comfort && unit.moving,
-          attacking: !comfort && unit.isAttacking
+          attacking: !comfort && unit.isAttacking,
         });
         if (!comfort) {
           this.army.model(x, 0.23 * scale, z, 1);
-          this.army.line([-0.035, 0, 0], [0.035, 0, 0], 0.0028, '#aa8f7e');
+          this.army.line([-0.035, 0, 0], [0.035, 0, 0], 0.0028, "#aa8f7e");
           this.army.line(
             [-0.035, 0, 0.001],
             [-0.035 + 0.07 * Math.max(0, unit.hp / unit.maxHp), 0, 0.001],
             0.003,
-            TEAM_COLORS[unit.team]
+            TEAM_COLORS[unit.team],
           );
         }
         this.shadowMatrix.compose(
           new THREE.Vector3(x, 0.005, z),
           this.shadowQuaternion,
-          new THREE.Vector3(0.045 * scale, 0.025 * scale, 1)
+          new THREE.Vector3(0.045 * scale, 0.025 * scale, 1),
         );
         this.shadow.setMatrixAt(shadowCount++, this.shadowMatrix);
       }
@@ -426,57 +386,46 @@ export class TabletopScene {
         this.army.model(
           (p.x / 1280 - 0.5) * TABLE.width,
           Math.max(0.035, ((600 - p.y) / 1280) * TABLE.width),
-          TABLE.lane
+          TABLE.lane,
         );
-        this.army.sphere(
-          [0, 0, 0],
-          0.009,
-          p.team === 1 ? '#378a99' : '#ce795b'
+        projectileModel(
+          this.army,
+          p.type,
+          p.team,
+          p.team === 1 ? state.player.age : state.enemy.age,
         );
       }
       for (const special of state.specials) {
-        const x = (special.x / 1280 - 0.5) * TABLE.width,
-          color = special.team === 1 ? '#68aead' : '#bd7565';
+        const x = (special.x / 1280 - 0.5) * TABLE.width;
         this.army.model(x, 0.012, TABLE.lane);
-        const radius = special.age === 4 ? 0.28 : 0.5;
-        this.army.part('ring', [0, 0, 0], [radius, radius, 0.025], color, [
-          Math.PI / 2,
-          0,
-          0
-        ]);
-        if (this.host.quality !== 'comfort')
-          for (let i = 0; i < 8; i++) {
-            const xx = Math.sin(i * 4.7) * radius,
-              zz = Math.cos(i * 2.3) * 0.06,
-              yy = 0.025 + ((this.time * 0.3 + i * 0.07) % 0.28);
-            this.army.line(
-              [xx, yy, zz],
-              [xx - 0.025, yy + 0.04, zz],
-              0.003,
-              color
-            );
-          }
+        specialModel(
+          this.army,
+          special.age,
+          this.time,
+          special.team,
+          this.host.quality !== "comfort",
+        );
       }
     }
     this.army.end();
     this.shadow.count = shadowCount;
     this.shadow.instanceMatrix.needsUpdate = true;
-    this.shadow.visible = this.host.quality !== 'comfort';
+    this.shadow.visible = this.host.quality !== "comfort";
     this.held.begin();
     for (const item of heldItems) {
       const p = item.position,
-        unit = item.offer.kind === 'unit';
+        unit = item.offer.kind === "unit";
       objectModel(this.held, item.offer, item.age || 0, {
         x: p.x - (unit ? 0.018 : 0),
         y: p.y - (unit ? 0.226 : 0.06),
         z: p.z,
         held: true,
-        time: this.time
+        time: this.time,
       });
     }
     this.held.end();
-    this.mist.visible = this.host.quality === 'mist';
-    this.mist.material.uniforms.time.value = this.time;
+    this.mist.visible = this.host.quality === "mist";
+    this.mist.position.z = Math.sin(this.time * 0.18) * 0.012;
     if (!this.renderer.xr.isPresenting) this.controls.update();
   }
   render() {
@@ -489,7 +438,7 @@ export class TabletopScene {
       instances: Object.values(this.army.counts).reduce((a, b) => a + b, 0),
       overflow: this.army.overflow + this.held.overflow + this.shop.overflow,
       geometries: this.renderer.info.memory.geometries,
-      textures: this.renderer.info.memory.textures
+      textures: this.renderer.info.memory.textures,
     };
   }
 }

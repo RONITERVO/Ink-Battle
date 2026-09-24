@@ -9,7 +9,7 @@
 :root {
   font-family: 'Patrick Hand', cursive;
   color: #342d2b;
-  background: #ded7c8;
+  background: #f5f1e8;
   font-synthesis: none;
 }
 * {
@@ -29,7 +29,7 @@ button {
   color: inherit;
   border: 1px solid #887a63;
   border-radius: 3px 9px 4px 7px;
-  background: #f6ecd5;
+  background: #f9f6ef;
   padding: 0.45rem 0.7rem;
 }
 button:disabled {
@@ -72,9 +72,9 @@ a:focus-visible {
   width: min(310px, calc(100vw - 24px));
   max-height: calc(100dvh - 24px - env(safe-area-inset-bottom));
   overflow: auto;
-  background: #fff4dfed;
-  border: 1px solid #b9a78a;
-  box-shadow: 2px 5px 18px #423a2522;
+  background: #faf7efed;
+  border: 1px solid #8f8678;
+  box-shadow: 2px 3px 0 #71685e22;
   border-radius: 3px 8px 3px 11px;
   padding: 12px 15px;
   font-size: 15px;
@@ -118,7 +118,7 @@ a:focus-visible {
   flex-wrap: wrap;
 }
 .actions button:first-child {
-  background: #d9e5d6;
+  background: transparent;
   border-color: #648777;
 }
 #status {

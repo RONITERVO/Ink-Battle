@@ -386,7 +386,7 @@ async function init() {
   document.querySelector('#save-report').addEventListener('click', () => {
     const state = host.observe(),
       report = {
-        version: '2.2.0',
+        version: '2.2.1',
         date: new Date().toISOString(),
         browser: navigator.userAgent,
         quality: host.quality,

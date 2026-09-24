@@ -10,7 +10,7 @@ now run on a standalone, deterministic game engine.
 
 **Tabletop mixed reality:** [open the 3D sketchbook](https://ronitervo.github.io/Ink-Battle/mr.html)
 in Quest Browser, then choose **Enter mixed reality**. Grab physical troops,
-cannons and potions; carry the brass rings with one hand or resize with two.
+cannons and potions; carry the drawn rings with one hand or resize with two.
 Hands and controllers share the same rules. A desktop drag-and-drop preview is
 also available. [Controls, architecture and Quest acceptance](docs/TABLETOP.md).
 
