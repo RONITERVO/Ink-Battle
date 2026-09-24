@@ -1,4 +1,4 @@
-# Ink Battle 2.2.4 release
+# Ink Battle 2.2.5 release
 
 This release rebuilds the single-file demo around one standalone engine while
 retaining the notebook presentation, six ages, four difficulties, music, menus,
@@ -31,6 +31,15 @@ erasers highlight their valid destination; misplaced releases spend nothing.
 Sales and evolution preserve purchased docks. The shop uses the same foundation
 model as the battlefield. See [cannon docks](docs/CANNON_DOCKS.md). This changes
 MR presentation and placement, with engine rules, replays and 2D play unchanged.
+
+Version 2.2.5 lets the eraser sell any selected cannon, including a cheaper one
+installed earlier. The occupied dock under the eraser highlights before release;
+selling refunds half that cannon's price and keeps its foundation. The additive
+`sell.slot` command records the choice in replays, while old commands, saved games
+and the classic sell button retain their behavior. Empty docks, misses and repeated
+releases never sell another cannon. The player reported good Quest performance
+and approximately 13 ms average frame time on 2.2.4; selected selling needs a
+follow-up on the hosted build.
 
 ## Build and verify
 
@@ -66,7 +75,7 @@ npm run build
 
 `syncWebAssets` copies the shared bundle, CSS and assets into
 `app/build/generated/web-assets`. Never hand-edit generated Android assets.
-The next Android build is configured as `2.2.4` / code `216`; this web/MR change
+The next Android build is configured as `2.2.5` / code `217`; this web/MR change
 does not publish an AAB. Quest Browser uses the hosted page and needs no Android
 package. Code `211` was the preceding published Android version; code `210` was
 rejected by Google Play with automatic protection enabled. The minimum

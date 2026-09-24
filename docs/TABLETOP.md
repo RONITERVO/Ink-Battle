@@ -23,7 +23,8 @@ physical objects. A desktop browser can preview the same scene without a headset
    four maximum. One dock is included at the start. Lift a cannon to highlight
    its next empty built dock; place it on that platform. Lift a cannon dock to
    highlight the next dashed outline; build there before mounting another cannon.
-   The eraser highlights the last installed cannon and refunds 50%; its dock stays.
+   Move the eraser over any of your cannons to highlight its dock. Release there
+   to sell that cannon for 50% of its price; its dock stays for a replacement.
    Dropping inside the base, on a locked outline or on the wrong dock spends nothing.
    Evolution clears/refunds cannons and keeps all purchased docks. Potions are
    damage, health, income, evolution and specials. Toss them onto the page.
@@ -144,8 +145,10 @@ thermal performance. Their 2.2.1 Quest screenshot showed poor contrast over a bu
 room. The 2.2.2 watercolor revision addresses that observed problem; the player
 reported that it "looks really good" after merging. That feedback does not provide
 measured frame timings. For 2.2.3 the player reported "Quest performance good.
-Looks good." The 2.2.4 cannon-dock layout needs a hosted follow-up for placement
-with hands/controllers and readability at the player's preferred book size.
+Looks good." After testing 2.2.4, the player reported good Quest performance and
+approximately 13 ms average frame time. They also found that selling was limited
+to the last cannon. Version 2.2.5 enables selection with the eraser; that change
+needs a hosted check for selecting an older cannon with hands/controllers.
 The desktop emulator does not validate
 physical tracking, passthrough, room permission UX, comfort or thermal performance.
 After the PR is merged and Pages finishes publishing, check:

@@ -46,7 +46,7 @@ test('seeded adversarial command sequences preserve invariants and replay', () =
     const s = new Session({ seed }); let rng = seed;
     const rand = n => { rng = (Math.imul(rng, 1664525) + 1013904223) >>> 0; return rng % n; };
     for (let i = 0; i < 400 && s.running; i++) {
-      const commands = [{ type: 'unit', index: rand(5) - 1 }, { type: 'turret', index: rand(5) - 1 }, { type: 'upgrade', stat: ['hp', 'econ', 'dmg', 'invalid'][rand(4)] }, { type: 'sell' }, { type: 'slot' }, { type: 'evolve' }, { type: 'special' }];
+      const commands = [{ type: 'unit', index: rand(5) - 1 }, { type: 'turret', index: rand(5) - 1 }, { type: 'upgrade', stat: ['hp', 'econ', 'dmg', 'invalid'][rand(4)] }, { type: 'sell' }, { type: 'sell', slot: rand(6) - 1 }, { type: 'slot' }, { type: 'evolve' }, { type: 'special' }];
       s.command(rand(2) ? 1 : -1, commands[rand(commands.length)]);
       s.advance(rand(120), { events: false }); assertInvariants(s.observe());
     }

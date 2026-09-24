@@ -23,7 +23,12 @@ export function commandError(s, team, c) {
       if (pacts.noTurrets) return 'pact';
       if (!p.turrets.slice(0, p.unlockedSlots).includes(null)) return 'slots-full';
       return p.gold < age.turrets[c.index].cost ? 'gold' : null;
-    case 'sell': return p.turrets.some(t => t !== null) ? null : 'no-turret';
+    case 'sell':
+      // Omitted slot keeps the original command/replay semantics. An explicit
+      // slot must never fall back to another cannon when its target is invalid.
+      if (!Object.hasOwn(c, 'slot')) return p.turrets.some(t => t !== null) ? null : 'no-turret';
+      if (!Number.isInteger(c.slot) || c.slot < 0 || c.slot >= p.unlockedSlots) return 'invalid-slot';
+      return p.turrets[c.slot] === null ? 'no-turret' : null;
     case 'slot': return p.unlockedSlots >= 4 ? 'slots-full' : p.gold < p.unlockedSlots * 500 ? 'gold' : null;
     case 'upgrade':
       if (!['hp', 'dmg', 'econ'].includes(c.stat)) return 'invalid-upgrade';
@@ -60,7 +65,7 @@ export function applyCommand(s, team, c) {
       break;
     }
     case 'sell': {
-      const i = p.turrets.findLastIndex(t => t !== null);
+      const i = Object.hasOwn(c, 'slot') ? c.slot : p.turrets.findLastIndex(t => t !== null);
       p.gold += age.turrets[p.turrets[i]].cost * .5; p.turrets[i] = null; p.turretTimers[i] = 0;
       break;
     }

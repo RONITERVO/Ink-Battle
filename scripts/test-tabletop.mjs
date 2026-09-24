@@ -5,7 +5,7 @@ import { TabletopHost } from '../src/mr/host.js';
 import { Session } from '../src/sdk/session.js';
 import { AGES } from '../src/content/ages.js';
 import { DIFFICULTIES } from '../src/mr/catalog.js';
-import { defenseTarget } from '../src/mr/defense-layout.js';
+import { defenseTarget, dockPosition } from '../src/mr/defense-layout.js';
 
 // Same adapter as hands and controllers, with the wall clock removed. No model.
 const started = performance.now(),
@@ -24,14 +24,17 @@ for (let age = 0; age < AGES.length; age++)
             const offer = host
               .offers()
               .find(
-                (o) => JSON.stringify(o.command) === JSON.stringify(command)
+                (o) => (o.command?.type === 'sell' && command.type === 'sell') ||
+                  JSON.stringify(o.command) === JSON.stringify(command)
               );
             assert.ok(offer, 'Every legal action needs a physical offer');
             if (host.grab('simulated-hand', offer.id).ok) {
               const p =
                 offer.kind === 'unit'
                   ? { x: -0.65, y: 0, z: 0.4 }
-                  : ['turret', 'slot', 'eraser'].includes(offer.kind)
+                  : offer.kind === 'eraser'
+                    ? dockPosition(command.slot ?? host.observe().player.turrets.findLastIndex((t) => t !== null))
+                  : ['turret', 'slot'].includes(offer.kind)
                     ? defenseTarget(offer, host.observe())
                     : { x: 0, y: 0, z: 0 };
               if (drops % 17 === 0) {

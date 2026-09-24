@@ -14,11 +14,14 @@ async function drag(page, from, to) {
     b = await page.evaluate((p) => InkTabletop.project(p), to);
   await page.mouse.move(a.x, a.y);
   await page.mouse.down();
-  await page.mouse.move(b.x, b.y, { steps: 12 });
+  // Keep real intermediate pointer moves without making software-rendered CI
+  // spend most of its timeout processing redundant drag frames.
+  await page.mouse.move(b.x, b.y, { steps: 4 });
   await page.mouse.up();
 }
 const seal = { x: -0.72, y: 0.06, z: 0.89 },
   cannon = { x: 0.12, y: 0.07, z: 0.86 },
+  eraser = { x: 0.66, y: 0.07, z: 1.16 },
   center = { x: 0, y: 0, z: 0 },
   troop = { x: -1.02, y: 0.15, z: 0.86 },
   rally = { x: -0.65, y: 0, z: 0.4 },
@@ -71,16 +74,19 @@ test('tabletop desktop grabs, invalid drops, pause, speed and saves', async ({
   expect(errors).toEqual([]);
 });
 
-async function restoreDefenses(page, count) {
+function defenseCheckpoint(count, types = []) {
   const session = new Session({ opponent: false });
   session.advance(36000);
   session.advance(15000);
   for (let slot = 0; slot < count; slot++) {
     if (slot) expect(session.command(1, { type: 'slot' }).ok).toBe(true);
-    expect(session.command(1, { type: 'turret', index: 0 }).ok).toBe(true);
+    expect(session.command(1, { type: 'turret', index: types[slot] ?? 0 }).ok).toBe(true);
   }
   session.advance(120);
-  await page.evaluate((cp) => InkTabletop.restore(cp), session.checkpoint());
+  return session.checkpoint();
+}
+async function restoreDefenses(page, count, types) {
+  await page.evaluate((cp) => InkTabletop.restore(cp), defenseCheckpoint(count, types));
   await drag(page, hourglass, center);
   await expect.poll(() => page.evaluate(() => InkTabletop.observe().paused)).toBe(false);
 }
@@ -121,6 +127,38 @@ test('desktop cannon docks stop at four and persist after selling and reloading'
   expect(await page.evaluate(() => InkTabletop.observe().player.turrets)).toEqual([0, 0, 0, null]);
   expect(await page.evaluate(() => InkTabletop.observe().player.unlockedSlots)).toBe(4);
 });
+
+for (const slot of [0, 1, 2]) {
+  test(`eraser selects older cannon ${slot + 1}, highlights it and saves its replacement`, async ({ page, browserName }, info) => {
+    test.skip(browserName !== 'chromium', 'MR input uses the Chromium render target.');
+    await ready(page);
+    const types = [0, 2, 1, 0];
+    await restoreDefenses(page, 4, types);
+    const source = await page.evaluate((p) => InkTabletop.project(p), eraser);
+    await page.mouse.move(source.x, source.y);
+    await page.mouse.down();
+    await expect.poll(() => page.evaluate(() => InkTabletop.diagnostics().holds)).toBe(1);
+    for (const target of [(slot + 1) % 4, slot]) {
+      const pointer = await page.evaluate((p) => InkTabletop.project(p), dockPosition(target));
+      await page.mouse.move(pointer.x, pointer.y, { steps: 4 });
+      await expect.poll(() => page.evaluate(() => InkTabletop.diagnostics().highlightedDocks)).toEqual([target]);
+      expect(await page.evaluate(() => InkTabletop.observe().player.turrets)).toEqual(types);
+    }
+    await page.screenshot({ path: info.outputPath(`selected-cannon-${slot}.png`) });
+    await page.mouse.up();
+    types[slot] = null;
+    await expect.poll(() => page.evaluate(() => InkTabletop.observe().player.turrets)).toEqual(types);
+    expect(await page.evaluate(() => InkTabletop.replay().entries.at(-1).command)).toEqual({ type: 'sell', slot });
+    await drag(page, { x: 0.8, y: 0.07, z: 0.86 }, dockPosition(slot));
+    types[slot] = 2;
+    await expect.poll(() => page.evaluate(() => InkTabletop.observe().player.turrets)).toEqual(types);
+    expect(await page.evaluate(() => InkTabletop.observe().player.unlockedSlots)).toBe(4);
+    await drag(page, hourglass, center);
+    await page.reload();
+    await expect(page.locator('body')).toHaveAttribute('data-ready', 'true');
+    expect(await page.evaluate(() => InkTabletop.observe().player.turrets)).toEqual(types);
+  });
+}
 
 // Separate contexts give every catalog age its own failure and timeout budget;
 // six software-rendered screenshots must not compete inside one 45-second test.
@@ -341,6 +379,34 @@ async function hand(page, side, point, pinched) {
     { side, point, pinched }
   );
   await page.waitForTimeout(100);
+}
+
+for (const device of ['controller', 'hand']) {
+  test(`emulated ${device} erases the chosen older cannon instead of the last one`, async ({ page, browserName }) => {
+    test.skip(browserName !== 'chromium', 'IWER uses Chromium WebGL.');
+    await emulated(page);
+    if (device === 'hand') await page.evaluate(() => { xrDevice.primaryInputMode = 'hand'; });
+    const move = device === 'hand' ? hand : controller;
+    await move(page, 'right', center, false);
+    await move(page, 'right', center, true);
+    await move(page, 'right', center, false);
+    await expect.poll(() => page.evaluate(() => InkTabletop.diagnostics().placing)).toBe(false);
+    await page.evaluate((cp) => InkTabletop.restore(cp), defenseCheckpoint(4, [0, 2, 1, 0]));
+    await move(page, 'right', hourglass, false);
+    await move(page, 'right', hourglass, true);
+    await move(page, 'right', { ...center, y: 0.05 }, false);
+    await expect.poll(() => page.evaluate(() => InkTabletop.observe().paused)).toBe(false);
+    await move(page, 'right', eraser, false);
+    await move(page, 'right', eraser, true);
+    await expect.poll(() => page.evaluate(() => InkTabletop.diagnostics().holds)).toBe(1);
+    const pad = dockPosition(0), grip = { ...pad, y: pad.y + 0.06 };
+    await move(page, 'right', grip, true);
+    await expect.poll(() => page.evaluate(() => InkTabletop.diagnostics().highlightedDocks)).toEqual([0]);
+    await move(page, 'right', grip, false);
+    await expect.poll(() => page.evaluate(() => InkTabletop.observe().player.turrets)).toEqual([null, 2, 1, 0]);
+    expect(await page.evaluate(() => InkTabletop.replay().entries.at(-1).command)).toEqual({ type: 'sell', slot: 0 });
+    await page.evaluate(() => xrDevice.activeSession.end());
+  });
 }
 test('emulated hands pinch to buy, carry and scale; reconnecting a closed hand cannot buy', async ({
   page,

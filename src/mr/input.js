@@ -135,6 +135,11 @@ export class TabletopInput {
       new THREE.Vector3()
     );
   }
+  landingPoint(ray, offer) {
+    const height = offer ? landingHeight(offer) : 0;
+    return this.planePoint(ray,
+      this.view.table.position.y + height * this.view.table.scale);
+  }
   desktop(type, e) {
     if (
       this.view.renderer.xr.isPresenting ||
@@ -168,7 +173,13 @@ export class TabletopInput {
     } else if (type === 'pointermove') {
       if (active) {
         const p = this.planePoint(ray, active.height);
-        if (p) this.interaction.move(owner, xyz(p), e.timeStamp / 1000);
+        if (p) {
+          const offer = this.interaction.grabs.get(owner)?.token?.offer;
+          const target = this.landingPoint(ray, offer);
+          // The held preview floats above the page; highlight where the same
+          // pointer will actually land when released on the raised surface.
+          this.interaction.move(owner, xyz(p), e.timeStamp / 1000, xyz(target || p));
+        }
       } else {
         const picked = this.pick({ x: 1e5, y: 1e5, z: 1e5 }, ray);
         this.canvas.style.cursor = picked ? 'grab' : 'default';
@@ -177,9 +188,7 @@ export class TabletopInput {
     } else if (active) {
       if (type === 'pointerup') {
         const offer = this.interaction.grabs.get(owner)?.token?.offer;
-        const height = offer ? landingHeight(offer) : 0;
-        const p = this.planePoint(ray,
-          this.view.table.position.y + height * this.view.table.scale);
+        const p = this.landingPoint(ray, offer);
         if (p && !this.interaction.grabs.get(owner)?.handle)
           this.interaction.move(owner, xyz(p), e.timeStamp / 1000);
         this.interaction.release(owner, { desktop: true });
