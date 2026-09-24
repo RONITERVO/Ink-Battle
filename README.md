@@ -8,6 +8,10 @@ a phone's touchscreen, and Quest 3 hands or controllers.
 [Tabletop tactics](docs/TACTICAL_BATTLEFIELD.md) · [SDK](docs/SDK.md) ·
 [Hosting](docs/HOSTING.md)
 
+![Castle Age battle on the painted sketchbook, with troops, castles and the physical shop](docs/art/gameplay.png)
+
+*Castle Age gameplay in the desktop browser.*
+
 ## Play and develop
 
 ```sh
@@ -26,6 +30,9 @@ book and its pieces to rotate the view. With two fingers, pinch to zoom, drag to
 pan and twist to turn gently, all in the same gesture. On PC, scroll to zoom, middle-drag to pan and right-drag
 to orbit. No additional game buttons are needed. On Quest Browser, enter mixed
 reality; pinch or grip pieces, carry one drawn ring, or use two rings to scale/turn.
+The MR book starts about 52 × 44 cm, with a fallback table height of 75 cm.
+Detected surfaces set its actual placement height; the rings still let you move
+and resize it freely.
 
 The default game uses a deterministic opponent and works without a model or an
 account. The PWA caches the shell and fonts; music streams separately. Classic 2D

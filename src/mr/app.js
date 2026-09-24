@@ -10,6 +10,10 @@ const SAVE_KEY = 'ink-battle-tabletop-v1',
   status = document.querySelector('#status');
 const enter = document.querySelector('#enter-mr'),
   panel = document.querySelector('#welcome');
+// The drawn cover is about 2.6 × 2.21 local units: a 52 × 44 cm book here.
+// Surface height comes from WebXR's local floor, not the player's eye height.
+const MR_START = Object.freeze({ scale: 0.2, surfaceHeight: 0.75, distance: 0.6 });
+const bookSurfaceClearance = () => 0.13 * view.table.scale;
 let view,
   input,
   xrSession,
@@ -250,11 +254,11 @@ function placeFrame(frame, reference) {
       );
     forward.y = 0;
     forward.normalize();
-    view.table.scale = 0.55;
+    view.table.scale = MR_START.scale;
     view.table.position = {
-      x: position.x + forward.x * 0.9,
-      y: Math.max(0.35, position.y - 0.7),
-      z: position.z + forward.z * 0.9
+      x: position.x + forward.x * MR_START.distance,
+      y: MR_START.surfaceHeight + bookSurfaceClearance(),
+      z: position.z + forward.z * MR_START.distance
     };
     view.table.yaw = Math.atan2(-forward.x, -forward.z);
     initialized = true;
@@ -277,7 +281,7 @@ function placeFrame(frame, reference) {
     if (hit) {
       const pose = hit.getPose(reference);
       view.table.position = xyz(pose.transform.position);
-      view.table.position.y += 0.028;
+      view.table.position.y += bookSurfaceClearance();
       view.syncTable();
       if (hit.createAnchor) {
         const currentSession = xrSession,

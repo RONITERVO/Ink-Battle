@@ -256,9 +256,11 @@ test.beforeAll(async () => {
   });
   emulator = result.outputFiles[0].text;
 });
-async function emulated(page) {
+async function emulated(page, viewerHeight) {
   await page.addInitScript({ content: emulator });
   await ready(page);
+  if (viewerHeight !== undefined)
+    await page.evaluate((height) => { xrDevice.position.y = height; }, viewerHeight);
   await page.locator('#enter-mr').click();
   await expect
     .poll(() => page.evaluate(() => InkTabletop.diagnostics().xr))
@@ -289,6 +291,27 @@ async function controller(page, side, point, pressed) {
   );
   await page.waitForTimeout(90);
 }
+for (const height of [1.2, 1.75]) {
+  test(`MR starts with a reachable tabletop-sized book at viewer height ${height} m`, async ({ page, browserName }) => {
+    test.skip(browserName !== 'chromium', 'IWER uses Chromium WebGL.');
+    await emulated(page, height);
+    await expect.poll(() => page.evaluate(() => InkTabletop.diagnostics().table.position.y)).toBeGreaterThan(0.7);
+    const table = await page.evaluate(() => InkTabletop.diagnostics().table);
+    // Include the cover below the gameplay plane and the nearest shop edge.
+    expect(2.6 * table.scale).toBeGreaterThanOrEqual(0.48);
+    expect(2.6 * table.scale).toBeLessThanOrEqual(0.55);
+    expect(table.position.y - 0.13 * table.scale).toBeCloseTo(0.75, 3);
+    expect(-table.position.z - 0.345 * table.scale).toBeLessThan(0.75);
+    expect(-table.position.z - 1.45 * table.scale).toBeGreaterThan(0.2);
+    await controller(page, 'right', center, true);
+    await controller(page, 'right', center, false);
+    await expect.poll(() => page.evaluate(() => InkTabletop.diagnostics().placing)).toBe(false);
+    expect(await page.evaluate(() => InkTabletop.diagnostics().table)).toEqual(table);
+    await page.evaluate(() => xrDevice.activeSession.end());
+    await expect.poll(() => page.evaluate(() => InkTabletop.diagnostics().table.scale)).toBe(1);
+  });
+}
+
 test('emulated Quest controller grabs, visibility loss, reconnection and session re-entry', async ({
   page,
   browserName
