@@ -3,6 +3,7 @@ import { PENCIL, TEAM_COLORS } from "./pencil-palette.js";
 import { chapterPalette } from "./watercolor.js";
 import { unitModel } from "./troop-models.js";
 import { cannonModel } from "./defense-models.js";
+import { dockModel } from './dock-model.js';
 export { unitModel, cannonModel, TEAM_COLORS };
 const INK = PENCIL.ink,
   GRAPHITE = PENCIL.graphite;
@@ -278,8 +279,7 @@ export function objectModel(b, offer, age, options = {}) {
         GRAPHITE,
       );
   } else if (offer.kind === "slot") {
-    b.box([0, 0.018, 0], [0.115, 0.035, 0.075], GRAPHITE);
-    b.part("ring", [0, 0.038, 0], [0.03, 0.03, 0.03], INK, [Math.PI / 2, 0, 0]);
+    dockModel(b);
   } else if (offer.kind === "eraser") {
     b.paint(PENCIL.damage);
     b.box([0, 0.022, 0], [0.085, 0.039, 0.048], GRAPHITE);

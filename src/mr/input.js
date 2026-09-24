@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { HANDLES } from './scene.js';
 import { Interaction } from './interaction.js';
 import { toLocal, toWorld } from './spatial.js';
+import { landingHeight } from './defense-layout.js';
 
 const xyz = (p) => ({ x: p.x, y: p.y, z: p.z });
 const HAND_BONES = [
@@ -175,7 +176,10 @@ export class TabletopInput {
       }
     } else if (active) {
       if (type === 'pointerup') {
-        const p = this.planePoint(ray, this.view.table.position.y);
+        const offer = this.interaction.grabs.get(owner)?.token?.offer;
+        const height = offer ? landingHeight(offer) : 0;
+        const p = this.planePoint(ray,
+          this.view.table.position.y + height * this.view.table.scale);
         if (p && !this.interaction.grabs.get(owner)?.handle)
           this.interaction.move(owner, xyz(p), e.timeStamp / 1000);
         this.interaction.release(owner, { desktop: true });

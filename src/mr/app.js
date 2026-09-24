@@ -58,7 +58,7 @@ const host = new TabletopHost({
       music.start();
       panel.classList.add('compact');
       message(
-        'Lift troops into the green rally area. Cannons belong at your base on the left.'
+        'Troops go in the green rally area. Cannons sit on docks beside your base. One dock is ready; build up to four.'
       );
     }
     if (event.type === 'drop' && event.result.ok) {
@@ -386,7 +386,7 @@ async function init() {
   document.querySelector('#save-report').addEventListener('click', () => {
     const state = host.observe(),
       report = {
-        version: '2.2.3',
+        version: '2.2.4',
         date: new Date().toISOString(),
         browser: navigator.userAgent,
         quality: host.quality,

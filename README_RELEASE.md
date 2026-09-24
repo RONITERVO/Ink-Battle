@@ -1,4 +1,4 @@
-# Ink Battle 2.2.3 release
+# Ink Battle 2.2.4 release
 
 This release rebuilds the single-file demo around one standalone engine while
 retaining the notebook presentation, six ages, four difficulties, music, menus,
@@ -21,8 +21,16 @@ move together through reusable local joints. Defenses prepare only while an enem
 is in range; finished matches return pieces to rest and clear transient combat
 effects. The deterministic engine, replay format and classic 2D behavior are
 unchanged. See [combat animation](docs/COMBAT_ANIMATION.md) for the motion study,
-authoring contract and tests. The new actions still need a hosted Quest visual
-and sustained-performance check after merge.
+authoring contract and tests. The player reported that Quest performance and
+appearance were good after this release; no measured frame timings were supplied.
+
+Version 2.2.4 gives each base four visible cannon locations, two on each flank.
+One painted dock starts built; the remaining locations are dashed outlines.
+Cannons mount on raised foundations, clear of every base. Held cannons, docks and
+erasers highlight their valid destination; misplaced releases spend nothing.
+Sales and evolution preserve purchased docks. The shop uses the same foundation
+model as the battlefield. See [cannon docks](docs/CANNON_DOCKS.md). This changes
+MR presentation and placement, with engine rules, replays and 2D play unchanged.
 
 ## Build and verify
 
@@ -58,7 +66,7 @@ npm run build
 
 `syncWebAssets` copies the shared bundle, CSS and assets into
 `app/build/generated/web-assets`. Never hand-edit generated Android assets.
-The next Android build is configured as `2.2.3` / code `215`; this web/MR change
+The next Android build is configured as `2.2.4` / code `216`; this web/MR change
 does not publish an AAB. Quest Browser uses the hosted page and needs no Android
 package. Code `211` was the preceding published Android version; code `210` was
 rejected by Google Play with automatic protection enabled. The minimum

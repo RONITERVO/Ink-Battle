@@ -91,18 +91,18 @@ export class TableGesture {
 }
 
 /** Presentation-only throw integration. Segment-plane hits cannot tunnel past a drop. */
-export function fly(item, dt, gravity = 9.81) {
+export function fly(item, dt, gravity = 9.81, planeY = 0) {
   const before = { ...item.position };
   item.position.x += item.velocity.x * dt;
   item.position.z += item.velocity.z * dt;
   item.position.y += item.velocity.y * dt - (gravity * dt * dt) / 2;
   item.velocity.y -= gravity * dt;
   item.age += dt;
-  if (before.y >= 0 && item.position.y <= 0) {
-    const t = before.y / (before.y - item.position.y || 1);
+  if (before.y >= planeY && item.position.y <= planeY) {
+    const t = (before.y - planeY) / (before.y - item.position.y || 1);
     return {
       x: before.x + (item.position.x - before.x) * t,
-      y: 0,
+      y: planeY,
       z: before.z + (item.position.z - before.z) * t
     };
   }

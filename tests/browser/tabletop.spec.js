@@ -2,7 +2,8 @@ import { test, expect } from '@playwright/test';
 import { build } from 'esbuild';
 import { Session } from '../../src/sdk/session.js';
 import { AGES } from '../../src/content/ages.js';
-/* global InkTabletop, xrDevice, handConfig, measureMRStress */
+import { dockPosition } from '../../src/mr/defense-layout.js';
+/* global InkTabletop, xrDevice, handConfig, controllerConfig, measureMRStress */
 
 async function ready(page) {
   await page.goto('/mr.html');
@@ -17,6 +18,7 @@ async function drag(page, from, to) {
   await page.mouse.up();
 }
 const seal = { x: -0.72, y: 0.06, z: 0.89 },
+  cannon = { x: 0.12, y: 0.07, z: 0.86 },
   center = { x: 0, y: 0, z: 0 },
   troop = { x: -1.02, y: 0.15, z: 0.86 },
   rally = { x: -0.65, y: 0, z: 0.4 },
@@ -69,6 +71,39 @@ test('tabletop desktop grabs, invalid drops, pause, speed and saves', async ({
   expect(errors).toEqual([]);
 });
 
+test('desktop cannon drops require a foundation and fill four visible docks', async ({ page, browserName }, info) => {
+  test.skip(browserName !== 'chromium', 'MR input uses the Chromium render target.');
+  await ready(page);
+  const session = new Session({ opponent: false });
+  session.advance(36000);
+  session.advance(15000);
+  await page.evaluate((cp) => InkTabletop.restore(cp), session.checkpoint());
+  await drag(page, hourglass, center);
+  await expect.poll(() => page.evaluate(() => InkTabletop.observe().paused)).toBe(false);
+  for (let slot = 0; slot < 4; slot++) {
+    if (slot) {
+      const p = dockPosition(slot);
+      await drag(page, { x: 0.37, y: 0.07, z: 1.16 }, { ...p, y: 0 });
+      await expect.poll(() => page.evaluate(() => InkTabletop.observe().player.unlockedSlots)).toBe(slot + 1);
+    }
+    await drag(page, cannon, { x: -1.06, y: 0, z: 0.14 });
+    expect(await page.evaluate(() => InkTabletop.observe().player.turrets.filter((t) => t !== null).length)).toBe(slot);
+    await drag(page, cannon, dockPosition(slot));
+    await expect.poll(() => page.evaluate(() => InkTabletop.observe().player.turrets.filter((t) => t !== null).length)).toBe(slot + 1);
+  }
+  await drag(page, { x: 0.37, y: 0.07, z: 1.16 }, center);
+  expect(await page.evaluate(() => InkTabletop.observe().player.unlockedSlots)).toBe(4);
+  await page.screenshot({ path: info.outputPath('four-cannon-docks.png') });
+  await drag(page, { x: 0.66, y: 0.07, z: 1.16 }, dockPosition(3));
+  await expect.poll(() => page.evaluate(() => InkTabletop.observe().player.turrets[3])).toBe(null);
+  expect(await page.evaluate(() => InkTabletop.observe().player.unlockedSlots)).toBe(4);
+  await drag(page, hourglass, center);
+  await page.reload();
+  await expect(page.locator('body')).toHaveAttribute('data-ready', 'true');
+  expect(await page.evaluate(() => InkTabletop.observe().player.turrets)).toEqual([0, 0, 0, null]);
+  expect(await page.evaluate(() => InkTabletop.observe().player.unlockedSlots)).toBe(4);
+});
+
 // Separate contexts give every catalog age its own failure and timeout budget;
 // six software-rendered screenshots must not compete inside one 45-second test.
 for (let age = 0; age < AGES.length; age++) {
@@ -84,9 +119,14 @@ for (let age = 0; age < AGES.length; age++) {
     page.on('pageerror', (e) => errors.push(e.message));
     await ready(page);
     const session = new Session({ startAge: age, opponent: false });
+    session.advance(36000);
+    session.advance(15000);
+    for (const team of [1, -1]) for (let slot = 0; slot < 4; slot++) {
+      if (slot) expect(session.command(team, { type: 'slot' }).ok).toBe(true);
+      expect(session.command(team, { type: 'turret', index: slot % 3 }).ok).toBe(true);
+    }
     session.command(1, { type: 'unit', index: age % 3 });
     session.command(-1, { type: 'unit', index: 2 });
-    session.command(1, { type: 'turret', index: 0 });
     session.advance(240);
     await page.evaluate((cp) => InkTabletop.restore(cp), session.checkpoint());
     await expect
@@ -107,7 +147,7 @@ test.beforeAll(async () => {
   const result = await build({
     stdin: {
       contents:
-        "import {XRDevice,metaQuest3} from 'iwer'; import {oculusHandConfig} from 'iwer/lib/device/XRHandInput.js'; window.handConfig=oculusHandConfig; window.xrDevice=new XRDevice(metaQuest3,{stereoEnabled:false}); xrDevice.installRuntime({forceInstall:true});",
+        "import {XRDevice,metaQuest3} from 'iwer'; import {oculusHandConfig} from 'iwer/lib/device/XRHandInput.js'; window.handConfig=oculusHandConfig; window.controllerConfig=metaQuest3.controllerConfig; window.xrDevice=new XRDevice(metaQuest3,{stereoEnabled:false}); xrDevice.installRuntime({forceInstall:true});",
       resolveDir: process.cwd()
     },
     bundle: true,
@@ -130,12 +170,15 @@ async function controller(page, side, point, pressed) {
       const c = xrDevice.controllers[side],
         t = InkTabletop.diagnostics().table;
       if (point) {
+        // IWER positions the aim ray, while the game holds pieces at the grip.
+        // Align the physical grip to the requested point, including its offset.
+        const offset = controllerConfig.layout[side].gripOffsetMatrix;
         const cos = Math.cos(t.yaw),
           sin = Math.sin(t.yaw);
         c.position.set(
-          t.position.x + (cos * point.x + sin * point.z) * t.scale,
-          t.position.y + point.y * t.scale,
-          t.position.z + (-sin * point.x + cos * point.z) * t.scale
+          t.position.x + (cos * point.x + sin * point.z) * t.scale - (offset?.[12] || 0),
+          t.position.y + point.y * t.scale - (offset?.[13] || 0),
+          t.position.z + (-sin * point.x + cos * point.z) * t.scale - (offset?.[14] || 0)
         );
         c.quaternion.set(0, 0, 0, 1);
       }
@@ -203,6 +246,13 @@ test('emulated Quest controller grabs, visibility loss, reconnection and session
       )
     )
     .toBe(1);
+  await controller(page, 'right', cannon, false);
+  await controller(page, 'right', cannon, true);
+  await expect.poll(() => page.evaluate(() => InkTabletop.diagnostics().holds)).toBe(1);
+  const dock = dockPosition(0);
+  await controller(page, 'right', { ...dock, y: dock.y + 0.06 }, true);
+  await controller(page, 'right', { ...dock, y: dock.y + 0.06 }, false);
+  await expect.poll(() => page.evaluate(() => InkTabletop.observe().player.turrets[0])).toBe(0);
   await page.evaluate(() => xrDevice.activeSession.end());
   await expect
     .poll(() => page.evaluate(() => InkTabletop.diagnostics().xr))
@@ -332,6 +382,13 @@ test('emulated hands pinch to buy, carry and scale; reconnecting a closed hand c
       )
     )
     .toBe(1);
+  await hand(page, 'right', cannon, false);
+  await hand(page, 'right', cannon, true);
+  const dock = dockPosition(0);
+  await hand(page, 'right', { ...dock, y: dock.y + 0.06 }, true);
+  await hand(page, 'right', { ...dock, y: dock.y + 0.06 }, false);
+  await expect.poll(() => page.evaluate(() => InkTabletop.observe().player.turrets[0])).toBe(0);
+
   // Two real XR input sources manipulate the same presentation transform.
   const left = { x: -1.28, y: 0.035, z: 1.34 },
     right = { x: 1.28, y: 0.035, z: 1.34 };
