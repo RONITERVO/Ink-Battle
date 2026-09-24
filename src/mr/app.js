@@ -219,6 +219,7 @@ async function enterMR() {
     } catch {
       /* Free placement works without scene permissions or hit tests. */
     }
+    if (xrSession !== session) return;
     if (session.supportedFrameRates?.includes(72))
       session.updateTargetFrameRate(72).catch(() => {});
     message(
@@ -416,6 +417,9 @@ async function init() {
     pause();
     message('Graphics were interrupted. Reload to restore the paused battle.');
   });
+  const detectionTimer = setTimeout(() => {
+    enter.textContent = 'Preview ready · MR not detected yet';
+  }, 3000);
   (async () => {
     try {
       if (await navigator.xr?.isSessionSupported('immersive-ar')) {
@@ -428,6 +432,8 @@ async function init() {
     } catch {
       enter.textContent = 'MR unavailable · preview ready';
       enter.disabled = true;
+    } finally {
+      clearTimeout(detectionTimer);
     }
   })();
   view.renderer.setAnimationLoop((time, frame) => {

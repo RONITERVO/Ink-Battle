@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { build } from 'esbuild';
 import { Session } from '../../src/sdk/session.js';
+import { AGES } from '../../src/content/ages.js';
 /* global InkTabletop, xrDevice, handConfig, measureMRStress */
 
 async function ready(page) {
@@ -21,10 +22,10 @@ const seal = { x: -0.72, y: 0.06, z: 0.89 },
   rally = { x: -0.65, y: 0, z: 0.4 },
   hourglass = { x: 1.05, y: 0.06, z: 0.83 };
 
-test('tabletop desktop grabs, invalid drops, pause, speed, saves and all ages', async ({
+test('tabletop desktop grabs, invalid drops, pause, speed and saves', async ({
   page,
   browserName
-}, info) => {
+}) => {
   test.skip(
     browserName !== 'chromium',
     'The WebGL/XR render suite uses Chromium; classic UI covers the other engines.'
@@ -65,7 +66,23 @@ test('tabletop desktop grabs, invalid drops, pause, speed, saves and all ages', 
   await expect(page.locator('body')).toHaveAttribute('data-ready', 'true');
   expect(await page.evaluate(() => InkTabletop.observe().paused)).toBe(true);
   expect(await page.evaluate(() => InkTabletop.observe().tick)).toBe(tick);
-  for (let age = 0; age < 6; age++) {
+  expect(errors).toEqual([]);
+});
+
+// Separate contexts give every catalog age its own failure and timeout budget;
+// six software-rendered screenshots must not compete inside one 45-second test.
+for (let age = 0; age < AGES.length; age++) {
+  test(`tabletop models and prices render in ${AGES[age].name}`, async ({
+    page,
+    browserName
+  }, info) => {
+    test.skip(
+      browserName !== 'chromium',
+      'The WebGL render suite targets Chromium.'
+    );
+    const errors = [];
+    page.on('pageerror', (e) => errors.push(e.message));
+    await ready(page);
     const session = new Session({ startAge: age, opponent: false });
     session.command(1, { type: 'unit', index: age % 3 });
     session.command(-1, { type: 'unit', index: 2 });
@@ -81,9 +98,9 @@ test('tabletop desktop grabs, invalid drops, pause, speed, saves and all ages', 
     expect(stats.calls).toBeLessThan(85);
     expect(stats.triangles).toBeGreaterThan(1000);
     await page.screenshot({ path: info.outputPath(`tabletop-age-${age}.png`) });
-  }
-  expect(errors).toEqual([]);
-});
+    expect(errors).toEqual([]);
+  });
+}
 
 let emulator;
 test.beforeAll(async () => {
