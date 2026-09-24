@@ -184,11 +184,15 @@ export class TabletopInput {
         )
       ) {
         this.pointers.set(owner, {
+          touch: e.pointerType === 'touch',
           height: picked.target.startsWith('handle-')
             ? picked.world.y
             : toWorld({ x: 0, y: 0.28, z: 0 }, this.view.table).y
         });
-        this.view.controls.enabled = false;
+        // Single-touch camera actions are disabled in controls.touches. Leave
+        // tracking enabled so a later second finger starts at the current
+        // first-finger position, not the original piece-grab position.
+        this.view.controls.enabled = [...this.pointers.values()].every(p => p.touch);
         this.canvas.setPointerCapture(e.pointerId);
         this.canvas.focus();
         e.preventDefault();
@@ -217,7 +221,7 @@ export class TabletopInput {
         this.interaction.release(owner, { desktop: true });
       } else this.interaction.cancel(owner);
       this.pointers.delete(owner);
-      this.view.controls.enabled = !this.pointers.size;
+      this.view.controls.enabled = [...this.pointers.values()].every(p => p.touch);
       if (this.canvas.hasPointerCapture(e.pointerId))
         this.canvas.releasePointerCapture(e.pointerId);
     }

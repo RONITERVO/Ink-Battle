@@ -152,7 +152,8 @@ a:focus-visible {
     max-width: calc(100vw - 16px - env(safe-area-inset-left) - env(safe-area-inset-right));
   }
   #welcome.compact .heading span,
-  #welcome.compact .actions,
+  #welcome.compact #enter-mr:disabled,
+  #welcome.compact #reset-view,
   #welcome.compact .classic,
   #welcome.compact .diagnostics,
   #welcome.compact #status {

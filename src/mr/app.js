@@ -335,6 +335,7 @@ async function init() {
     view = new TabletopScene(canvas, host);
   } catch (error) {
     console.error('Tabletop initialization failed:', error);
+    panel.classList.remove('compact');
     message(
       '3D graphics are unavailable in this browser. You can still play the classic game.'
     );
@@ -539,6 +540,7 @@ async function init() {
 }
 init().catch((error) => {
   pause();
+  panel.classList.remove('compact');
   message(
     `The tabletop could not load (${error.name}). Reload or open the classic game.`
   );

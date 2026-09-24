@@ -86,8 +86,13 @@ test.describe('phone gestures',()=>{
       const p=await screen(page,troop),before=await page.evaluate(()=>({camera:InkTabletop.diagnostics().camera,spent:InkTabletop.observe().metrics.spent[1]}));
       await touch('touchStart',[[1,p.x,p.y]]);
       await expect.poll(()=>page.evaluate(()=>InkTabletop.diagnostics().holds)).toBe(1);
+      p.x+=40;p.y-=40;
+      await touch('touchMove',[[1,p.x,p.y]]);
+      expect((await page.evaluate(()=>InkTabletop.diagnostics().camera)).distance).toBeCloseTo(before.camera.distance,4);
       await touch('touchStart',[[1,p.x,p.y],[2,p.x+50,p.y]]);
       await expect.poll(()=>page.evaluate(()=>InkTabletop.diagnostics().holds)).toBe(0);
+      await touch('touchMove',[[1,p.x+1,p.y],[2,p.x+51,p.y]]);
+      expect((await page.evaluate(()=>InkTabletop.diagnostics().camera)).distance).toBeCloseTo(before.camera.distance,2);
       await touch('touchMove',[[1,p.x-15,p.y],[2,p.x+85,p.y]]);
       await expect.poll(()=>page.evaluate(()=>InkTabletop.diagnostics().camera.distance)).toBeLessThan(before.camera.distance*.9);
       await touch('touchEnd',[]);
@@ -118,4 +123,27 @@ test('Android file entry opens the book and exposes pause for native lifecycle',
   await page.evaluate(()=>InkTabletop.pause());
   expect(await page.evaluate(()=>InkTabletop.observe().paused)).toBe(true);
   expect(errors).toEqual([]);
+});
+
+test('small screens can reach the classic fallback when WebGL cannot initialize',async({page})=>{
+  await page.setViewportSize({width:390,height:640});
+  await page.addInitScript(()=>{
+    const get=HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext=function(type,...args) {
+      return type==='webgl2' || type==='webgl' ? null : get.call(this,type,...args);
+    };
+  });
+  await page.goto('/');
+  await expect(page.getByRole('status')).toContainText('3D graphics are unavailable');
+  await page.getByRole('link',{name:'Archive: Classic 2D & Gemma'}).click();
+  await expect(page.locator('#preloader')).toBeHidden();
+  await page.locator('#diff-btn-normal').click();await page.locator('#btn-u1').click();
+});
+
+test('MR entry remains visible on a small screen when its browser supports XR',async({page})=>{
+  await page.setViewportSize({width:390,height:640});
+  await page.addInitScript(()=>Object.defineProperty(navigator,'xr',{configurable:true,
+    value:Object.assign(new EventTarget(),{isSessionSupported:async()=>true})}));
+  await ready(page);
+  await expect(page.getByRole('button',{name:'Enter mixed reality',exact:true})).toBeVisible();
 });

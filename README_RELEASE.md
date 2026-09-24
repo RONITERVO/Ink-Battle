@@ -95,7 +95,7 @@ npm run build
 
 `syncWebAssets` copies the shared bundle, CSS and assets into
 `app/build/generated/web-assets`. Never hand-edit generated Android assets.
-The next Android build is configured as `2.3.0` / code `218`; this web/MR change
+The next Android build is configured as `2.4.0` / code `219`; this web/MR change
 does not publish an AAB. Quest Browser uses the hosted page and needs no Android
 package. Code `211` was the preceding published Android version; code `210` was
 rejected by Google Play with automatic protection enabled. The minimum
