@@ -25,7 +25,7 @@ physical objects. A desktop browser can preview the same scene without a headset
 5. Lift the hourglass and drop it onto the page to pause/resume. The clock cycles
    1×/2×/3×. The feather cycles mist, clear and comfort. The music box toggles the
    original soundtrack. Pause before dropping the new-page block. The compass exits MR.
-6. Hold one brass ring to carry the whole book. Hold two to turn and resize it.
+6. Hold one drawn ring to carry the whole book. Hold two to turn and resize it.
    The book stays horizontal; the soldiers stay upright. Width is bounded to
    0.48–3.84 meters; initial Quest width is 1.32 meters. Both left and right hands work.
 
@@ -50,8 +50,10 @@ and the music preference. No account or external service is required.
 | `interaction.js` | Input-independent grab lifetime, presentation throws and table gestures |
 | `spatial.js` | World/table transforms, one/two-hand carry, segment-plane landing |
 | `input.js` | Pointer, controller and 25-joint hand input; fresh event poses, cancellations |
-| `models.js` / `ink-batch.js` | Volumetric procedural ink models and bounded instance buffers |
-| `scene.js` | Three.js scene, original watercolor page, labels, mist and contact shadows |
+| `models.js` / `ink-batch.js` | Distinct spatial drawings and bounded pencil instance buffers |
+| `pencil-geometry.js` / `pencil-palette.js` / `glyphs.js` | Pressure-tapered strokes, colored-pencil swatches, item symbols |
+| `sketchbook.js` | Open book, six chapter landscapes and pencil mist |
+| `scene.js` | Three.js scene, spatial sketchbook, labels, pencil mist and hatched contact shadows |
 | `app.js` | WebXR session/placement, optional anchors, saved sessions, original music adapter |
 
 `Session` alone owns spending, deployment, combat, cooldowns, economy and victory.
@@ -62,10 +64,14 @@ execution, preventing duplicate releases. Simultaneous hands cannot bypass the
 engine's deployment cooldown. Misses, lost input, rejected drops and stale offers
 never debit gold. No separate MR balance rules exist.
 
-All eighteen troop types have depth and distinct equipment. The background is
-rendered by the original watercolor/sketch code into the horizontal page. Contact
-shadows and bounded, low-opacity ground mist make the pieces readable; this is
-rasterized rendering, not ray tracing or real-room lighting reconstruction.
+All eighteen troop types have depth and distinct equipment. Version 2.2.1 replaces
+the MR watercolor plane and filled models with actual spatial pencil strokes.
+An open book has page stacks, a sewn spine, a cover and a ribbon; each age has its
+own drawn landscape. Surfaces have open contours and short hatching, including
+bottles, shadows and mist. There is no opaque page or object skin; unmarked areas
+show passthrough in MR. See [the pencil art guide](PENCIL_ART.md) for the reusable
+art system and the complete visual catalog. Classic 2D retains its watercolor art.
+This is rasterized stroke geometry, not ray tracing or room-light reconstruction.
 The passthrough outside the book is transparent. There is no room mesh occlusion,
 persistent room map, cloud anchor, real-table collision, or multi-user multiplayer.
 An available hit-test/anchor improves placement; optional permission failure leaves
@@ -112,12 +118,16 @@ full-match results are in `artifacts/tabletop/matches.json`.
 
 ## Quest 3 release-owner acceptance — pending
 
-The user will test the hosted build. The desktop emulator does not validate
+The player reported �Play is good� for the hosted 2.2.0 build on 2026-09-24.
+That confirms their play experience, not every individual item below or measured
+thermal performance. The 2.2.1 pencil-art revision needs a fresh visual check for
+stroke readability, particularly at small scale and in dark rooms.
+The desktop emulator does not validate
 physical tracking, passthrough, room permission UX, comfort or thermal performance.
 After the PR is merged and Pages finishes publishing, check:
 
 - Enter from Quest Browser, accept/decline optional room access, place on a real
-  table, and carry to a second position. Confirm the watercolor page lies flat.
+  table, and carry to a second position. Confirm the book lies flat and the strokes remain readable over passthrough.
 - Buy all troop categories with hands and controllers; lift by the arm, throw a
   potion, deliberately miss, buy a cannon/dock and erase it. Confirm costs and hints.
 - Resize small and large with both hands; release either hand first; ensure no jump,
