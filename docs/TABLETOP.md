@@ -19,7 +19,13 @@ physical objects. A desktop browser can preview the same scene without a headset
 3. Pinch a troop's arm/head area, or hold a controller grip near the piece. Point
    and hold the trigger for distant pieces. Drop troops in the green rally area.
    They deploy from the normal base; placement cannot bypass combat or spacing.
-4. Cannons, cannon docks and the eraser go in the left base area. Potions are
+4. Cannons sit on raised foundations beside your left base: two on each flank,
+   four maximum. One dock is included at the start. Lift a cannon to highlight
+   its next empty built dock; place it on that platform. Lift a cannon dock to
+   highlight the next dashed outline; build there before mounting another cannon.
+   The eraser highlights the last installed cannon and refunds 50%; its dock stays.
+   Dropping inside the base, on a locked outline or on the wrong dock spends nothing.
+   Evolution clears/refunds cannons and keeps all purchased docks. Potions are
    damage, health, income, evolution and specials. Toss them onto the page.
    Specials retain their normal automatic targeting. A missed throw spends nothing.
 5. Lift the hourglass and drop it onto the page to pause/resume. The clock cycles
@@ -46,6 +52,7 @@ and the music preference. No account or external service is required.
 | Module | Responsibility |
 | --- | --- |
 | `catalog.js` | Offers derived from the age catalog, physical positions, permitted drop zones |
+| `defense-layout.js` / `dock-model.js` | Shared four-slot layout, raised landings, target selection and painted foundations |
 | `host.js` | Consumed grab tokens, release-time legality, Session commands, fixed ticks |
 | `interaction.js` | Input-independent grab lifetime, presentation throws and table gestures |
 | `spatial.js` | World/table transforms, one/two-hand carry, segment-plane landing |
@@ -59,7 +66,7 @@ and the music preference. No account or external service is required.
 
 `Session` alone owns spending, deployment, combat, cooldowns, economy and victory.
 Table scale, facing, placement, finger positions and render quality never reach the
-engine. Throws are cosmetic until their segment intersects the table; then the
+engine. Throws are cosmetic until their segment intersects the page or raised dock; then the
 host validates the current age, balance and rules. Tokens are consumed before
 execution, preventing duplicate releases. Simultaneous hands cannot bypass the
 engine's deployment cooldown. Misses, lost input, rejected drops and stale offers
@@ -136,8 +143,9 @@ That confirms their play experience, not every individual item below or measured
 thermal performance. Their 2.2.1 Quest screenshot showed poor contrast over a busy
 room. The 2.2.2 watercolor revision addresses that observed problem; the player
 reported that it "looks really good" after merging. That feedback does not provide
-measured frame timings. The 2.2.3 combat-motion update still needs its own Quest
-follow-up for action readability, comfort and sustained performance.
+measured frame timings. For 2.2.3 the player reported "Quest performance good.
+Looks good." The 2.2.4 cannon-dock layout needs a hosted follow-up for placement
+with hands/controllers and readability at the player's preferred book size.
 The desktop emulator does not validate
 physical tracking, passthrough, room permission UX, comfort or thermal performance.
 After the PR is merged and Pages finishes publishing, check:

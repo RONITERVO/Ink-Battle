@@ -10,6 +10,7 @@ import { unitModel, baseModel } from '../src/mr/models.js';
 import { Session } from '../src/sdk/session.js';
 import { AGES } from '../src/content/ages.js';
 import { attackMotion } from '../src/mr/combat-motion.js';
+import { defenseTarget } from '../src/mr/defense-layout.js';
 
 const rally = { x: -0.65, y: 0, z: 0.4 },
   page = { x: 0, y: 0, z: 0 };
@@ -94,8 +95,8 @@ test('every content age has a physical catalog using authoritative prices and zo
       }
       if (offer.kind === 'turret') {
         assert.equal(offer.price, AGES[age].turrets[offer.command.index].cost);
-        assert.equal(dropZone(offer, rally), 'your-base');
-        assert.equal(dropZone(offer, { x: -1, y: 0, z: 0.2 }), null);
+        assert.equal(dropZone(offer, rally, state), 'cannon-dock');
+        assert.equal(dropZone(offer, defenseTarget(offer, state), state), null);
       }
     }
   }

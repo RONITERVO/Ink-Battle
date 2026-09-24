@@ -1,4 +1,5 @@
 import { TableGesture, toLocal, rotate, fly, length } from './spatial.js';
+import { landingHeight } from './defense-layout.js';
 
 /** All input devices use the same grab lifetime and release transaction. */
 export class Interaction {
@@ -54,8 +55,9 @@ export class Interaction {
     const position = toLocal(item.world, this.table);
     // Hand/controller grips are at a raised arm or bottle neck; land the feet/base.
     position.y -= item.token.offer.kind === 'unit' ? 0.226 : 0.06;
-    if (desktop || position.y <= 0.025) {
-      this.host.drop(owner, { ...position, y: 0 });
+    const floor = landingHeight(item.token.offer);
+    if (desktop || position.y <= floor + 0.025) {
+      this.host.drop(owner, { ...position, y: floor });
       return;
     }
     const first = item.history[0],
@@ -89,7 +91,8 @@ export class Interaction {
         this.flights.delete(owner);
         continue;
       }
-      const hit = fly(item, Math.min(dt, 0.1), 9.81 / this.table.scale);
+      const hit = fly(item, Math.min(dt, 0.1), 9.81 / this.table.scale,
+        landingHeight(item.token.offer));
       if (hit) {
         this.flights.delete(owner);
         this.host.drop(owner, hit);

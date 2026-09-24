@@ -32,6 +32,7 @@ window.measureMRStress = async () => {
       };
     });
     state.player.turrets = [0, 1, 2, 2];
+    state.player.unlockedSlots = state.enemy.unlockedSlots = 4;
     state.enemy.turrets = [0, 1, 2, 2];
     state.player.turretProgress = state.enemy.turretProgress = [1, 1, 1, 1];
     view.labelClock = 0;

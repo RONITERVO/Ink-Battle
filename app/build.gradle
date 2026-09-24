@@ -32,8 +32,8 @@ android {
         // Google Play automatic protection requires Android 7.0 / API 24 or newer.
         minSdk = 24
         targetSdk = 36
-        versionCode = 215
-        versionName = '2.2.3'
+        versionCode = 216
+        versionName = '2.2.4'
     }
 
     buildTypes {

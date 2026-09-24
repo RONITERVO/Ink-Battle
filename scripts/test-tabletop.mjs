@@ -5,6 +5,7 @@ import { TabletopHost } from '../src/mr/host.js';
 import { Session } from '../src/sdk/session.js';
 import { AGES } from '../src/content/ages.js';
 import { DIFFICULTIES } from '../src/mr/catalog.js';
+import { defenseTarget } from '../src/mr/defense-layout.js';
 
 // Same adapter as hands and controllers, with the wall clock removed. No model.
 const started = performance.now(),
@@ -31,7 +32,7 @@ for (let age = 0; age < AGES.length; age++)
                 offer.kind === 'unit'
                   ? { x: -0.65, y: 0, z: 0.4 }
                   : ['turret', 'slot', 'eraser'].includes(offer.kind)
-                    ? { x: -1, y: 0, z: 0.2 }
+                    ? defenseTarget(offer, host.observe())
                     : { x: 0, y: 0, z: 0 };
               if (drops % 17 === 0) {
                 const gold = host.observe().player.gold;

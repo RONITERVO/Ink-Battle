@@ -1,5 +1,6 @@
 import { AGES } from '../content/ages.js';
 import { UPGRADE_COSTS } from '../core/constants.js';
+import { defenseTarget, onDock } from './defense-layout.js';
 
 export const TABLE = Object.freeze({
   width: 2.4,
@@ -53,7 +54,7 @@ export function shopOffers(state) {
       id: `turret-${index}`,
       kind: 'turret',
       label: turret.name,
-      detail: 'Drop at your base',
+      detail: 'Place on the highlighted empty dock',
       price: turret.cost,
       command: { type: 'turret', index },
       x: 0.12 + index * 0.34,
@@ -97,8 +98,8 @@ export function shopOffers(state) {
       id: 'slot',
       kind: 'slot',
       label: 'Cannon dock',
-      detail: 'Drop at your base',
-      price: state.player.unlockedSlots * 500,
+      detail: 'Build on the highlighted outline · four docks maximum',
+      price: state.player.unlockedSlots < 4 ? state.player.unlockedSlots * 500 : Infinity,
       command: { type: 'slot' },
       x: 0.37,
       z: 1.16
@@ -107,7 +108,7 @@ export function shopOffers(state) {
       id: 'sell',
       kind: 'eraser',
       label: 'Sell last cannon',
-      detail: 'Drop at your base · 50% refund',
+      detail: 'Erase the highlighted cannon · keep its dock · 50% refund',
       price: 0,
       command: { type: 'sell' },
       x: 0.66,
@@ -143,7 +144,7 @@ export const TOOLS = Object.freeze([
     label: 'Mist & detail',
     detail: 'Lift and return to change',
     x: -1.05,
-    z: -0.48
+    z: -0.66
   },
   {
     id: 'new',
@@ -152,7 +153,7 @@ export const TOOLS = Object.freeze([
     label: 'New canvas',
     detail: 'Pause first, then drop on the page',
     x: -0.69,
-    z: -0.48
+    z: -0.66
   },
   {
     id: 'music',
@@ -161,7 +162,7 @@ export const TOOLS = Object.freeze([
     label: 'Music box',
     detail: 'Lift and return to toggle music',
     x: 0.69,
-    z: -0.48
+    z: -0.66
   },
   {
     id: 'exit',
@@ -170,11 +171,11 @@ export const TOOLS = Object.freeze([
     label: 'Leave the table',
     detail: 'Lift and return to leave MR',
     x: 1.05,
-    z: -0.48
+    z: -0.66
   }
 ]);
 
-export function dropZone(offer, point) {
+export function dropZone(offer, point, state) {
   if (!point || !['x', 'y', 'z'].every((k) => Number.isFinite(point[k])))
     return 'invalid-position';
   if (
@@ -195,9 +196,9 @@ export function dropZone(offer, point) {
     return 'rally-area';
   if (
     ['turret', 'slot', 'eraser'].includes(offer.kind) &&
-    !(point.x < -0.86 && point.z >= -0.38 && point.z <= 0.64)
+    !onDock(point, defenseTarget(offer, state))
   )
-    return 'your-base';
+    return { turret: 'cannon-dock', slot: 'dock-outline', eraser: 'sell-dock' }[offer.kind];
   return null;
 }
 
@@ -216,7 +217,10 @@ export const REASONS = Object.freeze({
   'max-age': 'You have reached the final age.',
   'off-table': 'Missed the page. Nothing was spent.',
   'rally-area': 'Drop troops in the green rally area.',
-  'your-base': 'Place this at your own base on the left.',
+  'cannon-dock': 'Place the cannon on the highlighted empty dock beside your base.',
+  'dock-outline': 'Build the dock on the highlighted dashed outline beside your base.',
+  'sell-dock': 'Place the eraser on the highlighted cannon. Its dock stays.',
+  'max-docks': 'All four cannon docks are built. Place a cannon on an empty dock.',
   'stale-age': 'The age changed. Choose a new piece.',
   'pause-first': 'Pause before starting a new canvas.',
   'match-ended': 'Choose a difficulty to start the next battle.',

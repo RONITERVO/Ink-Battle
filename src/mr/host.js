@@ -34,6 +34,7 @@ export class TabletopHost {
     if (offer.action === 'new' && state?.running && !state.paused)
       return 'pause-first';
     if (offer.action) return null;
+    if (offer.kind === 'slot' && state?.player.unlockedSlots >= 4) return 'max-docks';
     return state ? commandError(state, 1, offer.command) : 'not-started';
   }
   say(type, data = {}) {
@@ -80,7 +81,7 @@ export class TabletopHost {
     if (!token) return { ok: false, error: 'not-held' };
     this.holds.delete(owner);
     const { offer } = token,
-      zone = dropZone(offer, point);
+      zone = dropZone(offer, point, this.observe());
     let result;
     if (zone) result = this.fail(zone);
     else if (token.age !== (this.observe()?.player.age ?? null))

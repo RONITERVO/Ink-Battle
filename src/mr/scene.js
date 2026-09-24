@@ -23,6 +23,8 @@ import {
 } from "./sketchbook.js";
 import { pencilGeometries } from "./pencil-geometry.js";
 import { BookPaper } from "./book-paper.js";
+import { dockPosition, defenseTarget } from './defense-layout.js';
+import { dockModel } from './dock-model.js';
 
 export const HANDLES = [-1, 1].flatMap((x) =>
   [-0.65, 1.34].map((z) => ({
@@ -160,7 +162,6 @@ export class TabletopScene {
     this.chapter = new Label(this.root, 0.92, 0.063);
     this.chapter.mesh.position.set(0, 0.003, -0.65);
     this.zone(-0.66, 0.395, 0.44, 0.51, "#438e72");
-    this.zone(-1.06, 0.13, 0.27, 1.02, "#a98440");
     this.status = new Label(this.root, 1.38, 0.22, {
       flat: false,
       backing: true,
@@ -365,11 +366,21 @@ export class TabletopScene {
           x = -team * 1.06;
         baseModel(this.army, side.age, x, team, side.drawProgress);
         side.turrets.forEach((index, slot) => {
+          const pad = dockPosition(slot, team);
+          const highlighted = team === 1 && heldItems.some((item) =>
+            defenseTarget(item.offer, state)?.slot === slot);
+          this.army.model(pad.x, 0, pad.z);
+          dockModel(this.army, {
+            built: slot < side.unlockedSlots,
+            occupied: index !== null,
+            highlighted,
+            color: TEAM_COLORS[team],
+          });
           if (index === null) return;
           this.army.model(
-            x,
-            0.04,
-            -0.28 + slot * 0.13,
+            pad.x,
+            pad.y,
+            pad.z,
             0.83 * Math.max(0.02, side.turretProgress[slot]),
             team,
           );
