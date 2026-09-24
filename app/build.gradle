@@ -32,8 +32,8 @@ android {
         // Google Play automatic protection requires Android 7.0 / API 24 or newer.
         minSdk = 24
         targetSdk = 36
-        versionCode = 218
-        versionName = '2.3.0'
+        versionCode = 219
+        versionName = '2.4.0'
     }
 
     buildTypes {
@@ -63,6 +63,7 @@ dependencies {
 
 tasks.register('syncWebAssets', Sync) {
     from(rootProject.file('ink-battle.html'))
+    from(rootProject.file('classic.html'))
     from(rootProject.file('mr.html'))
     from(rootProject.file('index.html'))
     from(rootProject.file('privacy-policy.html'))

@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<!--
+Copyright 2025 Roni Tervo
+
+SPDX-License-Identifier: Apache-2.0
+-->
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#ebe3d5">
+    <!-- 101% correct: this metadata lives in the document head and is not rendered as body text. -->
+    <meta name="author" content="RONITERVO">
+    <title>Ink Battle · Classic 2D archive</title>
+    <meta name="robots" content="noindex">
+    <link rel="icon" href="favicon.ico" sizes="any">
+    <link rel="icon" type="image/png" href="assets/icon-192.png" sizes="192x192">
+    <link rel="stylesheet" href="./src/client/game.css">
+</head>
+
+<body>
+    <div id="viewport">
+
+    <div class="paper-texture" id="global-paper"></div>
+    <div class="coffee-stain"></div>
+
+    <div id="preloader">
+        <h1 class="font-sketch title-float" style="font-size:8vmin; color:hsl(var(--foreground))">Mixing Watercolors...
+        </h1>
+        <div class="loader-brush">Preparing the canvas...</div>
+        <div id="loading-bar-wrap">
+            <div id="loading-bar"></div>
+        </div>
+    </div>
+
+    <div id="game-container" class="hidden">
+        <div id="aspect-wrapper">
+            <div class="sketchbook-spine">
+                <div class="ring-hole"></div>
+                <div class="ring-hole"></div>
+                <div class="ring-hole"></div>
+                <div class="ring-hole"></div>
+                <div class="ring-hole"></div>
+                <div class="ring-hole"></div>
+            </div>
+
+            <!-- 101% correct: this canvas is the game's drawing surface. -->
+            <canvas id="game-canvas" width="1280" height="720" data-sketch-signature="RONITERVO"></canvas>
+
+            <!-- Hover Tooltip -->
+            <div id="tooltip" class="torn-paper sketchy-border-thin">
+                <div id="tt-title" class="tt-title"></div>
+                <div id="tt-stats-container"></div>
+                <div id="tt-desc" class="tt-desc"></div>
+            </div>
+
+            <div id="ui-layer" class="hidden">
+                <div id="top-bar" class="torn-paper notebook-lines sketchy-border">
+
+                    <div id="top-left-actions">
+                        <button id="btn-pause" class="sketchy-border-thin font-sketch"
+                            onclick="togglePause()">Pause</button>
+                        <button id="btn-speed" class="game-speed sketchy-border-thin font-sketch" data-game-speed=""
+                            onclick="cycleGameSpeed()" aria-label="Game speed: 1×. Change to 2×."
+                            title="Game speed: 1×. Change to 2×.">1×</button>
+                        <button id="btn-music" class="sketchy-border-thin font-sketch" onclick="toggleMusicMute()"
+                            title="Music" aria-label="Toggle music">&#128266;</button>
+                        <div id="diff-badge"></div>
+                    </div>
+
+                    <div id="stats-panel">
+                        <div class="stat-line">Gold: <span id="ui-gold" class="stat-val text-gold">175</span></div>
+                        <div class="stat-line">XP: <span id="ui-xp" class="stat-val text-xp">0</span></div>
+                        <div class="stat-line">Income: <span id="ui-income" class="stat-val text-gold">5.0/s</span>
+                        </div>
+                    </div>
+
+                    <div id="center-panel">
+                        <div id="age-title" class="font-sketch title-float">Prehistoric Age</div>
+                        <div class="center-btns">
+                            <button class="btn btn-special sketchy-border-thin" id="btn-special" onclick="useSpecial()">
+                                <span>Special</span>
+                                <div class="btn-cost" id="cost-special">Ready</div>
+                            </button>
+                            <button class="btn btn-evolve sketchy-border-thin" id="btn-evolve" onclick="evolve()">
+                                <span>Evolve</span>
+                                <div class="btn-cost text-xp" id="cost-evolve">4000 XP</div>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="action-panel">
+                        <div id="tabs">
+                            <button class="tab-btn active" id="tab-units" onclick="switchTab('units')">Units</button>
+                            <button class="tab-btn" id="tab-turrets" onclick="switchTab('turrets')">Turrets</button>
+                            <button class="tab-btn" id="tab-upgrades" onclick="switchTab('upgrades')">Upgrades</button>
+                        </div>
+                        <div id="build-menu">
+                            <!-- Units Tab -->
+                            <button class="btn menu-unit sketchy-border-thin" id="btn-u1" onclick="buyUnit(0)"
+                                data-type="unit" data-idx="0"><span id="name-u1">U1</span>
+                                <div class="btn-cost text-gold" id="cost-u1">15</div>
+                            </button>
+                            <button class="btn menu-unit sketchy-border-thin" id="btn-u2" onclick="buyUnit(1)"
+                                data-type="unit" data-idx="1"><span id="name-u2">U2</span>
+                                <div class="btn-cost text-gold" id="cost-u2">25</div>
+                            </button>
+                            <button class="btn menu-unit sketchy-border-thin" id="btn-u3" onclick="buyUnit(2)"
+                                data-type="unit" data-idx="2"><span id="name-u3">U3</span>
+                                <div class="btn-cost text-gold" id="cost-u3">100</div>
+                            </button>
+
+                            <!-- Turrets Tab -->
+                            <button class="btn menu-turret hidden sketchy-border-thin" id="btn-t1"
+                                onclick="buyTurret(0)" data-type="turret" data-idx="0"><span id="name-t1">T1</span>
+                                <div class="btn-cost text-gold" id="cost-t1">100</div>
+                            </button>
+                            <button class="btn menu-turret hidden sketchy-border-thin" id="btn-t2"
+                                onclick="buyTurret(1)" data-type="turret" data-idx="1"><span id="name-t2">T2</span>
+                                <div class="btn-cost text-gold" id="cost-t2">200</div>
+                            </button>
+                            <button class="btn menu-turret hidden sketchy-border-thin" id="btn-t3"
+                                onclick="buyTurret(2)" data-type="turret" data-idx="2"><span id="name-t3">T3</span>
+                                <div class="btn-cost text-gold" id="cost-t3">500</div>
+                            </button>
+                            <button class="btn menu-turret hidden sketchy-border-thin" id="btn-sell"
+                                onclick="sellTurret()" style="color:hsl(var(--destructive))"><span>Sell</span></button>
+                            <button class="btn menu-turret hidden sketchy-border-thin" id="btn-slot"
+                                onclick="buySlot()"><span>Add Slot</span>
+                                <div class="btn-cost text-gold" id="cost-slot">500</div>
+                            </button>
+
+                            <!-- Upgrades Tab -->
+                            <button class="btn menu-upgrade hidden sketchy-border-thin" id="btn-up-dmg" data-type="upgrade"
+                                data-upgrade="dmg"
+                                onclick="buyUpgrade('dmg')"><span>Sharpened</span>
+                                <div class="upgrade-val" id="val-up-dmg">Lvl 0 (+0%)</div>
+                                <div class="btn-cost text-gold" id="cost-up-dmg">500</div>
+                            </button>
+                            <button class="btn menu-upgrade hidden sketchy-border-thin" id="btn-up-hp" data-type="upgrade"
+                                data-upgrade="hp"
+                                onclick="buyUpgrade('hp')"><span>Thick Paper</span>
+                                <div class="upgrade-val" id="val-up-hp">Lvl 0 (+0%)</div>
+                                <div class="btn-cost text-gold" id="cost-up-hp">500</div>
+                            </button>
+                            <button class="btn menu-upgrade hidden sketchy-border-thin" id="btn-up-econ" data-type="upgrade"
+                                data-upgrade="econ"
+                                onclick="buyUpgrade('econ')"><span>Fast Ink</span>
+                                <div class="upgrade-val" id="val-up-econ">Lvl 0 (+0%)</div>
+                                <div class="btn-cost text-gold" id="cost-up-econ">500</div>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="commander-hud" aria-live="polite">
+                    <div class="commander-col player-col">
+                        <div class="hp-wrapper sketchy-border-thin">
+                            <div class="hp-fill" id="player-hp-fill"></div>
+                            <div class="hp-text" id="player-hp-text">500 / 500</div>
+                        </div>
+                        <form id="director-form" class="director-writing player-writing" onsubmit="submitDirectorChat(event)">
+                            <div id="player-last-line" class="hidden"></div>
+                            <div class="director-input-row">
+                                <input id="director-input" maxlength="160" autocomplete="off" aria-label="Director message"
+                                    placeholder="...">
+                                <button class="director-send" type="submit" aria-label="Send" title="Send">&#10003;</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div id="director-center-status" class="hidden">
+                        <div id="emotion-badge" title="Gemma emotion"><span class="emotion-icon">â—‡</span><span id="emotion-word">Centered</span></div>
+                        <div id="agreement-strip"></div>
+                    </div>
+
+                    <div class="commander-col ai-col hidden" id="ai-hud">
+                        <div class="hp-wrapper sketchy-border-thin">
+                            <div class="hp-fill" id="enemy-hp-fill"></div>
+                            <div class="hp-text" id="enemy-hp-text">500 / 500</div>
+                        </div>
+                        <div class="director-writing ai-writing">
+                            <div id="director-memory"></div>
+                            <div id="director-log"></div>
+                            <div id="director-signal-log"></div>
+                            <div id="gemma-card" class="hidden">
+                                <span id="gemma-status"></span>
+                                <button id="btn-gemma-install" onclick="installLocalGemma()">Get</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="pause-overlay" class="overlay-screen hidden">
+                    <div class="overlay-content torn-paper sketchy-border">
+                        <h1>Paused</h1>
+                        <p class="font-hand">The battlefield is frozen on this page.</p>
+                        <button class="diff-btn diff-normal sketchy-border" onclick="togglePause(false)"
+                            style="margin-top:20px; font-size: calc(3 * var(--page-vmin)); padding: calc(1 * var(--page-vw)) calc(3 * var(--page-vw));">Resume</button>
+                        <button class="game-speed pause-speed sketchy-border-thin font-sketch" data-game-speed="Speed "
+                            onclick="cycleGameSpeed()" aria-label="Game speed: 1×. Change to 2×."
+                            title="Game speed: 1×. Change to 2×.">Speed 1×</button>
+                        <button class="diff-btn diff-hard sketchy-border" onclick="location.reload()"
+                            style="margin-top:12px; font-size: calc(2.6 * var(--page-vmin)); padding: calc(0.8 * var(--page-vw)) calc(2.6 * var(--page-vw));">New Canvas</button>
+                        <a class="legal-link" href="./privacy-policy.html">Privacy Policy</a>
+                        <button class="gemma-settings sketchy-border-thin font-hand hidden" data-web-gemma-open>Gemma opponent settings</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="start-screen" class="overlay-screen">
+                <div class="overlay-content torn-paper sketchy-border">
+                    <h1 class="title-float">Ink Battle</h1>
+                    <p class="font-hand">Choose a difficulty and outdraw the opposing civilization.</p>
+
+                    <div class="difficulty-grid">
+                        <button class="diff-btn sketchy-border diff-normal" id="diff-btn-normal"
+                            onclick="initGame('normal')">
+                            Normal <span class="medal-icon">*</span>
+                        </button>
+                        <button class="diff-btn sketchy-border diff-hard" id="diff-btn-hard" onclick="initGame('hard')">
+                            Hard <span class="medal-icon">II</span>
+                        </button>
+                        <button class="diff-btn sketchy-border diff-harder" id="diff-btn-harder"
+                            onclick="initGame('harder')">
+                            Harder <span class="medal-icon">III</span>
+                        </button>
+                        <button class="diff-btn sketchy-border diff-impossible" id="diff-btn-impossible"
+                            onclick="initGame('impossible')">
+                            Impossible <span class="medal-icon">X</span>
+                        </button>
+                    </div>
+                    <a class="legal-link" href="./index.html">Play the current game · Classic 2D archive</a>
+                    <a class="legal-link" href="./privacy-policy.html">Privacy Policy</a>
+                    <button class="gemma-settings sketchy-border-thin font-hand hidden" data-web-gemma-open>Play with Gemma (optional)</button>
+                </div>
+            </div>
+
+            <div id="game-over-screen" class="overlay-screen hidden">
+                <div class="overlay-content torn-paper sketchy-border">
+                    <h1 id="end-title" class="title-float">Game Over</h1>
+                    <p id="end-desc" class="font-hand">The pages of history are written by the victors.</p>
+                    <button class="diff-btn diff-normal sketchy-border" onclick="location.reload()"
+                        style="margin-top:20px; font-size: calc(3 * var(--page-vmin)); padding: calc(1 * var(--page-vw)) calc(3 * var(--page-vw));">New Canvas</button>
+                    <a class="legal-link" href="./privacy-policy.html">Privacy Policy</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    </div>
+
+    <dialog id="web-gemma-dialog" class="web-gemma-dialog sketchy-border" aria-labelledby="web-gemma-title">
+        <h2 id="web-gemma-title" class="font-sketch">Gemma at the table</h2>
+        <p>Give the opposing general a local voice and mood. The same troop rules, difficulty and pacts still apply.</p>
+        <p>Optional 2.01 GB download from Hugging Face, plus a 19 MB runtime. Runs on your GPU and saves in this browser for offline use. Battle observations and chat stay on your device.</p>
+        <p>Needs a compatible GPU and an updated Chrome or Edge. Loading can take several minutes. You can always play with the standard opponent.</p>
+        <p id="web-gemma-status" role="status" aria-live="polite">Checking this browser…</p>
+        <div class="gemma-actions">
+            <button id="web-gemma-enable" class="sketchy-border-thin">Download &amp; turn on (2.01 GB)</button>
+            <button id="web-gemma-stop" class="sketchy-border-thin" disabled>Turn off</button>
+            <button id="web-gemma-remove" class="sketchy-border-thin">Remove download</button>
+        </div>
+        <p class="gemma-small">By downloading you accept the <a href="https://ai.google.dev/gemma/terms" target="_blank" rel="noopener noreferrer">Gemma terms</a>. Browser storage may be cleared or evicted. Gemma starts off when you reopen the game.</p>
+        <form method="dialog"><button class="sketchy-border-thin">Back to game</button></form>
+    </dialog>
+    <script src="./web/game.js" defer></script>
+</body>
+
+</html>

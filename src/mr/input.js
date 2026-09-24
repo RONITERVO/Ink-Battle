@@ -37,10 +37,23 @@ export class TabletopInput {
     this.raycaster = new THREE.Raycaster();
     this.pointer = new THREE.Vector2();
     this.pointers = new Map();
+    this.touchPointers = new Set();
+    this.touchNavigation = false;
     this.sources = new Map();
     this.nextId = 0;
     this.canvas = view.renderer.domElement;
     this.listeners = [];
+    // Run before OrbitControls: a second finger converts a possible purchase
+    // into camera navigation. Never release that pending piece onto the page.
+    this.canvas.addEventListener('pointerdown', (e) => {
+      if (e.pointerType !== 'touch' || view.renderer.xr.isPresenting) return;
+      this.touchPointers.add(e.pointerId);
+      if (this.touchPointers.size < 2) return;
+      this.touchNavigation = true;
+      for (const owner of this.pointers.keys()) this.interaction.cancel(owner);
+      this.pointers.clear();
+      view.controls.enabled = true;
+    }, true);
     for (const type of [
       'pointerdown',
       'pointermove',
@@ -147,6 +160,15 @@ export class TabletopInput {
       (e.button && type === 'pointerdown')
     )
       return;
+    if (e.pointerType === 'touch') {
+      const navigating = this.touchNavigation;
+      if (['pointerup', 'pointercancel', 'lostpointercapture'].includes(type)) {
+        this.touchPointers.delete(e.pointerId);
+        if (!this.touchPointers.size) this.touchNavigation = false;
+      }
+      // Do not turn the last remaining finger back into a purchase mid-gesture.
+      if (navigating) return;
+    }
     const owner = `pointer-${e.pointerId}`,
       active = this.pointers.get(owner),
       ray = this.desktopRay(e);

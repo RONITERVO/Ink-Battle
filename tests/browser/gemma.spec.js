@@ -13,7 +13,7 @@ async function mockGemma(page) {
       emit(data) { this.onmessage({data}); }
     };
   });
-  await page.goto('/ink-battle.html');
+  await page.goto('/classic.html');
   await expect(page.locator('#preloader')).toBeHidden();
   await page.locator('#start-screen [data-web-gemma-open]').click();
   await page.locator('#web-gemma-enable').click();
@@ -22,7 +22,7 @@ async function mockGemma(page) {
 test('optional Gemma never downloads on startup and unsupported browsers can play', async ({page}) => {
   const requests=[]; page.on('request',r=>requests.push(r.url()));
   await page.addInitScript(()=>Object.defineProperty(navigator,'gpu',{value:undefined,configurable:true}));
-  await page.goto('/ink-battle.html'); await expect(page.locator('#preloader')).toBeHidden();
+  await page.goto('/classic.html'); await expect(page.locator('#preloader')).toBeHidden();
   await page.locator('#start-screen [data-web-gemma-open]').click();
   await expect(page.locator('#web-gemma-status')).toContainText('compatible GPU');
   await expect(page.locator('#web-gemma-enable')).toBeDisabled();
@@ -80,7 +80,7 @@ test('model cadence uses wall time at 3x and never catches up with queued reques
 
 test('Gemma dialog stays usable on a phone and native Android keeps its own bridge', async ({page}) => {
   await page.setViewportSize({width:390,height:844});
-  await page.goto('/ink-battle.html'); await expect(page.locator('#preloader')).toBeHidden();
+  await page.goto('/classic.html'); await expect(page.locator('#preloader')).toBeHidden();
   await page.locator('#start-screen [data-web-gemma-open]').click();
   await expect(page.getByRole('button',{name:'Back to game'})).toBeInViewport();
   await page.screenshot({path:test.info().outputPath('gemma-phone.png')});
@@ -119,7 +119,7 @@ test('real model storage rejects incomplete/corrupt downloads, reuses verified f
       self.postMessage({ok:true,results});
     })().catch(e=>self.postMessage({ok:false,error:e.message}));
   `}});
-  await page.goto('/ink-battle.html');
+  await page.goto('/classic.html');
   const result=await page.evaluate(source=>new Promise(resolve=>{
     const url=URL.createObjectURL(new Blob([source],{type:'text/javascript'}));
     const worker=new Worker(url);worker.onmessage=({data})=>{worker.terminate();URL.revokeObjectURL(url);resolve(data);};

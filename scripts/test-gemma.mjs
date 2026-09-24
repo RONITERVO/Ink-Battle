@@ -4,7 +4,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 import { cpus, platform } from 'node:os';
 import { WEB_MODEL, RUNTIME_VERSION } from '../src/client/gemma-web-config.js';
-const url = process.env.GEMMA_TEST_URL || 'http://127.0.0.1:4173/ink-battle.html';
+const url = process.env.GEMMA_TEST_URL || 'http://127.0.0.1:4173/classic.html';
 const liveOnly = process.env.GEMMA_LIVE_ONLY === '1';
 const output = liveOnly ? 'artifacts/gemma/live-comparison.json' : 'artifacts/gemma/benchmark.json';
 const report = {date:new Date().toISOString(),url,revision:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(),

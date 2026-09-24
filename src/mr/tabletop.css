@@ -147,13 +147,18 @@ a:focus-visible {
     font-size: 13px;
     padding: 8px 10px;
   }
-  .instructions p:nth-child(n + 3) {
+  #welcome.compact {
+    width: auto;
+    max-width: calc(100vw - 16px - env(safe-area-inset-left) - env(safe-area-inset-right));
+  }
+  #welcome.compact .heading span,
+  #welcome.compact .actions,
+  #welcome.compact .classic,
+  #welcome.compact .diagnostics,
+  #welcome.compact #status {
     display: none;
   }
   .heading a {
     font-size: 25px;
-  }
-  #welcome.compact #status {
-    font-size: 12px;
   }
 }

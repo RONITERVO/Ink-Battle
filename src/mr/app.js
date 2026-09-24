@@ -156,9 +156,7 @@ function resetView() {
   view.table.yaw = 0;
   view.table.scale = 1;
   view.syncTable();
-  view.camera.position.set(0.45, 2.45, 3.3);
-  view.controls.target.set(0, 0.1, 0.3);
-  view.controls.update();
+  view.frameBook();
 }
 async function enterMR() {
   if (xrSession) return;
@@ -191,7 +189,7 @@ async function enterMR() {
         resetView();
         enter.disabled = false;
         panel.hidden = false;
-        message('Back in preview. Your battle is saved and paused.');
+        message('Back at the book. Your battle is saved and paused.');
       },
       { once: true }
     );
@@ -230,7 +228,7 @@ async function enterMR() {
     xrSession = null;
     enter.disabled = false;
     message(
-      `Mixed reality could not start (${error.name || 'browser error'}). Preview is still available.`
+      `Mixed reality could not start (${error.name || 'browser error'}). You can still play on this screen.`
     );
   }
 }
@@ -388,7 +386,7 @@ async function init() {
   document.querySelector('#save-report').addEventListener('click', () => {
     const state = host.observe(),
       report = {
-        version: '2.3.0',
+        version: '2.4.0',
         date: new Date().toISOString(),
         browser: navigator.userAgent,
         quality: host.quality,
@@ -420,7 +418,7 @@ async function init() {
     message('Graphics were interrupted. Reload to restore the paused battle.');
   });
   const detectionTimer = setTimeout(() => {
-    enter.textContent = 'Preview ready · MR not detected yet';
+    enter.textContent = 'Play here · MR not detected yet';
   }, 3000);
   (async () => {
     try {
@@ -432,7 +430,7 @@ async function init() {
         enter.disabled = true;
       }
     } catch {
-      enter.textContent = 'MR unavailable · preview ready';
+      enter.textContent = 'MR unavailable · play on this screen';
       enter.disabled = true;
     } finally {
       clearTimeout(detectionTimer);
@@ -497,6 +495,7 @@ async function init() {
   // A small SDK for repeatable renderer/input regression tests and local tools.
   window.InkTabletop = Object.freeze({
     observe: () => host.observe(),
+    pause,
     replay: () => host.session?.replay(),
     diagnostics: () => ({
       ...view.stats(),
@@ -507,6 +506,8 @@ async function init() {
       holds: host.holds.size,
       flights: input.interaction.flights.size,
       table: structuredClone(view.table),
+      camera: { position: view.camera.position.toArray(), target: view.controls.target.toArray(),
+        distance: view.camera.position.distanceTo(view.controls.target) },
       frameP95: timings.length
         ? [...timings].sort((a, b) => a - b)[
             Math.floor((timings.length - 1) * 0.95)
