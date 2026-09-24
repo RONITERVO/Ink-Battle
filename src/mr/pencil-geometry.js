@@ -126,15 +126,17 @@ export function pencilGeometries() {
         [a + 0.006, b, 0.5],
       ]);
     }
-  for (let i = 0; i < 4; i++) {
-    const x = -0.4 + i * 0.2;
+  // Three broad marks keep the dry-pencil fill while leaving room for combat
+  // flashes in a full army of painted tanks.
+  for (let i = 0; i < 3; i++) {
+    const x = -0.35 + i * 0.25;
     box.push([
       [x, -0.48, 0.505],
       [x + 0.1, -0.12, 0.505],
     ]);
     box.push([
-      [0.505, -0.4 + i * 0.2, -0.4],
-      [0.505, -0.3 + i * 0.2, 0.15],
+      [0.505, -0.35 + i * 0.25, -0.4],
+      [0.505, -0.25 + i * 0.25, 0.15],
     ]);
   }
   const rod = [ellipse(1, 1, -0.5, 10), ellipse(1, 1, 0.5, 10)];

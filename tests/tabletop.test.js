@@ -9,6 +9,7 @@ import { InkBatch } from '../src/mr/ink-batch.js';
 import { unitModel, baseModel } from '../src/mr/models.js';
 import { Session } from '../src/sdk/session.js';
 import { AGES } from '../src/content/ages.js';
+import { attackMotion } from '../src/mr/combat-motion.js';
 
 const rally = { x: -0.65, y: 0, z: 0.4 },
   page = { x: 0, y: 0, z: 0 };
@@ -197,7 +198,8 @@ test('all 18 troop forms have volume and 160-unit rendering stays within instanc
           x: i / 160,
           team: i % 2 ? 1 : -1,
           time: i,
-          walking: true
+          walking: true,
+          motion: attackMotion(AGES[age].units[index].attackSpeed, AGES[age].units[index].attackSpeed, true)
         });
       baseModel(batch, age, -1, 1);
       baseModel(batch, age, 1, -1);

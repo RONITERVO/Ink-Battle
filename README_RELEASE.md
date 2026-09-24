@@ -1,4 +1,4 @@
-# Ink Battle 2.2.2 release
+# Ink Battle 2.2.3 release
 
 This release rebuilds the single-file demo around one standalone engine while
 retaining the notebook presentation, six ages, four difficulties, music, menus,
@@ -14,6 +14,15 @@ grainy paper, six washes derived from the classic age palette, painted pieces an
 a paper score tab improve contrast while retaining the pencil contours. See
 [the art guide](docs/PENCIL_ART.md). Game rules, classic 2D art, controls and saved
 checkpoints are unchanged. The new fills need a follow-up visual check on Quest.
+
+Version 2.2.3 gives all 18 tabletop troops and 18 defenses a distinct combat
+action synchronized with real attacks, pauses and 1×/2×/3× speed. Paint and pencil
+move together through reusable local joints. Defenses prepare only while an enemy
+is in range; finished matches return pieces to rest and clear transient combat
+effects. The deterministic engine, replay format and classic 2D behavior are
+unchanged. See [combat animation](docs/COMBAT_ANIMATION.md) for the motion study,
+authoring contract and tests. The new actions still need a hosted Quest visual
+and sustained-performance check after merge.
 
 ## Build and verify
 
@@ -49,7 +58,7 @@ npm run build
 
 `syncWebAssets` copies the shared bundle, CSS and assets into
 `app/build/generated/web-assets`. Never hand-edit generated Android assets.
-The next Android build is configured as `2.2.2` / code `214`; this web/MR change
+The next Android build is configured as `2.2.3` / code `215`; this web/MR change
 does not publish an AAB. Quest Browser uses the hosted page and needs no Android
 package. Code `211` was the preceding published Android version; code `210` was
 rejected by Google Play with automatic protection enabled. The minimum

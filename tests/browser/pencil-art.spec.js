@@ -1,6 +1,86 @@
 import { test, expect } from "@playwright/test";
 import { build } from "esbuild";
-/* global drawPencilGallery, readableBook */
+/* global drawPencilGallery, poseCombatGallery, readableBook, checkCombatClock */
+
+test("live combat poses follow pause and speed, then rest at victory, defeat or draw", async ({
+  page,
+  browserName,
+}) => {
+  test.skip(
+    browserName !== "chromium",
+    "Spatial motion is verified with Chromium WebGL.",
+  );
+  const fixture = await build({
+    entryPoints: ["tests/fixtures/mr-combat.js"],
+    bundle: true,
+    format: "iife",
+    write: false,
+  });
+  await page.route("**/combat-clock.html", (route) =>
+    route.fulfill({
+      contentType: "text/html",
+      body: '<link rel="stylesheet" href="/src/mr/tabletop.css"><canvas style="width:100vw;height:100vh"></canvas>',
+    }),
+  );
+  await page.goto("/combat-clock.html");
+  await page.addScriptTag({ content: fixture.outputFiles[0].text });
+  const result = await page.evaluate(() => checkCombatClock());
+  for (const field of [
+    "attacking",
+    "frozen",
+    "restored",
+    "advanced",
+    "clockMatches",
+    "comfortMoves",
+  ])
+    expect(result[field], field).toBe(true);
+  expect(result.resultRests).toEqual(Array(8).fill(true));
+  expect(result.overflow).toBe(0);
+});
+
+test("all combat artwork can be scrubbed, frozen and restored without visual drift", async ({
+  page,
+  browserName,
+}, info) => {
+  test.skip(
+    browserName !== "chromium",
+    "Spatial motion is verified with Chromium WebGL.",
+  );
+  const errors = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1440, height: 1150 });
+  const fixture = await build({
+    entryPoints: ["tests/fixtures/pencil-gallery.js"],
+    bundle: true,
+    format: "iife",
+    write: false,
+  });
+  await page.route("**/combat-gallery.html", (route) =>
+    route.fulfill({
+      contentType: "text/html",
+      body: '<link rel="stylesheet" href="/src/mr/tabletop.css"><canvas style="width:1440px;height:1150px"></canvas>',
+    }),
+  );
+  await page.goto("/combat-gallery.html");
+  await page.addScriptTag({ content: fixture.outputFiles[0].text });
+  const stats = await page.evaluate(() => drawPencilGallery("armies", true));
+  await page.evaluate(() => document.fonts.ready);
+  expect(stats.overflow).toBe(0);
+  expect(stats.calls).toBeLessThanOrEqual(11);
+  const shot = await page
+    .locator("canvas")
+    .screenshot({ path: info.outputPath("combat-release.png") });
+  await page.evaluate(() => poseCombatGallery(0.2));
+  const recovery = await page
+    .locator("canvas")
+    .screenshot({ path: info.outputPath("combat-recovery.png") });
+  expect(recovery.equals(shot)).toBe(false);
+  await page.evaluate(() => poseCombatGallery(0.6));
+  await page.screenshot({ path: info.outputPath("combat-ready.png") });
+  await page.evaluate(() => poseCombatGallery(0));
+  expect((await page.locator("canvas").screenshot()).equals(shot)).toBe(true);
+  expect(errors).toEqual([]);
+});
 
 for (const kind of ["armies", "objects"]) {
   test(`pencil art sheet: ${kind}`, async ({ page, browserName }, info) => {

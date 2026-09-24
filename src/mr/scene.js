@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { InkBatch } from "./ink-batch.js";
+import { unitMotion, defenseMotion } from "./combat-motion.js";
 import {
   unitModel,
   baseModel,
@@ -12,6 +13,7 @@ import {
 } from "./models.js";
 import { TABLE } from "./catalog.js";
 import { AGES } from "../content/ages.js";
+import { TICK_RATE } from "../core/constants.js";
 import {
   CHAPTERS,
   bookPaths,
@@ -332,6 +334,7 @@ export class TabletopScene {
     this.details.end();
   }
   update(state, heldItems, dt) {
+    const combatTime = (state?.tick || 0) / TICK_RATE;
     this.time += dt;
     this.labelClock -= dt;
     this.refreshArt(state?.player.age || 0);
@@ -370,7 +373,15 @@ export class TabletopScene {
             0.83 * Math.max(0.02, side.turretProgress[slot]),
             team,
           );
-          cannonModel(this.army, side.age, index, TEAM_COLORS[team]);
+          cannonModel(
+            this.army,
+            side.age,
+            index,
+            TEAM_COLORS[team],
+            false,
+            defenseMotion(state, team, slot),
+            this.host.quality !== "comfort",
+          );
         });
       }
       for (const unit of state.units) {
@@ -384,9 +395,10 @@ export class TabletopScene {
           z,
           scale,
           team: unit.team,
-          time: comfort ? 0 : this.time + unit.id,
-          walking: !comfort && unit.moving,
-          attacking: !comfort && unit.isAttacking,
+          time: comfort ? 0 : combatTime + unit.id,
+          walking: state.running && !comfort && unit.moving,
+          motion: unitMotion(unit, state.running),
+          detailed: !comfort,
         });
         if (!comfort) {
           this.army.model(x, 0.23 * scale, z, 1);
@@ -405,7 +417,7 @@ export class TabletopScene {
         );
         this.shadow.setMatrixAt(shadowCount++, this.shadowMatrix);
       }
-      for (const p of state.projectiles) {
+      for (const p of state.running ? state.projectiles : []) {
         if (!Number.isFinite(p.x) || !Number.isFinite(p.y)) continue;
         this.army.model(
           (p.x / 1280 - 0.5) * TABLE.width,
@@ -419,13 +431,13 @@ export class TabletopScene {
           p.team === 1 ? state.player.age : state.enemy.age,
         );
       }
-      for (const special of state.specials) {
+      for (const special of state.running ? state.specials : []) {
         const x = (special.x / 1280 - 0.5) * TABLE.width;
         this.army.model(x, 0.012, TABLE.lane);
         specialModel(
           this.army,
           special.age,
-          this.time,
+          combatTime,
           special.team,
           this.host.quality !== "comfort",
         );

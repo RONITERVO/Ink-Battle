@@ -65,6 +65,9 @@ export class InkBatch {
     this.euler = new THREE.Euler();
     this.direction = new THREE.Vector3();
     this.up = new THREE.Vector3(0, 1, 0);
+    this.frames = [];
+    this.depth = 0;
+    this.poseTranslation = new THREE.Matrix4();
     this.context = { x: 0, y: 0, z: 0, scale: 1, face: 1, paint: PENCIL.paper };
     this.begin();
   }
@@ -74,13 +77,60 @@ export class InkBatch {
   }
   model(x, y, z, scale = 1, face = 1) {
     this.context = { x, y, z, scale, face, paint: PENCIL.paper };
+    this.depth = 0;
   }
   paint(color) {
     this.context.paint = color;
   }
   point([x, y, z = 0]) {
     const c = this.context;
+    if (this.depth) {
+      this.p.set(x, y, z).applyMatrix4(this.frames[this.depth - 1].matrix);
+      x = this.p.x;
+      y = this.p.y;
+      z = this.p.z;
+    }
     return [c.x + x * c.scale * c.face, c.y + y * c.scale, c.z + z * c.scale];
+  }
+  // Articulated local joints. Reuse a tiny stack of transforms; both strokes
+  // and paint follow the same pose, without per-piece meshes or skeletons.
+  pose(pivot, rotation, offset, draw) {
+    let frame = this.frames[this.depth];
+    if (!frame)
+      frame = this.frames[this.depth] = {
+        matrix: new THREE.Matrix4(),
+        rotation: new THREE.Quaternion(),
+      };
+    frame.rotation.setFromEuler(this.euler.set(...rotation));
+    frame.matrix
+      .makeRotationFromQuaternion(frame.rotation)
+      .setPosition(
+        pivot[0] + offset[0],
+        pivot[1] + offset[1],
+        pivot[2] + offset[2],
+      )
+      .multiply(
+        this.poseTranslation.makeTranslation(-pivot[0], -pivot[1], -pivot[2]),
+      );
+    if (this.depth) {
+      frame.matrix.premultiply(this.frames[this.depth - 1].matrix);
+      frame.rotation.premultiply(this.frames[this.depth - 1].rotation);
+    }
+    this.depth++;
+    try {
+      draw();
+    } finally {
+      this.depth--;
+    }
+  }
+  rotation(value) {
+    this.q.setFromEuler(this.euler.set(...value));
+    if (this.depth) this.q.premultiply(this.frames[this.depth - 1].rotation);
+    // Reflect a local rotation toward the enemy, keeping positive instance
+    // determinants (the filled primitives themselves are symmetric).
+    this.q.y *= this.context.face;
+    this.q.z *= this.context.face;
+    return this.q;
   }
   write(shape, p, s, color, q, width = 0.0015 * this.context.scale) {
     const mesh = this.meshes[shape],
@@ -102,7 +152,7 @@ export class InkBatch {
   }
   part(shape, p, size, color = PENCIL.graphite, rotation = [0, 0, 0], fill) {
     const scale = this.context.scale;
-    this.q.setFromEuler(this.euler.set(...rotation));
+    this.rotation(rotation);
     this.write(
       shape,
       this.point(p),
@@ -121,7 +171,7 @@ export class InkBatch {
     }
   }
   fill(shape, p, size, color, rotation = [0, 0, 0]) {
-    this.q.setFromEuler(this.euler.set(...rotation));
+    this.rotation(rotation);
     this.write(
       `fill_${shape}`,
       this.point(p),

@@ -73,6 +73,11 @@ Pieces have grainy painted surfaces, teal/rust team accents and graphite hatchin
 A paper tab backs the floating score. The room cannot show through the page,
 pieces or score, but remains visible around them. See [the pencil art guide](PENCIL_ART.md)
 for the reusable art system and complete catalog. Classic 2D retains its artwork.
+Version 2.2.3 adds distinct attack actions to all 36 troops and defenses: swings,
+throws, recoil, tilting launchers and charging energy weapons. The motions follow
+real engine cooldowns, pause with the battle and respect 1×/2×/3× speed. Comfort
+mode retains essential combat motion. See [combat animation](COMBAT_ANIMATION.md)
+for the motion study, reusable rig and expansion checks.
 This is rasterized geometry, not ray tracing or room-light reconstruction.
 The passthrough outside the book is transparent. There is no room mesh occlusion,
 persistent room map, cloud anchor, real-table collision, or multi-user multiplayer.
@@ -96,19 +101,25 @@ npx playwright test tests/browser/tabletop.spec.js --project=chromium
 npm run simulate -- --release
 ```
 
-The 2.2.2 local run on 2026-09-24 passed 33 unit tests. The tabletop sweep completed **192
+The 2.2.3 local run on 2026-09-24 passed 39 unit tests. The tabletop sweep completed **192
 matches**, **5,580 physical purchases**, **415 deliberately missed drops**, and
-**5.62 simulated hours in 8.0 seconds**. All terminal states replayed identically.
+**5.62 simulated hours in 7.9 seconds**. All terminal states replayed identically.
 The shared release sweep completed **2,304 matches**, **294 composition trials**
 and **83.32 simulated hours**, with zero invariant failures or timeouts. Model calls
 are excluded from both sweeps. These are regression checks, not a claim that every
 balance choice or human strategy is optimal.
 
+The complete browser run passed 83 checks with 19 intentional platform skips.
+All 17 MR/art checks also passed on Chromium's software renderer. Combat checks
+cover every troop and defense, mirrored paint/joints, held-piece rest, pause,
+checkpoint restoration and speed synchronization.
+
 Browser checks cover real pointer drags, illegal landing areas, pause/speed,
 checkpoint reload, all six ages, offline startup, emulated controller purchases,
 visibility interruptions, repeated XR entry, emulated hand purchases, input removal,
 closed-hand reconnection and two-hand resizing. A renderer-only capacity fixture
-draws 160 units plus eight turrets for each age, checking buffer overflow, geometry,
+draws 160 units plus eight built turrets firing together for each age, sampling
+release, recovery and preparation and checking buffer overflow, geometry,
 draw calls and texture growth. Full-army geometry is gated below 250,000 triangles
 and 85 draw calls per desktop view. These counts are not a Quest frame-rate result;
 stereo rendering and GPU/browser differences must be measured on the device.
@@ -123,9 +134,10 @@ full-match results are in `artifacts/tabletop/matches.json`.
 The player reported "Play is good" for the hosted 2.2.0 build on 2026-09-24.
 That confirms their play experience, not every individual item below or measured
 thermal performance. Their 2.2.1 Quest screenshot showed poor contrast over a busy
-room. The 2.2.2 watercolor revision addresses that observed problem and includes
-automated opacity checks over synthetic clutter. A follow-up on Quest is still
-needed for color, small-scale readability and sustained performance.
+room. The 2.2.2 watercolor revision addresses that observed problem; the player
+reported that it "looks really good" after merging. That feedback does not provide
+measured frame timings. The 2.2.3 combat-motion update still needs its own Quest
+follow-up for action readability, comfort and sustained performance.
 The desktop emulator does not validate
 physical tracking, passthrough, room permission UX, comfort or thermal performance.
 After the PR is merged and Pages finishes publishing, check:

@@ -14,6 +14,15 @@ The following contact sheets render the actual shipped drawings in fixed poses.
 
 ![All troop, defense and base drawings](art/pencil-armies.png)
 
+Version 2.2.3 gives every troop and defense a combat action. This motion study
+uses the shipped drawings and attack periods, with simulated firing for review:
+
+![All 36 combat pieces preparing, striking and recovering](art/combat-motion.gif)
+
+In the game, an action follows the real attack cooldown. It never runs just
+because two pieces stand near each other. See [combat animation](COMBAT_ANIMATION.md)
+for the timing contract, rigs and expansion checks.
+
 ![Physical shop items and controls](art/pencil-objects.png)
 
 The synthetic background below checks passthrough contrast without recording or
@@ -61,7 +70,8 @@ or a jagged rift. Effects are presentation of engine state, never damage logic.
 
 ## Authoring and performance
 
-`models.js` composes local-space lines, paths and reusable painted volumes through
+`models.js`, `infantry-model.js`, `troop-models.js` and `defense-models.js` compose
+local-space lines, paths and reusable painted volumes through
 `InkBatch`. `part` draws a contour and its skin; `fill` paints inside a separately
 authored contour; `panel` fills a convex planar patch. Concave bottles use closed
 horizontal strips. Add a distinctive silhouette there; use `glyphs.js` for a small item
@@ -115,10 +125,9 @@ Hand/controller grabbing, two-hand scaling, interruptions and offline saves rema
 covered by the existing browser tests. Hardware readability and sustained frame
 rate must be checked on Quest; desktop measurements are not headset results.
 
-The 2.2.2 local release check passed 33 unit tests, 81 browser checks (17 intentional
-platform skips), the 2,304-match release sweep and 192-match tabletop sweep.
-The six mixed-army scenes measured 75–77 draw calls and 189,935–248,005 triangles,
-with 24 textures throughout and no overflow. CI reruns the full release suite.
-All 15 MR/art checks also passed on Chromium's software renderer after replacing
-costly per-daub blur filters with smooth quadratic paint edges.
+The 2.2.3 motion capacity check samples release, recovery and preparation for
+160 troops plus eight fully built defenses in each age. It measures 75–77 draw
+calls and 185,577–244,049 triangles, with 24 textures throughout and no overflow.
+Three broader box hatch marks replace four redundant marks to retain headroom
+for firing effects. The limits remain unchanged. CI reruns the full release suite.
 Actual Quest follow-up remains separate from automated browser checks.
