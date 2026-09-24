@@ -5133,7 +5133,7 @@
       }
       runtime2.ctx.restore();
     }
-    return { draw };
+    return { draw, drawBackground };
   }
 
   // src/client/hud.js

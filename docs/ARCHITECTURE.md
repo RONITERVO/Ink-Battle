@@ -11,6 +11,7 @@ the reference interface. The game has one implementation of combat and spending.
 | `src/sdk` | Caller-bound local clients, explicit time, replay/checkpoints, retry receipts |
 | `src/simulation` | Observation-based policies, full matches, composition trials, invariant checks |
 | `src/client` | Original notebook CSS, canvas drawing, music, menus, storage, optional Gemma |
+| `src/mr` | Tabletop view, shared grab/drop adapter, physical catalog, controller/hand lifetimes, presentation transforms |
 | `scripts` | Static build, loopback server, JSON-lines CLI, balance reports |
 
 Core, SDK and simulations have no DOM, filesystem, network, model, timers or

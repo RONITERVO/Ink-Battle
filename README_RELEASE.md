@@ -1,10 +1,12 @@
-# Ink Battle 2.1.0 release
+# Ink Battle 2.2.0 release
 
 This release rebuilds the single-file demo around one standalone engine while
 retaining the notebook presentation, six ages, four difficulties, music, menus,
 medals, pacts and optional native Gemma bridge. Version 2.1.0 adds optional local
 Gemma on the web with a separate, reusable real-model benchmark. Combat rules and
-the replay rules version remain 2.0.0.
+the replay rules version remain 2.0.0. Version 2.2.0 adds the 3D tabletop and
+Quest mixed-reality entry at `mr.html`. See [tabletop acceptance](docs/TABLETOP.md);
+physical Quest testing is a separate release-owner check after hosting the build.
 
 ## Build and verify
 
@@ -17,14 +19,14 @@ npx playwright install chromium firefox webkit
 npm run release:check
 ```
 
-The build generates `web/game.js` and a content-versioned `service-worker.js`.
-Both are committed so existing GitHub Pages branch hosting works immediately.
+The build generates `web/game.js`, `web/mr.js` and a content-versioned `service-worker.js`.
+They are committed so existing GitHub Pages branch hosting works immediately.
 The shell uses a classic script bundle, including for local file and Android loads.
 The service worker caches the HTML, bundle, stylesheet, icons and bundled fonts;
 music is deliberately streamed independently.
 
-Keep `index.html`, `ink-battle.html`, `privacy-policy.html`, `manifest.webmanifest`,
-`service-worker.js`, `favicon.ico`, `web/`, `src/client/game.css`, and `assets/`
+Keep `index.html`, `ink-battle.html`, `mr.html`, `privacy-policy.html`, `manifest.webmanifest`,
+`service-worker.js`, `favicon.ico`, `web/`, `src/client/game.css`, `src/mr/tabletop.css`, and `assets/`
 together when deploying to a static host. Preserve relative paths for project Pages.
 
 ## Android packaging
@@ -40,8 +42,10 @@ npm run build
 
 `syncWebAssets` copies the shared bundle, CSS and assets into
 `app/build/generated/web-assets`. Never hand-edit generated Android assets.
-The Android version is `2.1.0` / code `211`. This packaging update replaces code
-`210`, which Google Play rejected with automatic protection enabled. The minimum
+The next Android build is configured as `2.2.0` / code `212`; this web/MR change
+does not publish an AAB. Quest Browser uses the hosted page and needs no Android
+package. Code `211` was the preceding published Android version; code `210` was
+rejected by Google Play with automatic protection enabled. The minimum
 supported version is Android 7.0 (API 24), as required by
 [Google Play automatic protection](https://support.google.com/googleplay/android-developer/answer/10183279?hl=en).
 Signing remains in the existing ignored

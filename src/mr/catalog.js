@@ -1,0 +1,228 @@
+import { AGES } from '../content/ages.js';
+import { UPGRADE_COSTS } from '../core/constants.js';
+
+export const TABLE = Object.freeze({
+  width: 2.4,
+  depth: 1.35,
+  lane: 0.45,
+  minScale: 0.2,
+  maxScale: 1.6
+});
+export const UNIT_FORMS = Object.freeze(
+  [
+    ['club', 'sling', 'dinosaur'],
+    ['sword', 'bow', 'horse'],
+    ['halberd', 'musket', 'cannon'],
+    ['soldier', 'rifle', 'tank'],
+    ['blade', 'blaster', 'mech'],
+    ['drone', 'ray', 'mothership']
+  ].map(Object.freeze)
+);
+export const DIFFICULTIES = ['normal', 'hard', 'harder', 'impossible'];
+
+/** Physical offers are projections of the content catalog, never another economy. */
+export function shopOffers(state) {
+  if (!state || !state.running)
+    return DIFFICULTIES.map((difficulty, i) => ({
+      id: `start-${difficulty}`,
+      kind: 'seal',
+      label: difficulty[0].toUpperCase() + difficulty.slice(1),
+      detail: 'Drop on the page to begin',
+      action: 'start',
+      difficulty,
+      price: 0,
+      x: -0.72 + i * 0.48,
+      z: 0.89
+    }));
+  const age = AGES[state.player.age],
+    offers = [];
+  age.units.forEach((unit, index) =>
+    offers.push({
+      id: `unit-${index}`,
+      kind: 'unit',
+      label: unit.name,
+      detail: 'Drop in the green rally area',
+      price: unit.cost,
+      command: { type: 'unit', index },
+      x: -1.02 + index * 0.34,
+      z: 0.86
+    })
+  );
+  age.turrets.forEach((turret, index) =>
+    offers.push({
+      id: `turret-${index}`,
+      kind: 'turret',
+      label: turret.name,
+      detail: 'Drop at your base',
+      price: turret.cost,
+      command: { type: 'turret', index },
+      x: 0.12 + index * 0.34,
+      z: 0.86
+    })
+  );
+  for (const [i, stat] of ['dmg', 'hp', 'econ'].entries())
+    offers.push({
+      id: `upgrade-${stat}`,
+      kind: 'potion',
+      label: { dmg: 'Sharpened', hp: 'Thick Paper', econ: 'Fast Ink' }[stat],
+      detail: 'Toss onto the battlefield',
+      price: UPGRADE_COSTS[state.player.upgrades[stat]] ?? Infinity,
+      command: { type: 'upgrade', stat },
+      x: -1.04 + i * 0.27,
+      z: 1.16
+    });
+  offers.push(
+    {
+      id: 'evolve',
+      kind: 'evolve',
+      label: 'Next age',
+      detail: 'Pour onto the page',
+      price: age.evolveXP,
+      currency: 'XP',
+      command: { type: 'evolve' },
+      x: -0.21,
+      z: 1.16
+    },
+    {
+      id: 'special',
+      kind: 'special',
+      label: age.special.name,
+      detail: 'Toss onto the battlefield',
+      price: 0,
+      command: { type: 'special' },
+      x: 0.08,
+      z: 1.16
+    },
+    {
+      id: 'slot',
+      kind: 'slot',
+      label: 'Cannon dock',
+      detail: 'Drop at your base',
+      price: state.player.unlockedSlots * 500,
+      command: { type: 'slot' },
+      x: 0.37,
+      z: 1.16
+    },
+    {
+      id: 'sell',
+      kind: 'eraser',
+      label: 'Sell last cannon',
+      detail: 'Drop at your base · 50% refund',
+      price: 0,
+      command: { type: 'sell' },
+      x: 0.66,
+      z: 1.16
+    }
+  );
+  return offers;
+}
+
+export const TOOLS = Object.freeze([
+  {
+    id: 'pause',
+    action: 'pause',
+    kind: 'hourglass',
+    label: 'Pause / resume',
+    detail: 'Lift and return to the page',
+    x: 1.05,
+    z: 0.83
+  },
+  {
+    id: 'speed',
+    action: 'speed',
+    kind: 'clock',
+    label: 'Battle speed',
+    detail: 'Lift and return · 1× / 2× / 3×',
+    x: 1.05,
+    z: 1.13
+  },
+  {
+    id: 'quality',
+    action: 'quality',
+    kind: 'feather',
+    label: 'Mist & detail',
+    detail: 'Lift and return to change',
+    x: -1.05,
+    z: -0.48
+  },
+  {
+    id: 'new',
+    action: 'new',
+    kind: 'page',
+    label: 'New canvas',
+    detail: 'Pause first, then drop on the page',
+    x: -0.69,
+    z: -0.48
+  },
+  {
+    id: 'music',
+    action: 'music',
+    kind: 'music',
+    label: 'Music box',
+    detail: 'Lift and return to toggle music',
+    x: 0.69,
+    z: -0.48
+  },
+  {
+    id: 'exit',
+    action: 'exit',
+    kind: 'compass',
+    label: 'Leave the table',
+    detail: 'Lift and return to leave MR',
+    x: 1.05,
+    z: -0.48
+  }
+]);
+
+export function dropZone(offer, point) {
+  if (!point || !['x', 'y', 'z'].every((k) => Number.isFinite(point[k])))
+    return 'invalid-position';
+  if (
+    Math.abs(point.x) > TABLE.width / 2 ||
+    Math.abs(point.z) > TABLE.depth / 2 ||
+    Math.abs(point.y) > 0.12
+  )
+    return 'off-table';
+  if (
+    offer.kind === 'unit' &&
+    !(
+      point.x >= -0.88 &&
+      point.x <= -0.44 &&
+      point.z >= 0.14 &&
+      point.z <= 0.65
+    )
+  )
+    return 'rally-area';
+  if (
+    ['turret', 'slot', 'eraser'].includes(offer.kind) &&
+    !(point.x < -0.86 && point.z >= -0.38 && point.z <= 0.64)
+  )
+    return 'your-base';
+  return null;
+}
+
+export const REASONS = Object.freeze({
+  gold: 'More gold is needed. The piece returns to the shop.',
+  xp: 'More XP is needed for the next age.',
+  paused: 'Drop the hourglass onto the page to resume first.',
+  deploying: 'Your last troop is still deploying.',
+  'deployment-blocked': 'Make room at your rally point.',
+  'unit-cap': 'Your army is full.',
+  'slots-full': 'Add a cannon dock or sell a cannon first.',
+  'no-turret': 'There is no cannon to sell.',
+  cooldown: 'The special is still recharging.',
+  'base-drawing': 'Your new base is still being drawn.',
+  'max-upgrade': 'This potion is already at its strongest.',
+  'max-age': 'You have reached the final age.',
+  'off-table': 'Missed the page. Nothing was spent.',
+  'rally-area': 'Drop troops in the green rally area.',
+  'your-base': 'Place this at your own base on the left.',
+  'stale-age': 'The age changed. Choose a new piece.',
+  'pause-first': 'Pause before starting a new canvas.',
+  'match-ended': 'Choose a difficulty to start the next battle.',
+  'tracking-lost': 'Tracking lost. Held pieces returned safely.',
+  'not-started': 'Drop a difficulty seal onto the page.',
+  'invalid-position': 'The drop could not be tracked.',
+  'already-holding': 'Release the piece in this hand first.',
+  'unknown-offer': 'That piece is no longer on sale.'
+});

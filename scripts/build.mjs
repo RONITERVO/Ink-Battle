@@ -4,6 +4,8 @@ import { createHash } from 'node:crypto';
 import { RUNTIME_VERSION } from '../src/client/gemma-web-config.js';
 await mkdir('web', { recursive: true });
 await build({ entryPoints: ['src/client/app.js'], bundle: true, outfile: 'web/game.js', format: 'iife', target: ['es2022'], legalComments: 'inline' });
+await build({ entryPoints: ['src/mr/app.js'], bundle: true, outfile: 'web/mr.js', format: 'iife', target: ['es2022'], legalComments: 'inline', minify: true });
+await copyFile('node_modules/three/LICENSE', 'web/THREE-LICENSE.txt');
 await build({ entryPoints: ['src/client/gemma-worker.js'], bundle: true, outfile: 'web/gemma-worker.js', format: 'iife', target: ['es2022'], legalComments: 'inline' });
 const vendor = `web/vendor/litert-lm-${RUNTIME_VERSION}`;
 await mkdir(vendor, { recursive: true });
@@ -15,7 +17,7 @@ for (const suffix of ['js', 'wasm']) {
 }
 const version = JSON.parse(await readFile('package.json', 'utf8')).version;
 await writeFile('web/build.json', JSON.stringify({ version, entry: 'game.js' }) + '\n');
-const shell = ['./', './index.html', './ink-battle.html', './privacy-policy.html', './manifest.webmanifest', './favicon.ico',
+const shell = ['./', './index.html', './ink-battle.html', './mr.html', './src/mr/tabletop.css', './web/mr.js', './web/THREE-LICENSE.txt', './privacy-policy.html', './manifest.webmanifest', './favicon.ico',
   './assets/icon-192.png', './assets/icon-512.png', './assets/fonts/caveat.ttf', './assets/fonts/patrick-hand.ttf', './src/client/game.css', './web/game.js', './web/gemma-worker.js'];
 const hash = createHash('sha256');
 for (const file of shell.filter(f => f !== './')) {
