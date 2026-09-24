@@ -58,7 +58,7 @@ const host = new TabletopHost({
       music.start();
       panel.classList.add('compact');
       message(
-        'Drop troops across the green rally area to choose a route. Pinch a deployed troop and nudge it to suggest a new route or enemy cannon. Nearby fighting takes priority.'
+        'Drop across the green rally strip to choose a route. Pinch a deployed troop to guide it.'
       );
     }
     if (event.type === 'drop' && event.result.ok) {

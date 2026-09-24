@@ -20,7 +20,8 @@ Nearby fighting takes priority. An amber arrow means it is engaged, while green
 means it is following the suggestion. Target preferences expire after 12 simulated
 seconds; the new lateral route remains. Each nudge changes the route by at most
 160 simulation units (0.3 book units), with a one-second reaction interval per
-soldier. Moving the book or losing tracking cancels the unfinished gesture.
+soldier. Losing tracking cancels the unfinished gesture. Carrying or scaling the
+book keeps guidance in the book's coordinate system, like other held pieces.
 
 Troops have understandable priorities rather than random refusal. They defend
 themselves, keep a target briefly to avoid dithering, favor their route, and choose

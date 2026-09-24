@@ -44,10 +44,10 @@ export function shopOffers(state) {
       kind: 'unit',
       label: unit.name,
       detail: wide(state) ? [
-        'Light infantry · surround heavies; resist siege splash',
-        'Ranged · strong against light infantry; heavy armor resists shots',
-        'Heavy · withstand ranged fire; break defenses'
-      ][index] + ' · Drop across the rally area to choose a route' : 'Drop in the green rally area',
+        'Light infantry · surround heavies; resist siege',
+        'Ranged · counters infantry; heavy armor resists shots',
+        'Heavy · resists ranged fire; breaks defenses'
+      ][index] : 'Drop in the green rally area',
       price: unit.cost,
       command: { type: 'unit', index },
       x: -1.02 + index * 0.34,

@@ -112,7 +112,7 @@ export class TabletopHost {
         result = this.session.command(1, command);
         if (result.ok && offer.kind === 'nudge') {
           const u = this.observe().units.find(u => u.id === command.id);
-          this.say('message', { text: `${u.name}: route suggested. ${u.isAttacking ? 'Finishing nearby combat first.' : 'Moving under its own steam.'}` });
+          this.say('message', { text: `${u.name}: route suggested. ${u.isAttacking ? 'Fighting nearby first.' : 'Walking there.'}` });
         }
       }
     }
