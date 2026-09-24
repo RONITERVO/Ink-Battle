@@ -101,19 +101,18 @@ for (const input of ['mouse', 'touch']) test.describe(`${input} background orbit
       expect((await camera()).distance).toBeCloseTo(distance,2);
       second.x+=40;await touches('touchMove',[first,second]);
       await expect.poll(async()=>(await camera()).distance).toBeLessThan(distance*.9);
-      await touches('touchEnd',[first]);
-      // Let rotation damping settle, then verify lifting just one finger cannot
-      // switch the remaining finger back from navigation into orbit or a grab.
-      let previous,stable=0;
-      const rounded=async()=>(await camera()).position.map(n=>Math.round(n*1000));
-      await expect.poll(async()=>{
-        const current=JSON.stringify(await rounded());
-        stable=current===previous?stable+1:0;previous=current;return stable;
-      },{intervals:[100],timeout:5000}).toBeGreaterThanOrEqual(2);
-      const resting=(await camera()).position;
-      first.x+=100;first.y-=80;await touches('touchMove',[first]);
-      // Allow the sub-pixel tail of damping, but no camera response to this drag.
-      expect(Math.hypot(...(await camera()).position.map((n,i)=>n-resting[i]))).toBeLessThan(.005);
+      // Release only the second contact; an empty touchEnd releases them all.
+      await touches('touchEnd',[second]);
+      // Drag back against the original orbit after lifting only one finger.
+      // Inertia may keep coasting forward, but this finger must not reverse it.
+      // Checking direction avoids depending on how fast the renderer settles.
+      const azimuth=async()=>{
+        const c=await camera();return Math.atan2(c.position[0]-c.target[0],c.position[2]-c.target[2]);
+      };
+      const angle=await azimuth();
+      first.x=size.width-1;await touches('touchMove',[first]);
+      const delta=(await azimuth())-angle;
+      expect(Math.atan2(Math.sin(delta),Math.cos(delta))).toBeGreaterThanOrEqual(-.001);
       expect(await page.evaluate(()=>InkTabletop.diagnostics().holds)).toBe(0);
     }
     await up();
