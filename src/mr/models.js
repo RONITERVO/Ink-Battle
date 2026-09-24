@@ -1,6 +1,7 @@
 import { UNIT_FORMS } from "./catalog.js";
 import { glyph } from "./glyphs.js";
 import { PENCIL } from "./pencil-palette.js";
+import { chapterPalette } from "./watercolor.js";
 
 const INK = PENCIL.ink,
   GRAPHITE = PENCIL.graphite;
@@ -12,6 +13,14 @@ function stickman(b, form, age, color, t, walking, attacking, held) {
   const hip = [0, 0.071, 0],
     neck = [0, 0.13, 0];
   b.line(hip, neck, 0.0045);
+  b.part(
+    "box",
+    [0, 0.103, 0],
+    [0.021, 0.041, 0.025],
+    GRAPHITE,
+    [0, 0, 0],
+    color,
+  );
   b.outlineBall([0, 0.158, 0], 0.025);
   b.line([0.021, 0.16, -0.012], [0.023, 0.163, -0.012], 0.0035, INK);
   b.line([0.021, 0.16, 0.012], [0.023, 0.163, 0.012], 0.0035, INK);
@@ -31,6 +40,14 @@ function stickman(b, form, age, color, t, walking, attacking, held) {
   b.line([-0.024, 0.097, -0.018], [0.016, 0.079, -0.025]);
   b.line([-0.01, 0.127, -0.017], [0.017, 0.119, 0.024], 0.009, color);
   // A little scarf is readable from behind and from either side of the table.
+  b.panel(
+    [
+      [-0.012, 0.126, 0.023],
+      [-0.036, 0.119, 0.024],
+      [-0.028, 0.108, 0.025],
+    ],
+    color,
+  );
   b.path(
     [
       [-0.012, 0.126, 0.023],
@@ -95,6 +112,16 @@ function stickman(b, form, age, color, t, walking, attacking, held) {
     );
   }
   if (form === "sword") {
+    b.panel(
+      [
+        [-0.027, 0.12, -0.031],
+        [0.008, 0.119, -0.034],
+        [0.009, 0.08, -0.034],
+        [-0.009, 0.063, -0.034],
+        [-0.029, 0.082, -0.031],
+      ],
+      color,
+    );
     b.path(
       [
         [-0.027, 0.12, -0.03],
@@ -160,9 +187,10 @@ function stickman(b, form, age, color, t, walking, attacking, held) {
 }
 
 function mount(b, dinosaur, color, t, walking, held) {
+  b.paint(dinosaur ? PENCIL.leaf : PENCIL.leather);
   b.part("sphere", [-0.012, 0.061, 0], [0.062, 0.035, 0.034], GRAPHITE);
   b.line([0.024, 0.077, 0], [0.065, 0.116, 0], 0.017, GRAPHITE);
-  b.outlineBall([0.073, 0.125, 0], 0.024, GRAPHITE);
+  b.sphere([0.073, 0.125, 0], 0.024, GRAPHITE);
   b.line([-0.063, 0.072, 0], [-0.113, 0.09, 0], 0.007);
   for (const x of [-0.045, 0.03])
     for (const z of [-0.025, 0.025]) {
@@ -171,6 +199,14 @@ function mount(b, dinosaur, color, t, walking, held) {
     }
   b.outlineBall([-0.005, 0.163, 0], 0.019);
   b.line([-0.005, 0.144, 0], [-0.014, 0.089, 0]);
+  b.part(
+    "box",
+    [-0.009, 0.119, 0],
+    [0.02, 0.037, 0.026],
+    GRAPHITE,
+    [0, 0, 0],
+    color,
+  );
   b.line([-0.014, 0.099, 0], [-0.009, 0.042, 0.039]);
   b.line(
     [-0.012, 0.129, 0.012],
@@ -221,7 +257,16 @@ export function cannonModel(
   color = PENCIL.player,
   moving = false,
 ) {
+  b.paint(chapterPalette(age).body);
   b.box([0, 0.024, 0], [0.085, 0.022, 0.072]);
+  b.part(
+    "box",
+    [0, 0.026, 0.038],
+    [0.066, 0.014, 0.005],
+    GRAPHITE,
+    [0, 0, 0],
+    color,
+  );
   if (age < 3 || moving) {
     for (const z of [-0.042, 0.042]) {
       b.part("ring", [-0.016, 0.025, z], [0.023, 0.023, 0.023], INK);
@@ -240,6 +285,13 @@ export function cannonModel(
       );
   }
   const barrel = (x, y, length, slope = 0.12, z = 0, r = 0.01) => {
+    b.fill(
+      "rod",
+      [x + length / 2, y + (slope * length) / 2, z],
+      [r, length * Math.sqrt(1 + slope * slope), r],
+      chapterPalette(age).body,
+      [0, 0, (-Math.PI / 2 + Math.atan(slope)) * b.context.face],
+    );
     for (const sign of [-1, 1])
       b.path(
         [
@@ -472,6 +524,7 @@ export function unitModel(
   } = {},
 ) {
   b.model(x, y, z, scale, team);
+  b.paint(chapterPalette(age).body);
   const form = UNIT_FORMS[age]?.[index] || "club",
     color = TEAM_COLORS[team];
   if (form === "dinosaur" || form === "horse")
@@ -516,6 +569,15 @@ export function unitModel(
           ]);
         }
       } else if (form === "ray") {
+        b.panel(
+          [
+            [0.04, lift, s * 0.015],
+            [-0.015, lift + 0.015, s * 0.13],
+            [-0.064, lift, s * 0.047],
+            [-0.04, lift, 0],
+          ],
+          color,
+        );
         b.path(
           [
             [0.04, lift, s * 0.015],
@@ -570,6 +632,7 @@ export function baseModel(b, age, x, team, progress = 1) {
   const color = TEAM_COLORS[team],
     y = -0.3 * (1 - progress);
   b.model(x, y, 0.14, 1, team);
+  b.paint(chapterPalette(age).body);
   b.box([0, 0.025, 0], [0.27, 0.05, 0.48], GRAPHITE);
   if (age === 0) {
     b.part("sphere", [0, 0.07, 0], [0.14, 0.145, 0.15], GRAPHITE);
@@ -665,6 +728,7 @@ export function objectModel(b, offer, age, options = {}) {
   if (offer.kind === "unit")
     return unitModel(b, age, offer.command.index, { ...options, team: 1 });
   b.model(x, y, z, scale);
+  b.paint(PENCIL.wood);
   if (offer.kind === "turret")
     return cannonModel(b, age, offer.command.index, TEAM_COLORS[1]);
   const potionColor =
@@ -727,6 +791,44 @@ export function objectModel(b, offer, age, options = {}) {
       ],
     };
     const outline = outlines[symbol];
+    // Paint the closed bottle volume in horizontal strips. This preserves each
+    // flask's concave neck and distinct outline without translucent sorting.
+    const half = Math.floor(outline.length / 2);
+    for (let i = 0; i < half - (outline.length % 2 ? 0 : 1); i++) {
+      const [ax, ay] = outline[i],
+        [bx, by] = outline[i + 1];
+      const fill = by > 0.07 ? PENCIL.paper : potionColor;
+      for (const zz of [-0.0205, 0.0205])
+        b.panel(
+          [
+            [ax, ay, zz],
+            [bx, by, zz],
+            [-bx, by, zz],
+            [-ax, ay, zz],
+          ],
+          fill,
+        );
+      for (const side of [-1, 1])
+        b.panel(
+          [
+            [ax * side, ay, -0.0205],
+            [bx * side, by, -0.0205],
+            [bx * side, by, 0.0205],
+            [ax * side, ay, 0.0205],
+          ],
+          fill,
+        );
+    }
+    const bottom = outline[half - 1];
+    b.panel(
+      [
+        [bottom[0], bottom[1], -0.0205],
+        [-bottom[0], bottom[1], -0.0205],
+        [-bottom[0], bottom[1], 0.0205],
+        [bottom[0], bottom[1], 0.0205],
+      ],
+      potionColor,
+    );
     for (const zz of [-0.021, 0.021])
       b.path(
         outline.map(([xx, yy]) => [xx, yy, zz]),
@@ -736,7 +838,7 @@ export function objectModel(b, offer, age, options = {}) {
       b.line([...outline[i], -0.021], [...outline[i], 0.021], 0.003);
     const top = outline[0][1];
     b.box([0, top + 0.004, 0], [Math.abs(outline[0][0]) * 2.3, 0.012, 0.047]);
-    // The liquid is quick parallel pencil shading, with open glass above it.
+    // Pencil hatching and a dark glyph sit on the colored pigment.
     for (let i = 0; i < 5; i++)
       b.line(
         [-0.025 + i * 0.01, 0.018, 0.022],
@@ -744,11 +846,18 @@ export function objectModel(b, offer, age, options = {}) {
         0.0028,
         potionColor,
       );
-    glyph(b, symbol, 0, 0.055, 0.024, 0.017, potionColor);
+    glyph(b, symbol, 0, 0.055, 0.024, 0.017, INK);
   } else if (offer.kind === "hourglass") {
     for (const yy of [0.013, 0.122])
       b.box([0, yy, 0], [0.08, 0.013, 0.055], GRAPHITE);
-    b.part("cone", [0, 0.044, 0], [0.03, 0.056, 0.025], GRAPHITE);
+    b.part(
+      "cone",
+      [0, 0.044, 0],
+      [0.03, 0.056, 0.025],
+      GRAPHITE,
+      [0, 0, 0],
+      PENCIL.income,
+    );
     b.part("cone", [0, 0.088, 0], [0.03, 0.056, 0.025], GRAPHITE, [
       Math.PI,
       0,
@@ -757,6 +866,7 @@ export function objectModel(b, offer, age, options = {}) {
     for (const xx of [-0.034, 0.034])
       b.line([xx, 0.018, 0], [xx, 0.115, 0], 0.003);
   } else if (offer.kind === "clock" || offer.kind === "compass") {
+    b.paint(PENCIL.paper);
     b.part("ring", [0, 0.063, 0], [0.046, 0.046, 0.015], GRAPHITE);
     b.part("sphere", [0, 0.063, 0], [0.043, 0.043, 0.007], GRAPHITE);
     if (offer.kind === "compass") glyph(b, "compass", 0, 0.063, 0.015, 0.031);
@@ -792,6 +902,7 @@ export function objectModel(b, offer, age, options = {}) {
     b.box([0, 0.018, 0], [0.115, 0.035, 0.075], GRAPHITE);
     b.part("ring", [0, 0.038, 0], [0.03, 0.03, 0.03], INK, [Math.PI / 2, 0, 0]);
   } else if (offer.kind === "eraser") {
+    b.paint(PENCIL.damage);
     b.box([0, 0.022, 0], [0.085, 0.039, 0.048], GRAPHITE);
     for (let i = 0; i < 4; i++)
       b.line(
@@ -800,6 +911,14 @@ export function objectModel(b, offer, age, options = {}) {
         0.002,
       );
   } else if (offer.kind === "seal") {
+    b.paint(
+      {
+        normal: PENCIL.health,
+        hard: PENCIL.income,
+        harder: PENCIL.special,
+        impossible: PENCIL.damage,
+      }[offer.difficulty],
+    );
     b.part("rod", [0, 0.018, 0], [0.058, 0.022, 0.058], GRAPHITE);
     b.part("ring", [0, 0.034, 0], [0.043, 0.043, 0.043], GRAPHITE, [
       Math.PI / 2,
@@ -819,6 +938,7 @@ export function objectModel(b, offer, age, options = {}) {
         0.003,
       );
   } else {
+    b.paint(PENCIL.paper);
     b.box([0, 0.025, 0], [0.1, 0.04, 0.08], GRAPHITE);
     glyph(b, "page", 0, 0.05, 0.042, 0.03);
     for (let i = 0; i < 3; i++)

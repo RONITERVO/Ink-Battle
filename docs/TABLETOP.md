@@ -53,6 +53,7 @@ and the music preference. No account or external service is required.
 | `models.js` / `ink-batch.js` | Distinct spatial drawings and bounded pencil instance buffers |
 | `pencil-geometry.js` / `pencil-palette.js` / `glyphs.js` | Pressure-tapered strokes, colored-pencil swatches, item symbols |
 | `sketchbook.js` | Open book, six chapter landscapes and pencil mist |
+| `watercolor.js` / `book-paper.js` | Classic age palette, shared pigment, opaque painted pages and cover |
 | `scene.js` | Three.js scene, spatial sketchbook, labels, pencil mist and hatched contact shadows |
 | `app.js` | WebXR session/placement, optional anchors, saved sessions, original music adapter |
 
@@ -64,14 +65,15 @@ execution, preventing duplicate releases. Simultaneous hands cannot bypass the
 engine's deployment cooldown. Misses, lost input, rejected drops and stale offers
 never debit gold. No separate MR balance rules exist.
 
-All eighteen troop types have depth and distinct equipment. Version 2.2.1 replaces
-the MR watercolor plane and filled models with actual spatial pencil strokes.
-An open book has page stacks, a sewn spine, a cover and a ribbon; each age has its
-own drawn landscape. Surfaces have open contours and short hatching, including
-bottles, shadows and mist. There is no opaque page or object skin; unmarked areas
-show passthrough in MR. See [the pencil art guide](PENCIL_ART.md) for the reusable
-art system and the complete visual catalog. Classic 2D retains its watercolor art.
-This is rasterized stroke geometry, not ray tracing or room-light reconstruction.
+All eighteen troop types have depth and distinct equipment. Version 2.2.2 adds
+opaque watercolor beneath the spatial pencil contours following real Quest
+readability feedback. The open book has painted paper, page stacks, a sewn spine,
+a cover and a ribbon; each age has its own classic palette wash and drawn landscape.
+Pieces have grainy painted surfaces, teal/rust team accents and graphite hatching.
+A paper tab backs the floating score. The room cannot show through the page,
+pieces or score, but remains visible around them. See [the pencil art guide](PENCIL_ART.md)
+for the reusable art system and complete catalog. Classic 2D retains its artwork.
+This is rasterized geometry, not ray tracing or room-light reconstruction.
 The passthrough outside the book is transparent. There is no room mesh occlusion,
 persistent room map, cloud anchor, real-table collision, or multi-user multiplayer.
 An available hit-test/anchor improves placement; optional permission failure leaves
@@ -94,9 +96,9 @@ npx playwright test tests/browser/tabletop.spec.js --project=chromium
 npm run simulate -- --release
 ```
 
-The 2026-09-24 local run passed 29 unit tests. The tabletop sweep completed **192
+The 2.2.2 local run on 2026-09-24 passed 33 unit tests. The tabletop sweep completed **192
 matches**, **5,580 physical purchases**, **415 deliberately missed drops**, and
-**5.62 simulated hours in 7.9 seconds**. All terminal states replayed identically.
+**5.62 simulated hours in 8.0 seconds**. All terminal states replayed identically.
 The shared release sweep completed **2,304 matches**, **294 composition trials**
 and **83.32 simulated hours**, with zero invariant failures or timeouts. Model calls
 are excluded from both sweeps. These are regression checks, not a claim that every
@@ -118,10 +120,12 @@ full-match results are in `artifacts/tabletop/matches.json`.
 
 ## Quest 3 release-owner acceptance â€” pending
 
-The player reported “Play is good” for the hosted 2.2.0 build on 2026-09-24.
+The player reported "Play is good" for the hosted 2.2.0 build on 2026-09-24.
 That confirms their play experience, not every individual item below or measured
-thermal performance. The 2.2.1 pencil-art revision needs a fresh visual check for
-stroke readability, particularly at small scale and in dark rooms.
+thermal performance. Their 2.2.1 Quest screenshot showed poor contrast over a busy
+room. The 2.2.2 watercolor revision addresses that observed problem and includes
+automated opacity checks over synthetic clutter. A follow-up on Quest is still
+needed for color, small-scale readability and sustained performance.
 The desktop emulator does not validate
 physical tracking, passthrough, room permission UX, comfort or thermal performance.
 After the PR is merged and Pages finishes publishing, check:

@@ -165,7 +165,9 @@ export function pencilGeometries() {
     box: strokeGeometry(box, 0.029),
     rod: strokeGeometry(rod, 0.055),
     cone: strokeGeometry(cone, 0.055),
-    ring: strokeGeometry([ellipse(0, 1, 0, 16)], 0.045),
+    // Twelve facets match the pencil sphere. Tiny tank wheels don't need a
+    // denser circle; this saves geometry across a full army without wider lines.
+    ring: strokeGeometry([ellipse(0, 1, 0, 12)], 0.045),
     shadow: strokeGeometry(
       Array.from({ length: 7 }, (_, i) => {
         const y = -0.75 + i * 0.25,

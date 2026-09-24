@@ -1,6 +1,10 @@
 /** A small colored-pencil set. Color reinforces a silhouette or glyph; it never
  * replaces one. The same swatches work for shop pieces and deployed models. */
 export const PENCIL = Object.freeze({
+  paper: "#fff0d2",
+  wood: "#c89d65",
+  leaf: "#8fb882",
+  leather: "#bd865c",
   ink: "#342d2b",
   graphite: "#514b45",
   soft: "#756b5c",
