@@ -6,8 +6,9 @@ redirect to the new game, preserving query strings and fragments. The PWA retain
 its old identity so this updates the existing install rather than creating another.
 
 Phones use the same physical pieces as Quest and desktop. A one-finger or left-mouse
-drag starting outside the book and pieces rotates the view. Pinch zooms and two-finger
-drag pans; adding a second finger safely cancels a pending grab. Wheel zoom and
+drag starting outside the book and pieces rotates the view. Two fingers pinch to
+zoom, drag to pan and twist gently to turn, all together without a mode toggle;
+adding a second finger safely cancels a pending grab. Wheel zoom and
 middle-drag pan work on desktop. The book fits the initial viewport and the existing
 recenter control. No extra on-screen controls were added. Android supports device
 orientation, native Back-to-pause and lifecycle saving. Version code: 219.

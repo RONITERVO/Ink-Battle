@@ -50,7 +50,9 @@ the middle button and scroll to zoom toward the pointer. On phones, one finger
 drags the same pieces. A one-finger or left-mouse drag starting outside the book,
 shop and pieces rotates the view. Starting on empty paper keeps the camera still;
 crossing onto the book during a rotation cannot grab or buy anything.
-Two fingers pan and pinch to zoom, like a map. Adding a second
+Two fingers pan, pinch to zoom and twist to turn gently, like a map. These work
+together without a mode toggle. Twisting has a 35% response; use the outside-book
+drag to change the full viewing angle. Adding a second
 finger cancels a pending grab without buying or deploying it. There are no added
 on-screen purchase or navigation buttons. Recenter restores the camera and book,
 fitting the whole book into the current viewport. Escape cancels holds and pauses.

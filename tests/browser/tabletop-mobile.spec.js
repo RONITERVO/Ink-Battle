@@ -128,6 +128,68 @@ for (const input of ['mouse', 'touch']) test.describe(`${input} background orbit
 
 test.describe('phone gestures',()=>{
   test.use({hasTouch:true,isMobile:true});
+  test('two fingers combine gentle twist, pan and zoom without buying or switching modes',async({page,context})=>{
+    await page.setViewportSize({width:390,height:844});await ready(page);
+    await drag(page,seal,center);
+    const cdp=await context.newCDPSession(page);
+    const touch=(type,points)=>cdp.send('Input.dispatchTouchEvent',{type,touchPoints:points});
+    const pair=(x,y,r,angle)=>[1,2].map((id,i)=>({id,
+      x:x+(i?1:-1)*r*Math.cos(angle),y:y+(i?1:-1)*r*Math.sin(angle)}));
+    const camera=()=>page.evaluate(()=>InkTabletop.diagnostics().camera);
+    const angle=c=>Math.atan2(c.position[0]-c.target[0],c.position[2]-c.target[2]);
+    const before=await camera(),spent=await page.evaluate(()=>InkTabletop.observe().metrics.spent[1]);
+    await touch('touchStart',pair(180,230,55,0));
+    await touch('touchMove',pair(195,240,55,0));
+    await expect.poll(async()=>(await camera()).target).not.toEqual(before.target);
+    expect(Math.abs(angle(await camera())-angle(before))).toBeLessThan(.04);
+    await touch('touchMove',pair(195,240,65,0));
+    await expect.poll(async()=>(await camera()).distance).toBeLessThan(before.distance*.95);
+    expect(Math.abs(angle(await camera())-angle(before))).toBeLessThan(.04);
+    // Spread, translate and turn in one continuous gesture; no toggle or release.
+    for(let i=1;i<=4;i++)
+      await touch('touchMove',pair(195+3*i,240+2*i,65+4*i,i*Math.PI/12));
+    await touch('touchEnd',[]);
+    await expect.poll(async()=>angle(await camera())-angle(before)).toBeGreaterThan(.08);
+    expect(angle(await camera())-angle(before)).toBeLessThan(.45);
+    expect((await camera()).distance).toBeLessThan(before.distance*.85);
+    expect(await page.evaluate(()=>InkTabletop.diagnostics().holds)).toBe(0);
+    expect(await page.evaluate(()=>InkTabletop.observe().metrics.spent[1])).toBe(spent);
+  });
+
+  test('backgrounding with missing touch-end events allows fresh piece and camera gestures',async({page,context})=>{
+    await page.setViewportSize({width:390,height:844});
+    await page.addInitScript(()=>{
+      for(const type of ['pointerup','pointercancel','lostpointercapture'])
+        window.addEventListener(type,e=>{if(window.dropTouchEnds)e.stopImmediatePropagation();},true);
+    });
+    await ready(page);await drag(page,seal,center);
+    const cdp=await context.newCDPSession(page);
+    const touch=(type,points)=>cdp.send('Input.dispatchTouchEvent',{type,touchPoints:points});
+    const fingerDrag=async(from,to)=>{
+      const a=await screen(page,from),b=await screen(page,to);
+      await touch('touchStart',[{id:9,...a}]);
+      await touch('touchMove',[{id:9,...b}]);await touch('touchEnd',[]);
+    };
+    for(const count of [1,2]) {
+      const p=await screen(page,troop),points=[{id:1,...p}];
+      await touch('touchStart',points);
+      await expect.poll(()=>page.evaluate(()=>InkTabletop.diagnostics().holds)).toBe(1);
+      if(count===2) await touch('touchStart',[...points,{id:2,x:p.x+50,y:p.y}]);
+      await page.evaluate(()=>{window.dropTouchEnds=true;InkTabletop.pause();});
+      await touch('touchEnd',[]);
+      await page.evaluate(()=>{window.dropTouchEnds=false;});
+      await fingerDrag({x:1.05,y:.06,z:.83},center);
+      await expect.poll(()=>page.evaluate(()=>InkTabletop.observe().paused)).toBe(false);
+    }
+    await fingerDrag(troop,rally);
+    await expect.poll(()=>page.evaluate(()=>InkTabletop.observe().metrics.spawned[1])).toBe(1);
+    const before=await page.evaluate(()=>InkTabletop.diagnostics().camera.distance);
+    await touch('touchStart',[{id:4,x:150,y:240},{id:5,x:220,y:240}]);
+    await touch('touchMove',[{id:4,x:120,y:240},{id:5,x:250,y:240}]);
+    await touch('touchEnd',[]);
+    await expect.poll(()=>page.evaluate(()=>InkTabletop.diagnostics().camera.distance)).toBeLessThan(before*.9);
+  });
+
   for(const size of [{width:390,height:844},{width:844,height:240}]) {
     test(`one finger plays; two fingers pan/pinch without buying at ${size.width}x${size.height}`,async({page,context},info)=>{
       await page.setViewportSize(size);await ready(page);
@@ -182,6 +244,24 @@ test.describe('phone gestures',()=>{
       expect(errors).toEqual([]);
     });
   }
+});
+
+test('carrying a book disables automatic camera framing until recenter',async({page})=>{
+  await ready(page);
+  const before=await page.evaluate(()=>InkTabletop.diagnostics());
+  const p=await screen(page,{x:1.28,y:.035,z:1.34});
+  await page.mouse.move(p.x,p.y);await page.mouse.down();
+  await page.mouse.move(p.x-90,p.y-45,{steps:4});await page.mouse.up();
+  const moved=await page.evaluate(()=>InkTabletop.diagnostics());
+  expect(moved.table.position).not.toEqual(before.table.position);
+  await page.setViewportSize({width:1024,height:660});
+  await page.evaluate(()=>new Promise(requestAnimationFrame));
+  const resized=await page.evaluate(()=>InkTabletop.diagnostics());
+  expect(resized.table).toEqual(moved.table);
+  expect(resized.camera.position).toEqual(moved.camera.position);
+  expect(resized.camera.target).toEqual(moved.camera.target);
+  await page.getByRole('button',{name:'Recenter view'}).click();
+  expect((await page.evaluate(()=>InkTabletop.diagnostics())).table).toEqual(before.table);
 });
 
 test('Android file entry opens the book and exposes pause for native lifecycle',async({page})=>{

@@ -3,6 +3,7 @@ import { HANDLES } from './scene.js';
 import { Interaction } from './interaction.js';
 import { toLocal, toWorld } from './spatial.js';
 import { landingHeight } from './defense-layout.js';
+import { TouchTwist } from './touch-twist.js';
 
 const xyz = (p) => ({ x: p.x, y: p.y, z: p.z });
 // Protect the complete book, shop, rings and upright artwork, including empty
@@ -38,12 +39,16 @@ export class TabletopInput {
   constructor(view, host, { onCarry = () => {}, onPlace = () => false } = {}) {
     this.view = view;
     this.host = host;
-    this.interaction = new Interaction(host, view.table, { onCarry });
+    this.interaction = new Interaction(host, view.table, { onCarry: () => {
+      view.autoFrame = false;
+      onCarry();
+    } });
     this.onPlace = onPlace;
     this.raycaster = new THREE.Raycaster();
     this.pointer = new THREE.Vector2();
     this.pointers = new Map();
-    this.touchPointers = new Set();
+    this.touchPointers = new Map();
+    this.twist = new TouchTwist();
     this.touchNavigation = false;
     this.sources = new Map();
     this.nextId = 0;
@@ -54,7 +59,8 @@ export class TabletopInput {
     this.canvas.addEventListener('pointerdown', (e) => {
       if (view.renderer.xr.isPresenting) return;
       if (e.pointerType === 'touch') {
-        this.touchPointers.add(e.pointerId);
+        this.touchPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        this.twist.update([...this.touchPointers.values()]);
         if (this.touchPointers.size > 1) {
           this.touchNavigation = true;
           for (const owner of this.pointers.keys()) this.interaction.cancel(owner);
@@ -71,6 +77,10 @@ export class TabletopInput {
       if (e.pointerType === 'touch')
         view.controls.touches.ONE = orbit ? THREE.TOUCH.ROTATE : null;
       else view.controls.mouseButtons.LEFT = orbit ? THREE.MOUSE.ROTATE : null;
+    }, true);
+    this.canvas.addEventListener('pointermove', (e) => {
+      if (e.pointerType === 'touch' && this.touchPointers.has(e.pointerId))
+        this.touchPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     }, true);
     for (const type of [
       'pointerdown',
@@ -179,6 +189,18 @@ export class TabletopInput {
     return this.planePoint(ray,
       this.view.table.position.y + height * this.view.table.scale);
   }
+  turnView() {
+    if (!this.touchNavigation || !this.view.controls.enabled || this.view.renderer.xr.isPresenting) return;
+    const angle = this.twist.update([...this.touchPointers.values()]);
+    // A clockwise finger twist turns the book clockwise on screen.
+    if (angle) this.view.controls.rotateLeft(-angle);
+  }
+  update(dt) {
+    // Sample the pair once per rendered frame so the two native pointer events
+    // of a pan/pinch are considered together instead of as transient twists.
+    this.turnView();
+    this.interaction.update(dt);
+  }
   desktop(type, e) {
     if (
       this.view.renderer.xr.isPresenting ||
@@ -188,7 +210,13 @@ export class TabletopInput {
     if (e.pointerType === 'touch') {
       const navigating = this.touchNavigation;
       if (['pointerup', 'pointercancel', 'lostpointercapture'].includes(type)) {
+        if (type === 'pointerup' && this.touchPointers.has(e.pointerId)) {
+          this.touchPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+          this.turnView();
+        }
         this.touchPointers.delete(e.pointerId);
+        this.twist.reset();
+        this.twist.update([...this.touchPointers.values()]);
         if (!this.touchPointers.size) this.touchNavigation = false;
       }
       // Do not turn the last remaining finger back into a purchase mid-gesture.
@@ -471,12 +499,21 @@ export class TabletopInput {
   }
   cancelAll() {
     this.interaction.cancelAll();
-    for (const owner of this.pointers.keys()) {
-      const id = Number(owner.slice(8));
+    // WebView/background interruptions may swallow the final pointer events.
+    // Reset both our gesture state and OrbitControls' native pointer tracking.
+    this.view.controls.disconnect();
+    for (const id of new Set([...this.touchPointers.keys(),
+      ...[...this.pointers.keys()].map(owner => Number(owner.slice(8)))])) {
       if (this.canvas.hasPointerCapture(id))
         this.canvas.releasePointerCapture(id);
     }
     this.pointers.clear();
+    this.touchPointers.clear();
+    this.touchNavigation = false;
+    this.twist.reset();
+    this.view.controls.touches.ONE = null;
+    this.view.controls.mouseButtons.LEFT = null;
+    this.view.controls.connect(this.canvas);
     this.view.controls.enabled = !this.view.renderer.xr.isPresenting;
     this.canvas.style.cursor = 'default';
     for (const source of this.sources.values()) {

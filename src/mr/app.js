@@ -457,7 +457,7 @@ async function init() {
         input.xr(frame, reference);
     }
     host.update(dt);
-    input.interaction.update(Math.min(dt, 0.1));
+    input.update(Math.min(dt, 0.1));
     const state = host.observe();
     syncMusic(state);
     if (state && state.paused !== lastPaused) {
