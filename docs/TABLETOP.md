@@ -18,7 +18,9 @@ physical objects. Phones and desktop browsers play the same scene without a head
 
 1. Look at a horizontal surface and pinch or press the trigger to place the book.
    A green ring indicates a detected surface. If room detection is unavailable,
-   the book starts in front of you at a comfortable height and can be carried.
+   the book starts 60 cm in front of you on a virtual table 75 cm above the floor,
+   whether seated or standing. The book's thickness rests above that surface.
+   It can still be carried to any comfortable position with a ring.
 2. Lift a difficulty seal from the tray and drop it onto the page to begin.
 3. Pinch a troop's arm/head area, or hold a controller grip near the piece. Point
    and hold the trigger for distant pieces. Drop troops in the green rally area.
@@ -43,7 +45,9 @@ physical objects. Phones and desktop browsers play the same scene without a head
    original soundtrack. Pause before dropping the new-page block. The compass exits MR.
 6. Hold one drawn ring to carry the whole book. Hold two to turn and resize it.
    The book stays horizontal; the soldiers stay upright. Width is bounded to
-   0.48–3.84 meters; initial Quest width is 1.32 meters. Both left and right hands work.
+   0.48–3.84 meters across the battlefield. The complete book initially measures
+   about 52 × 44 cm, including its cover (48 cm across the battle area).
+   Its proportions are unchanged. Both left and right hands work.
 
 On desktop, drag pieces with the left mouse button, orbit with the right, pan with
 the middle button and scroll to zoom toward the pointer. On phones, one finger
