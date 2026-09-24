@@ -143,7 +143,11 @@ export class InkBatch {
       }
       const u = new THREE.Vector3(...this.point(points[i - 1])).sub(a);
       const v = new THREE.Vector3(...this.point(points[i])).sub(a);
-      const normal = new THREE.Vector3().crossVectors(u, v).normalize();
+      const normal = new THREE.Vector3().crossVectors(u, v);
+      // A strip can narrow to a single point at a flask's bottom. Skip its
+      // zero-area half so instance transforms remain invertible in the shader.
+      if (normal.lengthSq() === 0) continue;
+      normal.normalize();
       this.m.makeBasis(u, v, normal).setPosition(a);
       mesh.setMatrixAt(index, this.m);
       mesh.setColorAt(index, colorValue(color));

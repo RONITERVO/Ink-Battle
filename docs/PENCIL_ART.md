@@ -119,4 +119,6 @@ The 2.2.2 local release check passed 33 unit tests, 81 browser checks (17 intent
 platform skips), the 2,304-match release sweep and 192-match tabletop sweep.
 The six mixed-army scenes measured 75–77 draw calls and 189,935–248,005 triangles,
 with 24 textures throughout and no overflow. CI reruns the full release suite.
+All 15 MR/art checks also passed on Chromium's software renderer after replacing
+costly per-daub blur filters with smooth quadratic paint edges.
 Actual Quest follow-up remains separate from automated browser checks.

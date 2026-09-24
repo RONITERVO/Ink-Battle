@@ -15,19 +15,30 @@ export function paintPage(canvas, age) {
   const blob = (x, y, rx, ry, color, alpha) => {
     c.fillStyle = color;
     c.globalAlpha = alpha;
-    c.filter = "blur(1.5px)";
-    c.beginPath();
-    for (let i = 0; i < 28; i++) {
+    const points = Array.from({ length: 28 }, (_, i) => {
       const a = (i / 28) * Math.PI * 2,
         r = 0.86 + random() * 0.18;
       const xx = (x + Math.cos(a) * rx * r) * w;
       const yy = (y + Math.sin(a) * ry * r) * h;
-      if (i) c.lineTo(xx, yy);
-      else c.moveTo(xx, yy);
-    }
+      return [xx, yy];
+    });
+    // Curved wet edges, without a full-canvas blur pass per daub. Filters made
+    // an age change stall on software renderers; these paths are cheap to fill.
+    c.beginPath();
+    const last = points[points.length - 1],
+      first = points[0];
+    c.moveTo((last[0] + first[0]) / 2, (last[1] + first[1]) / 2);
+    points.forEach((p, i) => {
+      const next = points[(i + 1) % points.length];
+      c.quadraticCurveTo(
+        p[0],
+        p[1],
+        (p[0] + next[0]) / 2,
+        (p[1] + next[1]) / 2,
+      );
+    });
     c.closePath();
     c.fill();
-    c.filter = "none";
   };
   // Pool the stronger color behind scenery and along the edges. Keep the front
   // shop margin and the battle lane pale enough for small graphite lettering.
