@@ -5,7 +5,8 @@ Version 2.4.0 makes the 3D sketchbook the default on web, PWA and Android. Class
 redirect to the new game, preserving query strings and fragments. The PWA retains
 its old identity so this updates the existing install rather than creating another.
 
-Phones use the same physical pieces as Quest and desktop. Pinch zooms and two-finger
+Phones use the same physical pieces as Quest and desktop. A one-finger or left-mouse
+drag starting outside the book and pieces rotates the view. Pinch zooms and two-finger
 drag pans; adding a second finger safely cancels a pending grab. Wheel zoom and
 middle-drag pan work on desktop. The book fits the initial viewport and the existing
 recenter control. No extra on-screen controls were added. Android supports device

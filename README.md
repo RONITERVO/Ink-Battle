@@ -21,7 +21,8 @@ seal onto the page to start. Drop troops across the rally strip, guide deployed
 troops, build cannon docks, place cannons, and toss upgrade potions. The hourglass
 pauses and the clock cycles 1×/2×/3×. Music retains its normal playback rate.
 
-Use one finger or the left mouse button to move pieces. Pinch to zoom and use two
+Use one finger or the left mouse button to move pieces. Start a drag outside the
+book and its pieces to rotate the view. Pinch to zoom and use two
 fingers to pan, like a map. On PC, scroll to zoom, middle-drag to pan and right-drag
 to orbit. No additional game buttons are needed. On Quest Browser, enter mixed
 reality; pinch or grip pieces, carry one drawn ring, or use two rings to scale/turn.

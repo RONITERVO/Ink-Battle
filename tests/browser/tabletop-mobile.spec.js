@@ -57,6 +57,75 @@ test('wheel zoom, middle-drag pan and recenter keep desktop pieces playable',asy
   await expect.poll(()=>page.evaluate(()=>InkTabletop.observe()?.running)).toBe(true);
 });
 
+for (const input of ['mouse', 'touch']) test.describe(`${input} background orbit`,()=>{
+  test.use({hasTouch:input==='touch',isMobile:input==='touch'});
+  test('only a drag starting outside the book rotates, even when it crosses pieces',async({page,context})=>{
+    const size=input==='touch'?{width:390,height:844}:{width:1280,height:720};
+    await page.setViewportSize(size);await ready(page);
+    await drag(page,seal,center);
+    await expect.poll(()=>page.evaluate(()=>InkTabletop.observe().player.drawProgress)).toBe(1);
+    const cdp=input==='touch'?await context.newCDPSession(page):null;
+    const down=async p=>{
+      if(cdp) await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{id:1,x:p.x,y:p.y}]});
+      else {await page.mouse.move(p.x,p.y);await page.mouse.down();}
+    };
+    const move=async p=>{
+      if(cdp) await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{id:1,x:p.x,y:p.y}]});
+      else await page.mouse.move(p.x,p.y,{steps:4});
+    };
+    const up=()=>cdp?cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]}):page.mouse.up();
+    const camera=()=>page.evaluate(()=>InkTabletop.diagnostics().camera);
+    const outside={x:size.width-25,y:100};
+    const before=await camera(),spent=await page.evaluate(()=>InkTabletop.observe().metrics.spent[1]);
+    // Empty page space is protected, even if the drag later leaves the book.
+    await down(await screen(page,{x:0,y:0,z:-.1}));await move(outside);await up();
+    expect((await camera()).position).toEqual(before.position);
+    // A piece remains a piece drag even after moving beyond the book.
+    const piece=await screen(page,troop);
+    await down(piece);
+    await expect.poll(()=>page.evaluate(()=>InkTabletop.diagnostics().holds)).toBe(1);
+    await move(outside);await up();
+    expect((await camera()).position).toEqual(before.position);
+    expect(await page.evaluate(()=>InkTabletop.observe().metrics.spent[1])).toBe(spent);
+    // An outside start stays camera-only when dragged over an available troop.
+    await down(outside);await move(piece);
+    await expect.poll(async()=>(await camera()).position).not.toEqual(before.position);
+    expect(await page.evaluate(()=>InkTabletop.diagnostics().holds)).toBe(0);
+    if(cdp) {
+      const touches=(type,points)=>cdp.send('Input.dispatchTouchEvent',{type,touchPoints:points});
+      const first={id:1,x:piece.x,y:piece.y},second={id:2,x:piece.x+40,y:piece.y};
+      const distance=(await camera()).distance;
+      await touches('touchStart',[first,second]);
+      first.x++;second.x++;
+      await touches('touchMove',[first,second]);
+      expect((await camera()).distance).toBeCloseTo(distance,2);
+      second.x+=40;await touches('touchMove',[first,second]);
+      await expect.poll(async()=>(await camera()).distance).toBeLessThan(distance*.9);
+      await touches('touchEnd',[first]);
+      // Let rotation damping settle, then verify lifting just one finger cannot
+      // switch the remaining finger back from navigation into orbit or a grab.
+      let previous,stable=0;
+      const rounded=async()=>(await camera()).position.map(n=>Math.round(n*1000));
+      await expect.poll(async()=>{
+        const current=JSON.stringify(await rounded());
+        stable=current===previous?stable+1:0;previous=current;return stable;
+      },{intervals:[100],timeout:5000}).toBeGreaterThanOrEqual(2);
+      const resting=await rounded();
+      first.x+=100;first.y-=80;await touches('touchMove',[first]);
+      expect(await rounded()).toEqual(resting);
+      expect(await page.evaluate(()=>InkTabletop.diagnostics().holds)).toBe(0);
+    }
+    await up();
+    expect(await page.evaluate(()=>InkTabletop.observe().metrics.spent[1])).toBe(spent);
+    // Recenter and a fresh grab still work after orbiting.
+    if(input==='touch') await page.getByRole('button',{name:'Show or hide instructions'}).tap();
+    await page.getByRole('button',{name:'Recenter view'}).click();
+    if(input==='touch') await page.getByRole('button',{name:'Show or hide instructions'}).tap();
+    await down(await screen(page,troop));await move(await screen(page,rally));await up();
+    await expect.poll(()=>page.evaluate(()=>InkTabletop.observe().metrics.spawned[1])).toBe(1);
+  });
+});
+
 test.describe('phone gestures',()=>{
   test.use({hasTouch:true,isMobile:true});
   for(const size of [{width:390,height:844},{width:844,height:240}]) {

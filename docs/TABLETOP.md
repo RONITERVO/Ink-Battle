@@ -47,7 +47,10 @@ physical objects. Phones and desktop browsers play the same scene without a head
 
 On desktop, drag pieces with the left mouse button, orbit with the right, pan with
 the middle button and scroll to zoom toward the pointer. On phones, one finger
-drags the same pieces; two fingers pan and pinch to zoom, like a map. Adding a second
+drags the same pieces. A one-finger or left-mouse drag starting outside the book,
+shop and pieces rotates the view. Starting on empty paper keeps the camera still;
+crossing onto the book during a rotation cannot grab or buy anything.
+Two fingers pan and pinch to zoom, like a map. Adding a second
 finger cancels a pending grab without buying or deploying it. There are no added
 on-screen purchase or navigation buttons. Recenter restores the camera and book,
 fitting the whole book into the current viewport. Escape cancels holds and pauses.

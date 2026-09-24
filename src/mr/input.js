@@ -5,6 +5,12 @@ import { toLocal, toWorld } from './spatial.js';
 import { landingHeight } from './defense-layout.js';
 
 const xyz = (p) => ({ x: p.x, y: p.y, z: p.z });
+// Protect the complete book, shop, rings and upright artwork, including empty
+// parts of the page. Only gestures starting beyond this volume may orbit.
+const PLAY_SPACE = new THREE.Box3(
+  new THREE.Vector3(-1.46, -0.15, -0.8),
+  new THREE.Vector3(1.46, 0.48, 1.56)
+);
 const HAND_BONES = [
   'thumb',
   'index-finger',
@@ -43,16 +49,28 @@ export class TabletopInput {
     this.nextId = 0;
     this.canvas = view.renderer.domElement;
     this.listeners = [];
-    // Run before OrbitControls: a second finger converts a possible purchase
-    // into camera navigation. Never release that pending piece onto the page.
+    // Choose the gesture before OrbitControls sees pointerdown, then keep that
+    // choice until release. Crossing the book during an orbit cannot grab it.
     this.canvas.addEventListener('pointerdown', (e) => {
-      if (e.pointerType !== 'touch' || view.renderer.xr.isPresenting) return;
-      this.touchPointers.add(e.pointerId);
-      if (this.touchPointers.size < 2) return;
-      this.touchNavigation = true;
-      for (const owner of this.pointers.keys()) this.interaction.cancel(owner);
-      this.pointers.clear();
-      view.controls.enabled = true;
+      if (view.renderer.xr.isPresenting) return;
+      if (e.pointerType === 'touch') {
+        this.touchPointers.add(e.pointerId);
+        if (this.touchPointers.size > 1) {
+          this.touchNavigation = true;
+          for (const owner of this.pointers.keys()) this.interaction.cancel(owner);
+          this.pointers.clear();
+          view.controls.enabled = true;
+          // The remaining finger stays idle when the other finger lifts.
+          view.controls.touches.ONE = null;
+          return;
+        }
+      } else if (e.button !== 0) return;
+      const ray = this.desktopRay(e);
+      const orbit = !this.pointers.size && !this.touchNavigation &&
+        !this.pick({ x: 1e5, y: 1e5, z: 1e5 }, ray) && this.outsidePlaySpace(ray);
+      if (e.pointerType === 'touch')
+        view.controls.touches.ONE = orbit ? THREE.TOUCH.ROTATE : null;
+      else view.controls.mouseButtons.LEFT = orbit ? THREE.MOUSE.ROTATE : null;
     }, true);
     for (const type of [
       'pointerdown',
@@ -143,6 +161,13 @@ export class TabletopInput {
     this.raycaster.setFromCamera(this.pointer, this.view.camera);
     return this.raycaster.ray;
   }
+  outsidePlaySpace(ray) {
+    const origin = new THREE.Vector3().copy(toLocal(ray.origin, this.view.table));
+    const direction = new THREE.Vector3().copy(
+      toLocal(ray.at(1, new THREE.Vector3()), this.view.table)
+    ).sub(origin).normalize();
+    return !new THREE.Ray(origin, direction).intersectsBox(PLAY_SPACE);
+  }
   planePoint(ray, y) {
     return ray.intersectPlane(
       new THREE.Plane(new THREE.Vector3(0, 1, 0), -y),
@@ -189,7 +214,7 @@ export class TabletopInput {
             ? picked.world.y
             : toWorld({ x: 0, y: 0.28, z: 0 }, this.view.table).y
         });
-        // Single-touch camera actions are disabled in controls.touches. Leave
+        // Single-touch orbit is disabled for a piece grab. Leave pointer
         // tracking enabled so a later second finger starts at the current
         // first-finger position, not the original piece-grab position.
         this.view.controls.enabled = [...this.pointers.values()].every(p => p.touch);
