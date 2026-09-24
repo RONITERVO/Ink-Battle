@@ -85,11 +85,13 @@ function moveUnits(s, plans) {
   for (let i = 0; i < plans.length; i++) {
     const plan = plans[i], u = plan.u;
     plan.x += offsets[i].x; plan.z += offsets[i].z;
-    // Crowd correction shares the unit's movement budget. Holding or repeatedly
-    // guiding a troop never gives it extra speed or shields it from damage.
+    // Resolve foundations before limiting the entire move. A newly purchased
+    // dock can overlap a soldier; it must walk clear rather than teleport out.
+    keepInField(plan, u, obstacles);
+    // Crowd and foundation correction share the unit's movement budget.
     const d = distance(plan, u), maximum = u.speed * FIXED_DT;
     if (d > maximum) { plan.x = u.x + (plan.x - u.x) * maximum / d; plan.z = u.z + (plan.z - u.z) * maximum / d; }
-    keepInField(plan, u, obstacles);
+    plan.x = round(plan.x); plan.z = round(plan.z);
     u.moving = distance(plan, u) > .01;
     u.x = plan.x; u.z = plan.z;
   }
@@ -197,13 +199,14 @@ function projectileTick(s, hits) {
       const infantry = p.sourceRole === 1 && target.uType === 0 ? 1.5 : 1;
       hits.push({ team: p.team, ref: p.target, dmg: p.dmg * (reduced ? .5 : 1) * armor * infantry });
       if (p.splashRadius) {
-        const nearby = s.units.filter(u => u.team !== p.team && u.id !== target.id && distance(u, target) < p.splashRadius)
-          .sort((a,b) => distance(a,target) - distance(b,target) || a.id - b.id).slice(0,2);
+        const impact = { x: p.targetX, z: p.targetZ };
+        const nearby = s.units.filter(u => u.team !== p.team && u.id !== target.id && distance(u, impact) < p.splashRadius)
+          .sort((a,b) => distance(a,impact) - distance(b,impact) || a.id - b.id).slice(0,2);
         for (const u of nearby) hits.push({ team: p.team, ref: targetRef(u), dmg: p.dmg * .35 * (u.uType === 0 ? .5 : 1) });
       }
     }
     p.hit = true; p.active = p.life > 0;
-    emit(s, 'impact', { x: p.x, y: p.y, z: p.z, type: p.type });
+    emit(s, 'impact', { x: p.x, y: p.y, z: p.z, projectileType: p.type });
   }
   s.projectiles = s.projectiles.filter(p => p.active);
 }

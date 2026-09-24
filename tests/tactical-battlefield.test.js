@@ -6,11 +6,15 @@ import { createState, side } from '../src/core/state.js';
 import { applyCommand } from '../src/core/commands.js';
 import { step } from '../src/core/engine.js';
 import { AGES } from '../src/content/ages.js';
-import { FIELD, cannonPoint, cannonMuzzle, distance, worldX, worldZ, TABLETOP_RULES_VERSION } from '../src/core/battlefield.js';
+import { FIELD, cannonPoint, cannonMuzzle, distance, unitRadius, worldX, worldZ, TABLETOP_RULES_VERSION } from '../src/core/battlefield.js';
 import { TabletopHost } from '../src/mr/host.js';
 import { Interaction } from '../src/mr/interaction.js';
 import { toWorld } from '../src/mr/spatial.js';
 import { assertInvariants, COMPOSITIONS, runComposition } from '../src/simulation/run.js';
+import * as THREE from 'three';
+import { InkBatch } from '../src/mr/ink-batch.js';
+import { cannonModel } from '../src/mr/defense-models.js';
+import { PENCIL } from '../src/mr/pencil-palette.js';
 
 function state(age = 0) {
   const s = createState({ battlefield: 'tabletop', startAge: age, opponent: false });
@@ -119,6 +123,27 @@ test('all eighteen defenses turn, release from their real dock and keep projecti
   }
 });
 
+test('shot origins match articulated catapults and barrel flashes at release, including yaw and recoil',()=>{
+  const batch=new InkBatch(new THREE.Group(),{capacity:600});
+  const line=batch.line.bind(batch);
+  let tips=[],catapult=false;
+  batch.line=(a,b,r,color)=>{
+    if(catapult ? b[0]===.058 && b[1]===.151 : color===PENCIL.paper) tips.push(batch.point(catapult?b:a));
+    return line(a,b,r,color);
+  };
+  for(const [age,index] of [[0,0],[1,0],[2,0],[2,1],[2,2],[3,0],[3,2],[4,0],[4,1],[5,0]]) for(const team of [1,-1]) {
+    tips=[];catapult=age<2;
+    const heading=team===1?.35:Math.PI-.35,pad=cannonPoint(team,0);
+    batch.begin();batch.model(worldX(pad.x),.044,worldZ(pad.z),.83,team,-(heading-(team===1?0:Math.PI)));
+    cannonModel(batch,age,index,PENCIL.player,false,{strike:1,recoil:1,prepare:0,flash:1},true);
+    assert.ok(tips.length,`No sampled release point for ${age}/${index}`);
+    const mean=[0,1,2].map(axis=>tips.reduce((sum,p)=>sum+p[axis],0)/tips.length);
+    const muzzle=cannonMuzzle(team,0,age,index,heading);
+    const expected=[worldX(muzzle.x),(600-muzzle.y)*FIELD.worldScale,worldZ(muzzle.z)];
+    for(let axis=0;axis<3;axis++) assert.ok(Math.abs(mean[axis]-expected[axis])<1e-8,`${age}/${index}/${team} axis ${axis}`);
+  }
+});
+
 test('incoming cannon shots cannot damage a rebuilt cannon in the same slot', () => {
   const s=state(2);cannon(s,-1);
   const pad=cannonPoint(-1,0),u=troop(s,1,2,850,pad.z);
@@ -128,6 +153,43 @@ test('incoming cannon shots cannot damage a rebuilt cannon in the same slot', ()
   u.attackCooldown=100;
   const hp=s.enemy.turretHp[0];advance(s,120);
   assert.equal(s.enemy.turretHp[0],hp);
+});
+
+test('a foundation purchased beneath a heavy troop lets it walk clear without a speed boost',()=>{
+  for(const team of [1,-1]) for(let slot=1;slot<4;slot++) {
+    const s=state(5);
+    while(side(s,team).unlockedSlots<slot) assert.ok(applyCommand(s,team,{type:'slot'}).ok);
+    const pad=cannonPoint(team,slot),u=troop(s,-team,2,team===1?95:1185,pad.z);
+    const minimum=pad.radius+unitRadius(u);
+    assert.ok(distance(u,pad)<minimum,'Troop occupies the future dock footprint');
+    assert.ok(applyCommand(s,team,{type:'slot'}).ok);
+    for(let tick=0;tick<120;tick++) {
+      const before={x:u.x,z:u.z};step(s);
+      assert.ok(distance(u,before)<=u.speed/60+1e-5,`Dock ${team}/${slot} moved a troop too far`);
+    }
+    assert.ok(distance(u,pad)>=minimum-.001,'Troop eventually clears the built foundation');
+    assertInvariants(s);
+  }
+});
+
+test('splash stays centered on the visible impact when its large target has moved',()=>{
+  for(const team of [1,-1]) {
+    const s=state(3),x=value=>team===1?value:1280-value;
+    const target=troop(s,-team,2,x(680),0);
+    const besideImpact=troop(s,-team,1,x(580),-40);
+    const besideTarget=troop(s,-team,1,x(715),40);
+    for(const u of s.units) {u.speed=0;u.attackCooldown=100;}
+    const before=s.units.map(u=>u.hp);
+    s.projectiles.push({id:s.nextId++,team,type:'cannonball',sourceRole:2,dmg:100,splashRadius:80,
+      target:{kind:'unit',id:target.id},startX:x(300),startY:560,startZ:0,
+      targetX:x(600),targetY:560,targetZ:0,flightTicks:60,elapsed:59,arc:true,active:true,hit:false,life:0});
+    step(s);
+    assert.equal(target.hp,before[0]-100,'Moving heavy remains within direct-hit tolerance');
+    assert.equal(besideImpact.hp,before[1]-35,'Troop beside the explosion takes splash');
+    assert.equal(besideTarget.hp,before[2],'Troop outside the explosion is untouched');
+    const impact=s.events.find(e=>e.type==='impact');
+    assert.equal(impact.x,x(600));assert.equal(impact.z,0);
+  }
 });
 
 test('mirrored open-field combat is fair, including simultaneous lethal hits', () => {

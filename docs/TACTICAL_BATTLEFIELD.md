@@ -65,6 +65,8 @@ The tabletop profile compensates for the new space explicitly:
   These changes preserve equal-budget counters after removing the old single-file queue.
 - Spawn spacing, local separation and solid foundations prevent overlapping
   deployment and walking through bases. Movement and guidance use ordinary troop speed.
+  A troop caught in a newly built dock's footprint walks clear within that same
+  speed budget. Splash damage is centered on the projectile's impact point.
 
 ## Expansion and release checks
 
@@ -77,6 +79,8 @@ release sweep, tabletop scenarios and browser tests. Tabletop coverage includes:
   six ages and four seeds, including missed drops, guidance and full replay verification.
 - Targeted tests for every cannon type and both sides, all four destructible
   installations, damage/refunds/rebuilding, old saves and guide ownership/rate limits.
+  Artwork geometry checks cover articulated muzzle origins; regressions cover
+  construction beneath troops and splash around a moving target.
 - Real pointer input and emulated Quest hand/controller guidance, save/reload,
   all-age artwork and the 160-unit/eight-cannon rendering stress fixture.
 

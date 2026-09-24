@@ -75,10 +75,15 @@ export function guidance(s, team, u, point) {
     Math.min(FIELD.maxZ - unitRadius(u), u.z + FIELD.maxNudge))), target, until: s.tick + FIELD.guideTicks };
 }
 
-// Nominal release points of the existing pencil weapons, relative to their dock.
-const MUZZLES = [ [[.058,.151],[.0,.131],[.035,.15]], [[.058,.151],[.112,.084],[.055,.12]],
-  [[.1,.0816],[.1,.0816],[.045,.156]], [[.095,.0756],[.047,.089],[.145,.14]],
-  [[.089,.1004],[.115,.1042],[.1,.123]], [[.09,.119],[.012,.126],[.085,.148]] ];
+// Release-frame anchors of the pencil weapons (strike/recoil = 1), not their
+// resting silhouettes. Geometry tests sample the actual articulated artwork.
+const catapult = [-.02 + .078*Math.cos(-1.05) - .075*Math.sin(-1.05),
+  .076 + .078*Math.sin(-1.05) + .075*Math.cos(-1.05)];
+const rockets = [.047*Math.cos(.16) - .036*Math.sin(.16) - .016,
+  .05 + .047*Math.sin(.16) + .036*Math.cos(.16)];
+const MUZZLES = [ [catapult,[.022,.132],[.039,.204]], [catapult,[.112,.084],[.055,.12]],
+  [[.074,.092],[.074,.092],[.019,.162]], [[.083,.0852],rockets,[.119,.1536]],
+  [[.063,.10792],[.089,.1154],[.1,.123]], [[.064,.1242],[.012,.126],[.025,.137]] ];
 export function cannonMuzzle(team, slot, age, index, heading) {
   const p = cannonPoint(team, slot), [length, height] = MUZZLES[age][index];
   const reach = length * .83 / FIELD.worldScale;

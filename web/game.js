@@ -227,13 +227,21 @@
       Math.min(FIELD.maxZ - unitRadius(u), u.z + FIELD.maxNudge)
     )), target, until: s.tick + FIELD.guideTicks };
   }
+  var catapult = [
+    -0.02 + 0.078 * Math.cos(-1.05) - 0.075 * Math.sin(-1.05),
+    0.076 + 0.078 * Math.sin(-1.05) + 0.075 * Math.cos(-1.05)
+  ];
+  var rockets = [
+    0.047 * Math.cos(0.16) - 0.036 * Math.sin(0.16) - 0.016,
+    0.05 + 0.047 * Math.sin(0.16) + 0.036 * Math.cos(0.16)
+  ];
   var MUZZLES = [
-    [[0.058, 0.151], [0, 0.131], [0.035, 0.15]],
-    [[0.058, 0.151], [0.112, 0.084], [0.055, 0.12]],
-    [[0.1, 0.0816], [0.1, 0.0816], [0.045, 0.156]],
-    [[0.095, 0.0756], [0.047, 0.089], [0.145, 0.14]],
-    [[0.089, 0.1004], [0.115, 0.1042], [0.1, 0.123]],
-    [[0.09, 0.119], [0.012, 0.126], [0.085, 0.148]]
+    [catapult, [0.022, 0.132], [0.039, 0.204]],
+    [catapult, [0.112, 0.084], [0.055, 0.12]],
+    [[0.074, 0.092], [0.074, 0.092], [0.019, 0.162]],
+    [[0.083, 0.0852], rockets, [0.119, 0.1536]],
+    [[0.063, 0.10792], [0.089, 0.1154], [0.1, 0.123]],
+    [[0.064, 0.1242], [0.012, 0.126], [0.025, 0.137]]
   ];
   function cannonMuzzle(team, slot, age, index, heading) {
     const p = cannonPoint(team, slot), [length, height] = MUZZLES[age][index];
@@ -876,12 +884,14 @@
       const plan = plans[i], u = plan.u;
       plan.x += offsets[i].x;
       plan.z += offsets[i].z;
+      keepInField(plan, u, obstacles);
       const d = distance(plan, u), maximum = u.speed * FIXED_DT;
       if (d > maximum) {
         plan.x = u.x + (plan.x - u.x) * maximum / d;
         plan.z = u.z + (plan.z - u.z) * maximum / d;
       }
-      keepInField(plan, u, obstacles);
+      plan.x = round(plan.x);
+      plan.z = round(plan.z);
       u.moving = distance(plan, u) > 0.01;
       u.x = plan.x;
       u.z = plan.z;
@@ -1035,13 +1045,14 @@
         const infantry = p.sourceRole === 1 && target.uType === 0 ? 1.5 : 1;
         hits.push({ team: p.team, ref: p.target, dmg: p.dmg * (reduced ? 0.5 : 1) * armor * infantry });
         if (p.splashRadius) {
-          const nearby = s.units.filter((u) => u.team !== p.team && u.id !== target.id && distance(u, target) < p.splashRadius).sort((a, b) => distance(a, target) - distance(b, target) || a.id - b.id).slice(0, 2);
+          const impact = { x: p.targetX, z: p.targetZ };
+          const nearby = s.units.filter((u) => u.team !== p.team && u.id !== target.id && distance(u, impact) < p.splashRadius).sort((a, b) => distance(a, impact) - distance(b, impact) || a.id - b.id).slice(0, 2);
           for (const u of nearby) hits.push({ team: p.team, ref: targetRef(u), dmg: p.dmg * 0.35 * (u.uType === 0 ? 0.5 : 1) });
         }
       }
       p.hit = true;
       p.active = p.life > 0;
-      emit(s, "impact", { x: p.x, y: p.y, z: p.z, type: p.type });
+      emit(s, "impact", { x: p.x, y: p.y, z: p.z, projectileType: p.type });
     }
     s.projectiles = s.projectiles.filter((p) => p.active);
   }
