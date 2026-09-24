@@ -16,3 +16,5 @@ export const PENCIL = Object.freeze({
   evolution: "#859ac1",
   special: "#ce8260",
 });
+
+export const TEAM_COLORS = Object.freeze({ 1: PENCIL.player, "-1": PENCIL.enemy });

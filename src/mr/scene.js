@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { InkBatch } from "./ink-batch.js";
+import { unitMotion, defenseMotion } from "./combat-motion.js";
 import {
   unitModel,
   baseModel,
@@ -12,6 +13,7 @@ import {
 } from "./models.js";
 import { TABLE } from "./catalog.js";
 import { AGES } from "../content/ages.js";
+import { TICK_RATE } from "../core/constants.js";
 import {
   CHAPTERS,
   bookPaths,
@@ -332,6 +334,7 @@ export class TabletopScene {
     this.details.end();
   }
   update(state, heldItems, dt) {
+    const combatTime = (state?.tick || 0) / TICK_RATE;
     this.time += dt;
     this.labelClock -= dt;
     this.refreshArt(state?.player.age || 0);
@@ -370,7 +373,15 @@ export class TabletopScene {
             0.83 * Math.max(0.02, side.turretProgress[slot]),
             team,
           );
-          cannonModel(this.army, side.age, index, TEAM_COLORS[team]);
+          cannonModel(
+            this.army,
+            side.age,
+            index,
+            TEAM_COLORS[team],
+            false,
+            defenseMotion(side, slot),
+            this.host.quality !== "comfort",
+          );
         });
       }
       for (const unit of state.units) {
@@ -384,9 +395,10 @@ export class TabletopScene {
           z,
           scale,
           team: unit.team,
-          time: comfort ? 0 : this.time + unit.id,
+          time: comfort ? 0 : combatTime + unit.id,
           walking: !comfort && unit.moving,
-          attacking: !comfort && unit.isAttacking,
+          motion: unitMotion(unit),
+          detailed: !comfort,
         });
         if (!comfort) {
           this.army.model(x, 0.23 * scale, z, 1);
@@ -425,7 +437,7 @@ export class TabletopScene {
         specialModel(
           this.army,
           special.age,
-          this.time,
+          combatTime,
           special.team,
           this.host.quality !== "comfort",
         );
