@@ -4,7 +4,8 @@ import { Session } from '../../src/sdk/session.js';
 import { AGES } from '../../src/content/ages.js';
 import { dockPosition } from '../../src/mr/defense-layout.js';
 import { worldX, worldZ } from '../../src/core/battlefield.js';
-/* global InkTabletop, xrDevice, handConfig, controllerConfig, measureMRStress */
+import { Quaternion, Vector3, Euler } from 'three';
+/* global InkTabletop, xrDevice, handConfig, controllerConfig, measureMRStress, xrMath */
 
 async function ready(page) {
   await page.goto('/mr.html');
@@ -247,7 +248,7 @@ test.beforeAll(async () => {
   const result = await build({
     stdin: {
       contents:
-        "import {XRDevice,metaQuest3} from 'iwer'; import {oculusHandConfig} from 'iwer/lib/device/XRHandInput.js'; window.handConfig=oculusHandConfig; window.controllerConfig=metaQuest3.controllerConfig; window.xrDevice=new XRDevice(metaQuest3,{stereoEnabled:false}); xrDevice.installRuntime({forceInstall:true});",
+        "import {XRDevice,metaQuest3} from 'iwer'; import {oculusHandConfig} from 'iwer/lib/device/XRHandInput.js'; import {Vector3,Quaternion} from 'three'; window.xrMath={Vector3,Quaternion}; window.handConfig=oculusHandConfig; window.controllerConfig=metaQuest3.controllerConfig; window.xrDevice=new XRDevice(metaQuest3,{stereoEnabled:false}); xrDevice.installRuntime({forceInstall:true});",
       resolveDir: process.cwd()
     },
     bundle: true,
@@ -266,28 +267,25 @@ async function emulated(page, viewerHeight) {
     .poll(() => page.evaluate(() => InkTabletop.diagnostics().xr))
     .toBe(true);
 }
-async function controller(page, side, point, pressed) {
+async function controller(page, side, point, pressed, orientation = null, world = false) {
   await page.evaluate(
-    ({ side, point, pressed }) => {
+    ({ side, point, pressed, orientation, world }) => {
       const c = xrDevice.controllers[side],
         t = InkTabletop.diagnostics().table;
       if (point) {
         // IWER positions the aim ray, while the game holds pieces at the grip.
         // Align the physical grip to the requested point, including its offset.
         const offset = controllerConfig.layout[side].gripOffsetMatrix;
-        const cos = Math.cos(t.yaw),
-          sin = Math.sin(t.yaw);
-        c.position.set(
-          t.position.x + (cos * point.x + sin * point.z) * t.scale - (offset?.[12] || 0),
-          t.position.y + point.y * t.scale - (offset?.[13] || 0),
-          t.position.z + (-sin * point.x + cos * point.z) * t.scale - (offset?.[14] || 0)
-        );
-        c.quaternion.set(0, 0, 0, 1);
+        c.quaternion.copy(orientation || { x: 0, y: 0, z: 0, w: 1 });
+        const p = new xrMath.Vector3().copy(point);
+        if (!world) p.applyQuaternion(t.rotation).multiplyScalar(t.scale).add(t.position);
+        p.sub(new xrMath.Vector3(offset?.[12] || 0, offset?.[13] || 0, offset?.[14] || 0).applyQuaternion(c.quaternion));
+        c.position.copy(p);
       }
       if (pressed !== undefined)
         c.updateButtonValue('trigger', pressed ? 1 : 0);
     },
-    { side, point, pressed }
+    { side, point, pressed, orientation: orientation && { x: orientation.x, y: orientation.y, z: orientation.z, w: orientation.w }, world }
   );
   await page.waitForTimeout(90);
 }
@@ -420,9 +418,9 @@ test('tabletop shell opens offline after its first successful load', async ({
     .toBe(true);
 });
 
-async function hand(page, side, point, pinched) {
+async function hand(page, side, point, pinched, orientation = null, world = false) {
   await page.evaluate(
-    ({ side, point, pinched }) => {
+    ({ side, point, pinched, orientation, world }) => {
       const h = xrDevice.hands[side],
         t = InkTabletop.diagnostics().table,
         pose = handConfig.poses[pinched ? 'pinch' : 'default'];
@@ -433,22 +431,89 @@ async function hand(page, side, point, pinched) {
         y: (a[13] + b[13]) / 2,
         z: (a[14] + b[14]) / 2
       };
-      const cos = Math.cos(t.yaw),
-        sin = Math.sin(t.yaw);
-      h.quaternion.set(0, 0, 0, 1);
-      h.position.set(
-        t.position.x + (cos * point.x + sin * point.z) * t.scale - offset.x,
-        t.position.y + point.y * t.scale - offset.y,
-        t.position.z + (-sin * point.x + cos * point.z) * t.scale - offset.z
-      );
+      h.quaternion.copy(orientation || { x: 0, y: 0, z: 0, w: 1 });
+      const p = new xrMath.Vector3().copy(point);
+      if (!world) p.applyQuaternion(t.rotation).multiplyScalar(t.scale).add(t.position);
+      p.sub(new xrMath.Vector3().copy(offset).applyQuaternion(h.quaternion));
+      h.position.copy(p);
       h.updatePinchValue(pinched ? 1 : 0);
     },
-    { side, point, pinched }
+    { side, point, pinched, orientation: orientation && { x: orientation.x, y: orientation.y, z: orientation.z, w: orientation.w }, world }
   );
   await page.waitForTimeout(100);
 }
 
 for (const device of ['controller', 'hand']) {
+  for (const diagonal of [-1, 1]) {
+    test(`emulated ${device} plays on an overhead book carried by diagonal ${diagonal}`, async ({ page, browserName }) => {
+      test.skip(browserName !== 'chromium', 'IWER uses Chromium WebGL.');
+      await emulated(page);
+      if (device === 'hand') await page.evaluate(() => { xrDevice.primaryInputMode = 'hand'; });
+      const move = device === 'hand' ? hand : controller;
+      await move(page, 'right', center, false); await move(page, 'right', center, true); await move(page, 'right', center, false);
+      await expect.poll(() => page.evaluate(() => InkTabletop.diagnostics().placing)).toBe(false);
+      const initial = await page.evaluate(() => InkTabletop.diagnostics().table);
+      const corners = [{ x: -1.28, y: .035, z: diagonal === 1 ? 1.34 : -.65 },
+        { x: 1.28, y: .035, z: diagonal === 1 ? -.65 : 1.34 }];
+      const world = corners.map(p => new Vector3().copy(p).applyQuaternion(initial.rotation).multiplyScalar(initial.scale).add(initial.position));
+      const midpoint = world[0].clone().add(world[1]).multiplyScalar(.5);
+      for (const [i, side] of ['left', 'right'].entries()) {
+        await move(page, side, corners[i], false); await move(page, side, corners[i], true);
+      }
+      await expect.poll(() => page.evaluate(() => InkTabletop.diagnostics().holds)).toBe(0); // Rings never purchase shop tokens.
+      const target = new Quaternion().setFromEuler(new Euler(2.45, .35, diagonal * .4));
+      let finalPoints;
+      for (let step = 1; step <= 5; step++) {
+        const q = new Quaternion().slerp(target, step / 5);
+        finalPoints = world.map(p => p.clone().sub(midpoint).multiplyScalar(1 + .2 * step / 5).applyQuaternion(q)
+          .add(midpoint).add(new Vector3(.15, .6, .1).multiplyScalar(step / 5)));
+        for (const [i, side] of ['left', 'right'].entries()) await move(page, side, finalPoints[i], true, q, true);
+      }
+      const carried = await page.evaluate(() => InkTabletop.diagnostics().table);
+      expect(Math.abs(new Quaternion().copy(carried.rotation).dot(target))).toBeGreaterThan(.9999);
+      expect(carried.scale).toBeCloseTo(initial.scale * 1.2, 4);
+      // Release opposite hands first for the two diagonal arrangements.
+      const first = diagonal === 1 ? 0 : 1, remaining = 1 - first;
+      await move(page, first ? 'right' : 'left', finalPoints[first], false, target, true);
+      const single = await page.evaluate(() => InkTabletop.diagnostics().table);
+      expect(Math.abs(new Quaternion().copy(single.rotation).dot(target))).toBeGreaterThan(.9999);
+      expect(new Vector3().copy(single.position).distanceTo(carried.position)).toBeLessThan(.001);
+      // The remaining wrist can also turn the book around its held corner.
+      target.premultiply(new Quaternion().setFromEuler(new Euler(.15, -.12, .18)));
+      finalPoints[remaining].add(new Vector3(.04, .08, 0));
+      await move(page, remaining ? 'right' : 'left', finalPoints[remaining], true, target, true);
+      const oneHand = await page.evaluate(() => InkTabletop.diagnostics().table);
+      expect(Math.abs(new Quaternion().copy(oneHand.rotation).dot(target))).toBeGreaterThan(.9999);
+      await move(page, remaining ? 'right' : 'left', finalPoints[remaining], false, target, true);
+      const released = await page.evaluate(() => InkTabletop.diagnostics().table);
+      expect(Math.abs(new Quaternion().copy(released.rotation).dot(target))).toBeGreaterThan(.9999);
+      expect(new Vector3().copy(released.position).distanceTo(oneHand.position)).toBeLessThan(.001);
+      // View the underside-facing page from a reclining head pose.
+      await page.evaluate(() => {
+        xrDevice.position.y = .85;
+        xrDevice.quaternion.set(Math.sin(Math.PI / 8), 0, 0, Math.cos(Math.PI / 8));
+      });
+      const session = new Session({ battlefield: 'tabletop', opponent: false }); session.advance(60 * 300);
+      await page.evaluate(cp => InkTabletop.restore(cp), session.checkpoint());
+      await move(page, 'right', hourglass, false); await move(page, 'right', hourglass, true);
+      await move(page, 'right', { ...center, y: .06 }, false);
+      await expect.poll(() => page.evaluate(() => InkTabletop.observe().paused)).toBe(false);
+      await move(page, 'right', troop, false); await move(page, 'right', troop, true);
+      await move(page, 'right', { ...rally, y: .226 }, true); await move(page, 'right', { ...rally, y: .226 }, false);
+      await expect.poll(() => page.evaluate(() => InkTabletop.observe().metrics.spawned[1])).toBe(1);
+      const potion = { x: -1.04, y: .07, z: 1.16 }, above = { x: 0, y: .7, z: 0 };
+      await move(page, 'right', potion, false); await move(page, 'right', potion, true);
+      await move(page, 'right', above, true); await page.waitForTimeout(200); await move(page, 'right', above, false);
+      await expect.poll(() => page.evaluate(() => InkTabletop.observe().player.upgrades.dmg)).toBe(1);
+      const dock = dockPosition(0), mount = { ...dock, y: dock.y + .06 };
+      await move(page, 'right', cannon, false); await move(page, 'right', cannon, true);
+      await move(page, 'right', mount, true); await move(page, 'right', mount, false);
+      await expect.poll(() => page.evaluate(() => InkTabletop.observe().player.turrets[0])).toBe(0);
+      expect(await page.evaluate(() => InkTabletop.diagnostics().table)).toEqual(released);
+      await page.evaluate(() => xrDevice.activeSession.end());
+      await expect.poll(() => page.evaluate(() => InkTabletop.diagnostics().table.rotation)).toEqual({ x: 0, y: 0, z: 0, w: 1 });
+    });
+  }
   test(`emulated ${device} nudges a living troop across the battlefield`,async({page,browserName})=>{
     test.skip(browserName!=='chromium','IWER uses Chromium WebGL.');
     await emulated(page);

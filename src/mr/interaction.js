@@ -1,4 +1,4 @@
-import { TableGesture, toLocal, rotate, fly, length } from './spatial.js';
+import { TableGesture, toLocal, toLocalVector, fly, length } from './spatial.js';
 import { landingHeight } from './defense-layout.js';
 
 /** All input devices use the same grab lifetime and release transaction. */
@@ -11,12 +11,12 @@ export class Interaction {
     this.grabs = new Map();
     this.flights = new Map();
   }
-  begin(owner, target, world, time = 0) {
+  begin(owner, target, world, time = 0, orientation = null) {
     if (this.grabs.has(owner) || this.flights.has(owner)) return false;
     if (target.startsWith('handle-')) {
       if (this.gesture.grips.size >= 2) return false;
       this.onCarry();
-      this.gesture.begin(owner, world);
+      this.gesture.begin(owner, world, orientation);
       this.grabs.set(owner, { handle: true });
       return true;
     }
@@ -31,11 +31,11 @@ export class Interaction {
     });
     return true;
   }
-  move(owner, world, time = 0, targetWorld = world) {
+  move(owner, world, time = 0, targetWorld = world, orientation = null) {
     const item = this.grabs.get(owner);
     if (!item) return;
     if (item.handle) {
-      this.gesture.move(owner, world);
+      this.gesture.move(owner, world, orientation);
       return;
     }
     item.world = { ...world };
@@ -75,8 +75,8 @@ export class Interaction {
       z: (last.world.z - first.world.z) / dt
     };
     const cap = Math.min(1, 3 / (length(speed) || 1));
-    const velocity = rotate(speed, -this.table.yaw);
-    for (const k of ['x', 'y', 'z']) velocity[k] *= cap / this.table.scale;
+    const velocity = toLocalVector(speed, this.table);
+    for (const k of ['x', 'y', 'z']) velocity[k] *= cap;
     this.flights.set(owner, { token: item.token, position, velocity, age: 0 });
   }
   cancel(owner) {
@@ -97,6 +97,7 @@ export class Interaction {
         this.flights.delete(owner);
         continue;
       }
+      // The sketch world keeps its own gravity toward the page even overhead.
       const hit = fly(item, Math.min(dt, 0.1), 9.81 / this.table.scale,
         landingHeight(item.token.offer));
       if (hit) {

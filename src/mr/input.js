@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { HANDLES } from './scene.js';
 import { Interaction } from './interaction.js';
-import { toLocal, toWorld } from './spatial.js';
+import { toLocal, toWorld, rotationOf } from './spatial.js';
 import { landingHeight } from './defense-layout.js';
 import { TouchTwist } from './touch-twist.js';
 
@@ -180,14 +180,15 @@ export class TabletopInput {
   }
   planePoint(ray, y) {
     return ray.intersectPlane(
-      new THREE.Plane(new THREE.Vector3(0, 1, 0), -y),
+      new THREE.Plane().setFromNormalAndCoplanarPoint(
+        new THREE.Vector3(0, 1, 0).applyQuaternion(rotationOf(this.view.table)),
+        new THREE.Vector3().copy(toWorld({ x: 0, y, z: 0 }, this.view.table))),
       new THREE.Vector3()
     );
   }
   landingPoint(ray, offer) {
     const height = offer ? landingHeight(offer) : 0;
-    return this.planePoint(ray,
-      this.view.table.position.y + height * this.view.table.scale);
+    return this.planePoint(ray, height);
   }
   turnView() {
     if (!this.touchNavigation || !this.view.controls.enabled || this.view.renderer.xr.isPresenting) return;
@@ -239,8 +240,8 @@ export class TabletopInput {
         this.pointers.set(owner, {
           touch: e.pointerType === 'touch',
           height: picked.target.startsWith('handle-')
-            ? picked.world.y
-            : toWorld({ x: 0, y: 0.28, z: 0 }, this.view.table).y
+            ? toLocal(picked.world, this.view.table).y
+            : 0.28
         });
         // Single-touch orbit is disabled for a piece grab. Leave pointer
         // tracking enabled so a later second finger starts at the current
@@ -324,6 +325,7 @@ export class TabletopInput {
           return;
         }
         source.position = xyz(grip.transform.position);
+        source.orientation = grip.transform.orientation;
         source.ray.origin.copy(target.transform.position);
         source.ray.direction
           .set(0, 0, -1)
@@ -339,7 +341,7 @@ export class TabletopInput {
             const world = source.distance
               ? xyz(source.ray.at(source.distance, new THREE.Vector3()))
               : source.position;
-            this.interaction.move(source.id, world, performance.now() / 1000);
+            this.interaction.move(source.id, world, performance.now() / 1000, world, source.orientation);
             this.interaction.release(source.id);
           }
         }
@@ -376,7 +378,8 @@ export class TabletopInput {
         source.id,
         pick.target,
         pick.world,
-        performance.now() / 1000
+        performance.now() / 1000,
+        source.orientation
       )
     )
       this.feedback(source.id, true);
@@ -424,13 +427,16 @@ export class TabletopInput {
           reference
         ),
         target = frame.getPose(input.targetRaySpace, reference);
-      let point,
+      let point, orientation = null,
         pinch = false;
       if (input.hand) {
         const joints = new Map();
         for (const [name, joint] of input.hand) {
           const pose = frame.getJointPose(joint, reference);
-          if (pose) joints.set(name, pose.transform.position);
+          if (pose) {
+            joints.set(name, pose.transform.position);
+            if (name === 'wrist') orientation = pose.transform.orientation;
+          }
         }
         const thumb = joints.get('thumb-tip'),
           index = joints.get('index-finger-tip');
@@ -453,7 +459,10 @@ export class TabletopInput {
               if (a && b) bones.push(a.x, a.y, a.z, b.x, b.y, b.z);
             }
         }
-      } else if (grip && target) point = xyz(grip.transform.position);
+      } else if (grip && target) {
+        point = xyz(grip.transform.position);
+        orientation = grip.transform.orientation;
+      }
       source.valid = !!point;
       if (!point) {
         this.interaction.cancel(source.id);
@@ -464,6 +473,7 @@ export class TabletopInput {
         continue;
       }
       source.position = point;
+      source.orientation = orientation;
       if (target) {
         source.ray.origin.copy(target.transform.position);
         source.ray.direction
@@ -480,7 +490,13 @@ export class TabletopInput {
         source.distance && !source.hand
           ? xyz(source.ray.at(source.distance, new THREE.Vector3()))
           : point;
-      this.interaction.move(source.id, world, now);
+      // Opening a pinch changes joint positions and sometimes the wrist pose.
+      // A ring belongs to the last closed pinch; don't apply that release pose
+      // as one final book rotation before handing control to the other hand.
+      const releasingHandle = source.hand && source.pinched && !pinch &&
+        this.interaction.grabs.get(source.id)?.handle;
+      if (!releasingHandle)
+        this.interaction.move(source.id, world, now, world, source.orientation);
       if (source.hand && !pinch) source.armed = true;
       if (source.hand && pinch !== source.pinched) {
         source.pinched = pinch;

@@ -29,7 +29,8 @@ Use one finger or the left mouse button to move pieces. Start a drag outside the
 book and its pieces to rotate the view. With two fingers, pinch to zoom, drag to
 pan and twist to turn gently, all in the same gesture. On PC, scroll to zoom, middle-drag to pan and right-drag
 to orbit. No additional game buttons are needed. On Quest Browser, enter mixed
-reality; pinch or grip pieces, carry one drawn ring, or use two rings to scale/turn.
+reality; pinch or grip pieces, carry and tilt one drawn ring with your wrist,
+or hold any two rings to turn, tilt and resize the book—even above you while reclining.
 The MR book starts about 52 × 44 cm, with a fallback table height of 75 cm.
 Detected surfaces set its actual placement height; the rings still let you move
 and resize it freely.

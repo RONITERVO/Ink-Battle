@@ -4,6 +4,7 @@ import { TabletopHost } from './host.js';
 import { TabletopScene } from './scene.js';
 import { TabletopInput } from './input.js';
 import { createAudio } from '../client/audio.js';
+import { rotationData } from './spatial.js';
 
 const SAVE_KEY = 'ink-battle-tabletop-v1',
   canvas = document.querySelector('#tabletop'),
@@ -157,7 +158,7 @@ function releaseAnchor() {
 function resetView() {
   if (xrSession) return;
   view.table.position = { x: 0, y: 0, z: 0 };
-  view.table.yaw = 0;
+  view.table.rotation = { x: 0, y: 0, z: 0, w: 1 };
   view.table.scale = 1;
   view.syncTable();
   view.frameBook();
@@ -260,7 +261,8 @@ function placeFrame(frame, reference) {
       y: MR_START.surfaceHeight + bookSurfaceClearance(),
       z: position.z + forward.z * MR_START.distance
     };
-    view.table.yaw = Math.atan2(-forward.x, -forward.z);
+    view.table.rotation = rotationData(new THREE.Quaternion().setFromAxisAngle(
+      new THREE.Vector3(0, 1, 0), Math.atan2(-forward.x, -forward.z)));
     initialized = true;
     view.syncTable();
   }
@@ -325,7 +327,7 @@ function placeFrame(frame, reference) {
         s = new THREE.Vector3();
       matrix.decompose(p, q, s);
       view.table.position = xyz(p);
-      view.table.yaw = new THREE.Euler().setFromQuaternion(q, 'YXZ').y;
+      view.table.rotation = rotationData(q);
     }
   }
   return true;

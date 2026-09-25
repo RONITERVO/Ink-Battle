@@ -91,7 +91,7 @@ test('hands and throws land on raised docks after table translation, rotation an
   for (const scale of [0.2, 0.55, 1.6]) for (const thrown of [false, true]) {
     const host = new TabletopHost();
     host.start('normal', { opponent: false });
-    const table = { position: { x: 1, y: 0.8, z: -1 }, yaw: 1.2, scale };
+    const table = { position: { x: 1, y: 0.8, z: -1 }, rotation: { x: 0, y: Math.sin(.6), z: 0, w: Math.cos(.6) }, scale };
     const input = new Interaction(host, table);
     const target = dockPosition(0);
     const world = toWorld({ ...target, y: target.y + 0.06 + (thrown ? 0.5 : 0) }, table);

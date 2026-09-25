@@ -16,7 +16,7 @@ const rally = { x: -0.65, y: 0, z: 0.4 },
   page = { x: 0, y: 0, z: 0 };
 const table = () => ({
   position: { x: 0, y: 0.8, z: -1 },
-  yaw: 0.3,
+  rotation: { x: 0, y: Math.sin(0.15), z: 0, w: Math.cos(0.15) },
   scale: 0.55
 });
 const near = (a, b) => assert.ok(Math.abs(a - b) < 1e-8, `${a} != ${b}`);
@@ -120,14 +120,14 @@ test('table carry, turn, scale and hand release preserve held positions without 
   gesture.move('a', { ...a, y: 1.2 });
   for (const k of ['x', 'y', 'z']) near(t.position[k], before.position[k]);
   near(t.scale, before.scale);
-  near(t.yaw, before.yaw);
+  for (const k of ['x', 'y', 'z', 'w']) near(t.rotation[k], before.rotation[k]);
   gesture.begin('b', b);
   gesture.move('b', { x: 100, y: 1, z: 1 });
   assert.equal(t.scale, TABLE.maxScale);
   gesture.clear();
   assert.equal(gesture.grips.size, 0);
   for (const yaw of [0, 0.5, 2, -3]) {
-    t.yaw = yaw;
+    t.rotation = { x: 0, y: Math.sin(yaw / 2), z: 0, w: Math.cos(yaw / 2) };
     const p = { x: 0.12, y: 0.35, z: -0.8 },
       round = toLocal(toWorld(p, t), t);
     for (const k of ['x', 'y', 'z']) near(p[k], round[k]);

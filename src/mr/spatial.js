@@ -1,4 +1,5 @@
 import { TABLE } from './catalog.js';
+import { Quaternion, Vector3 } from 'three';
 
 export const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
 export const length = (p) => Math.hypot(p.x, p.y, p.z);
@@ -8,17 +9,18 @@ export const midpoint = (a, b) => ({
   y: (a.y + b.y) / 2,
   z: (a.z + b.z) / 2
 });
-export function rotate(p, yaw) {
-  const c = Math.cos(yaw),
-    s = Math.sin(yaw);
-  return { x: c * p.x + s * p.z, y: p.y, z: -s * p.x + c * p.z };
+export const rotationOf = (table) => new Quaternion().copy(table.rotation).normalize();
+export const rotationData = (q) => ({ x: q.x, y: q.y, z: q.z, w: q.w });
+const vector = (p) => new Vector3(p.x, p.y, p.z);
+const coordinates = (p) => ({ x: p.x, y: p.y, z: p.z });
+export function toLocalVector(p, table) {
+  return coordinates(vector(p).applyQuaternion(rotationOf(table).invert()).divideScalar(table.scale));
 }
 export function toLocal(p, table) {
-  const v = rotate(sub(p, table.position), -table.yaw);
-  return { x: v.x / table.scale, y: v.y / table.scale, z: v.z / table.scale };
+  return toLocalVector(sub(p, table.position), table);
 }
 export function toWorld(p, table) {
-  const v = rotate(p, table.yaw);
+  const v = vector(p).applyQuaternion(rotationOf(table));
   return {
     x: table.position.x + v.x * table.scale,
     y: table.position.y + v.y * table.scale,
@@ -33,8 +35,8 @@ export class TableGesture {
     this.grips = new Map();
     this.origin = null;
   }
-  begin(id, point) {
-    this.grips.set(id, { ...point });
+  begin(id, point, orientation = null) {
+    this.grips.set(id, { point: { ...point }, orientation: orientation && rotationData(orientation) });
     this.rebase();
   }
   end(id) {
@@ -46,7 +48,7 @@ export class TableGesture {
     this.origin = null;
   }
   rebase() {
-    const points = [...this.grips.values()];
+    const grips = [...this.grips.values()], points = grips.map(g => g.point);
     if (!points.length) {
       this.origin = null;
       return;
@@ -57,31 +59,55 @@ export class TableGesture {
       points.length > 1 ? sub(points[1], points[0]) : { x: 1, y: 0, z: 0 };
     this.origin = {
       local: toLocal(center, this.table),
-      distance: Math.max(0.06, length(delta)),
-      angle: Math.atan2(delta.z, delta.x),
+      distance: Math.max(0.04, length(delta)),
+      direction: vector(delta).normalize(),
       scale: this.table.scale,
-      yaw: this.table.yaw
+      rotation: rotationOf(this.table),
+      orientations: grips.map(g => g.orientation && new Quaternion().copy(g.orientation).normalize())
     };
+    this.collapsed = points.length > 1 && length(delta) < 0.04;
   }
-  move(id, point) {
+  move(id, point, orientation = null) {
     if (!this.grips.has(id)) return;
-    this.grips.set(id, { ...point });
-    const points = [...this.grips.values()],
-      origin = this.origin;
+    this.grips.set(id, { point: { ...point }, orientation: orientation && rotationData(orientation) });
+    const grips = [...this.grips.values()], points = grips.map(g => g.point);
     const center =
       points.length > 1 ? midpoint(points[0], points[1]) : points[0];
+    let origin = this.origin, rotation = rotationOf(this.table);
     if (points.length > 1) {
-      const delta = sub(points[1], points[0]);
-      this.table.scale = clamp(
-        (origin.scale * length(delta)) / origin.distance,
-        TABLE.minScale,
-        TABLE.maxScale
-      );
-      if (Math.hypot(delta.x, delta.z) > 0.05)
-        this.table.yaw =
-          origin.yaw - (Math.atan2(delta.z, delta.x) - origin.angle);
+      const delta = vector(sub(points[1], points[0])), distance = delta.length();
+      if (distance < 0.04) this.collapsed = true;
+      else {
+        // Coincident grips do not define an axis. Resume from the current pose
+        // when they separate rather than suddenly flipping or growing the book.
+        if (this.collapsed) { this.rebase(); origin = this.origin; }
+        const direction = delta.normalize();
+        this.table.scale = clamp(origin.scale * distance / origin.distance, TABLE.minScale, TABLE.maxScale);
+        rotation = new Quaternion().setFromUnitVectors(origin.direction, direction).multiply(origin.rotation);
+        // The grip line sets swing; relative wrist rotation resolves twist around
+        // that line, including a book held vertically or face-down above a bed.
+        const deltas = grips.flatMap((g, i) => g.orientation && origin.orientations[i]
+          ? [new Quaternion().copy(g.orientation).normalize().multiply(origin.orientations[i].clone().invert())] : []);
+        if (deltas.length) {
+          const average = deltas[0].clone();
+          if (deltas.length === 2) average.slerp(deltas[1], 0.5);
+          const normal = new Vector3(0, 1, 0).applyQuaternion(rotation);
+          const desired = new Vector3(0, 1, 0).applyQuaternion(origin.rotation).applyQuaternion(average);
+          normal.addScaledVector(direction, -normal.dot(direction));
+          desired.addScaledVector(direction, -desired.dot(direction));
+          if (normal.lengthSq() > 1e-8 && desired.lengthSq() > 1e-8) {
+            normal.normalize(); desired.normalize();
+            const twist = Math.atan2(direction.dot(normal.clone().cross(desired)), normal.dot(desired));
+            rotation.premultiply(new Quaternion().setFromAxisAngle(direction, twist));
+          }
+        }
+      }
+    } else if (grips[0].orientation && origin.orientations[0]) {
+      rotation = new Quaternion().copy(grips[0].orientation).normalize()
+        .multiply(origin.orientations[0].clone().invert()).multiply(origin.rotation);
     }
-    const offset = rotate(origin.local, this.table.yaw);
+    this.table.rotation = rotationData(rotation.normalize());
+    const offset = vector(origin.local).applyQuaternion(rotation);
     this.table.position = {
       x: center.x - offset.x * this.table.scale,
       y: center.y - offset.y * this.table.scale,
