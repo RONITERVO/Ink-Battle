@@ -1,7 +1,7 @@
 import { Session } from '../sdk/session.js';
 import { commandError } from '../core/commands.js';
 import { defenseTarget } from './defense-layout.js';
-import { wide, FIELD, fieldX, fieldZ, worldX, worldZ, clamp } from '../core/battlefield.js';
+import { wide, FIELD, fieldX, fieldZ, worldX, worldZ, clamp, round } from '../core/battlefield.js';
 import {
   shopOffers,
   TOOLS,
@@ -106,9 +106,10 @@ export class TabletopHost {
       else {
         let command = offer.command;
         if (offer.kind === 'eraser') command = { ...command, slot: defenseTarget(offer, state, point).slot };
-        else if (offer.kind === 'unit' && wide(state)) command = { ...command, z: clamp(fieldZ(point.z), FIELD.minZ + 34, FIELD.maxZ - 34) };
+        // Discard transform roundoff at the engine's existing spatial precision.
+        else if (offer.kind === 'unit' && wide(state)) command = { ...command, z: round(clamp(fieldZ(point.z), FIELD.minZ + 34, FIELD.maxZ - 34)) };
         else if (offer.kind === 'nudge') command = { ...command,
-          x: clamp(fieldX(point.x), FIELD.minX, FIELD.maxX), z: clamp(fieldZ(point.z), FIELD.minZ, FIELD.maxZ) };
+          x: round(clamp(fieldX(point.x), FIELD.minX, FIELD.maxX)), z: round(clamp(fieldZ(point.z), FIELD.minZ, FIELD.maxZ)) };
         result = this.session.command(1, command);
         if (result.ok && offer.kind === 'nudge') {
           const u = this.observe().units.find(u => u.id === command.id);

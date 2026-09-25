@@ -129,7 +129,7 @@ test('two erasers cannot refund the same cannon twice or spill into a neighborin
 test('eraser targeting follows hand poses, raised throws and desktop landing previews at every table scale', () => {
   for (const scale of [0.2, 0.55, 1.6]) for (const thrown of [false, true]) {
     const host = armed();
-    const table = { position: {x: 1, y: 0.9, z: -2}, yaw: 0.7, scale };
+    const table = { position: {x: 1, y: 0.9, z: -2}, rotation: { x: 0, y: Math.sin(.35), z: 0, w: Math.cos(.35) }, scale };
     const input = new Interaction(host, table);
     const pad = dockPosition(0);
     const world = toWorld({...pad, y: pad.y + 0.06 + (thrown ? 0.5 : 0)}, table);

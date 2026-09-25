@@ -214,7 +214,7 @@ test('live-troop nudges share hand/controller release semantics without suspendi
   for(const scale of [.2,.55,1.6]) {
     const host=new TabletopHost();host.start('normal',{opponent:false});
     host.session.command(1,{type:'unit',index:0,z:0});host.advance(60);
-    const u=host.observe().units[0], table={position:{x:1,y:.8,z:-2},yaw:.7,scale};
+    const u=host.observe().units[0], table={position:{x:1,y:.8,z:-2},rotation:{x:0,y:Math.sin(.35),z:0,w:Math.cos(.35)},scale};
     const input=new Interaction(host,table);
     assert.ok(input.begin('hand',`troop-${u.id}`,toWorld({x:worldX(u.x),y:.14,z:worldZ(u.z)},table)));
     host.advance(60); assert.ok(host.observe().units[0].x>u.x,'A held suggestion cannot freeze the soldier');

@@ -43,8 +43,14 @@ physical objects. Phones and desktop browsers play the same scene without a head
 5. Lift the hourglass and drop it onto the page to pause/resume. The clock cycles
    1×/2×/3×. The feather cycles mist, clear and comfort. The music box toggles the
    original soundtrack. Pause before dropping the new-page block. The compass exits MR.
-6. Hold one drawn ring to carry the whole book. Hold two to turn and resize it.
-   The book stays horizontal; the soldiers stay upright. Width is bounded to
+6. Hold one drawn ring to carry the whole book and turn your wrist to tilt it.
+   Hold any two rings—including either diagonal pair—to turn, tilt and resize.
+   Wrist rotation also twists the page around the line between your hands.
+   The book can face any direction, including above you while reclining. Troops,
+   labels and the shop stay upright relative to the page; dropped or tossed pieces
+   fall toward the page, even when it faces downward. Release either hand first;
+   the remaining hand keeps holding the book without resetting its angle.
+   Width is bounded to
    0.48–3.84 meters across the battlefield. The complete book initially measures
    about 52 × 44 cm, including its cover (48 cm across the battle area).
    Its proportions are unchanged. Both left and right hands work.
@@ -120,7 +126,10 @@ The passthrough outside the book is transparent. There is no room mesh occlusion
 persistent room map, cloud anchor, real-table collision, or multi-user multiplayer.
 An available hit-test/anchor improves placement; optional permission failure leaves
 free placement working. Moving a ring releases the anchor. No anchor persists after
-leaving XR. The geometry assumes the tabletop stays horizontal.
+leaving XR. Initial surface placement is horizontal, but carrying releases the
+anchor and permits full 3D orientation. Book transforms use normalized quaternions;
+world input positions and throw velocities are converted into page coordinates.
+Placement never tilts the camera, changes engine gravity or changes combat rules.
 
 Three.js 0.186.0 is bundled locally (MIT license); IWER 2.5.0 is a development-only
 emulator and is absent from `web/mr.js`. No CDN or runtime framework download is

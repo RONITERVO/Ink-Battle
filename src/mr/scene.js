@@ -12,6 +12,7 @@ import {
   TEAM_COLORS,
 } from "./models.js";
 import { TABLE } from "./catalog.js";
+import { rotationOf } from './spatial.js';
 import { AGES } from "../content/ages.js";
 import { TICK_RATE } from "../core/constants.js";
 import {
@@ -155,7 +156,7 @@ export class TabletopScene {
     this.scene.add(sun);
     this.root = new THREE.Group();
     this.scene.add(this.root);
-    this.table = { position: { x: 0, y: 0, z: 0 }, yaw: 0, scale: 1 };
+    this.table = { position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0, w: 1 }, scale: 1 };
     this.army = new InkBatch(this.root, { capacity: 6000 });
     this.shop = new InkBatch(this.root, { capacity: 1200 });
     this.held = new InkBatch(this.root, { capacity: 600 });
@@ -306,7 +307,7 @@ export class TabletopScene {
   syncTable() {
     const t = this.table;
     this.root.position.set(t.position.x, t.position.y, t.position.z);
-    this.root.rotation.y = t.yaw;
+    this.root.quaternion.copy(rotationOf(t));
     this.root.scale.setScalar(t.scale);
     this.root.updateMatrixWorld(true);
   }
